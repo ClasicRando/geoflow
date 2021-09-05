@@ -1,12 +1,14 @@
 import org.jetbrains.kotlin.gradle.tasks.KotlinCompile
 
 plugins {
-    kotlin("jvm") version "1.5.10"
     application
+    kotlin("jvm")
+    kotlin("plugin.serialization")
+    id("com.github.johnrengelman.shadow")
 }
 
 group = "me.steven"
-version = "1.0-SNAPSHOT"
+version = "0.1"
 val kjobVersion = "0.2.0"
 
 dependencies {
@@ -22,7 +24,7 @@ tasks.test {
     useJUnitPlatform()
 }
 
-tasks.withType<KotlinCompile>() {
+tasks.withType<KotlinCompile> {
     kotlinOptions.jvmTarget = "1.8"
 }
 
