@@ -4,15 +4,15 @@ plugins {
 }
 
 version = "0.1"
-val ktormVersion = "3.4.1"
-val postgresqlVersion = "42.2.23.jre7"
-val kjobVersion = "0.2.0"
-val dbfVersion = "1.13.2"
-val ucanaccessVersion = "5.0.1"
-val dbcpVersion = "2.9.0"
-val univocityVersion = "2.9.1"
-val poiVersion = "5.0.0"
-val serializationVersion = "5.5"
+val ktormVersion: String by project
+val postgresqlVersion: String by project
+val kjobVersion: String by project
+val dbfVersion: String by project
+val ucanaccessVersion: String by project
+val dbcpVersion: String by project
+val univocityVersion: String by project
+val poiVersion: String by project
+val klaxonVersion: String by project
 
 dependencies {
     testImplementation(kotlin("test", "1.5.21"))
@@ -35,7 +35,7 @@ dependencies {
     // https://mvnrepository.com/artifact/org.apache.poi/poi
     implementation("org.apache.poi:poi:$poiVersion")
     // https://mvnrepository.com/artifact/org.jetbrains.kotlinx/kotlinx-serialization-json-jvm
-    implementation("com.beust:klaxon:$serializationVersion")
+    implementation("com.beust:klaxon:$klaxonVersion")
 }
 
 tasks.test {

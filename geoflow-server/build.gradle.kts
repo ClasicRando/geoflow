@@ -1,16 +1,14 @@
-import org.jetbrains.kotlin.gradle.tasks.KotlinCompile
-
 plugins {
     application
     kotlin("plugin.serialization") version "1.5.21"
 }
 
 version = "0.1"
-val ktormVersion = "3.4.1"
-val ktorVersion = "1.6.3"
-val htmlJvmVersion = "0.7.3"
-val slfVersion = "1.7.32"
-val postgresqlVersion = "42.2.23"
+val ktormVersion: String by project
+val ktorVersion: String by project
+val htmlJvmVersion: String by project
+val slf4Version: String by project
+val postgresqlVersion: String by project
 
 dependencies {
     implementation(project(":geoflow-core"))
@@ -25,9 +23,9 @@ dependencies {
     implementation("io.ktor:ktor-serialization:$ktorVersion")
     implementation("org.jetbrains.kotlinx:kotlinx-html-jvm:$htmlJvmVersion")
     // https://mvnrepository.com/artifact/org.slf4j/slf4j-api
-    implementation("org.slf4j:slf4j-api:$slfVersion")
+    implementation("org.slf4j:slf4j-api:$slf4Version")
     // https://mvnrepository.com/artifact/org.slf4j/slf4j-api
-    implementation("org.slf4j:slf4j-simple:$slfVersion")
+    implementation("org.slf4j:slf4j-simple:$slf4Version")
 }
 
 tasks.test {
