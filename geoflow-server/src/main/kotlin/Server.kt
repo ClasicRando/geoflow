@@ -6,6 +6,8 @@ import io.ktor.routing.routing
 import io.ktor.server.engine.embeddedServer
 import io.ktor.server.cio.CIO
 import kotlinx.html.*
+import database.DatabaseConnection
+import database.roles
 
 fun HTML.index() {
     head {
@@ -14,6 +16,11 @@ fun HTML.index() {
     body {
         div {
             +"Hello from Ktor"
+        }
+        for (role in DatabaseConnection.database.roles) {
+            p {
+                +role.name
+            }
         }
     }
 }

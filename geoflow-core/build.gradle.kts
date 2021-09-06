@@ -1,21 +1,18 @@
 import org.jetbrains.kotlin.gradle.tasks.KotlinCompile
 
 plugins {
-    kotlin("jvm")
-    kotlin("plugin.serialization")
-    id("com.github.johnrengelman.shadow")
 }
 
-group = "me.steven"
 version = "0.1"
 val ktormVersion = "3.4.1"
-val postgresqlVersion = "42.2.23"
+val postgresqlVersion = "42.2.23.jre7"
 val kjobVersion = "0.2.0"
 val dbfVersion = "1.13.2"
 val ucanaccessVersion = "5.0.1"
 val dbcpVersion = "2.9.0"
 val univocityVersion = "2.9.1"
 val poiVersion = "5.0.0"
+val serializationVersion = "5.5"
 
 dependencies {
     testImplementation(kotlin("test", "1.5.21"))
@@ -37,12 +34,10 @@ dependencies {
     implementation("com.univocity:univocity-parsers:$univocityVersion")
     // https://mvnrepository.com/artifact/org.apache.poi/poi
     implementation("org.apache.poi:poi:$poiVersion")
+    // https://mvnrepository.com/artifact/org.jetbrains.kotlinx/kotlinx-serialization-json-jvm
+    implementation("com.beust:klaxon:$serializationVersion")
 }
 
 tasks.test {
     useJUnitPlatform()
-}
-
-tasks.withType<KotlinCompile> {
-    kotlinOptions.jvmTarget = "1.8"
 }

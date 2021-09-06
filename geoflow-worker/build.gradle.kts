@@ -2,12 +2,8 @@ import org.jetbrains.kotlin.gradle.tasks.KotlinCompile
 
 plugins {
     application
-    kotlin("jvm")
-    kotlin("plugin.serialization")
-    id("com.github.johnrengelman.shadow")
 }
 
-group = "me.steven"
 version = "0.1"
 val kjobVersion = "0.2.0"
 

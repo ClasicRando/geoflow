@@ -2,20 +2,22 @@ import org.jetbrains.kotlin.gradle.tasks.KotlinCompile
 
 plugins {
     application
-    kotlin("jvm")
-    kotlin("plugin.serialization")
-    id("com.github.johnrengelman.shadow")
+    kotlin("plugin.serialization") version "1.5.21"
 }
 
-group = "me.steven"
 version = "0.1"
+val ktormVersion = "3.4.1"
 val ktorVersion = "1.6.3"
 val htmlJvmVersion = "0.7.3"
 val slfVersion = "1.7.32"
+val postgresqlVersion = "42.2.23"
 
 dependencies {
     implementation(project(":geoflow-core"))
     testImplementation(kotlin("test", "1.5.21"))
+    // https://mvnrepository.com/artifact/org.ktorm/ktorm-core
+    implementation("org.ktorm:ktorm-core:$ktormVersion")
+    implementation("io.ktor:ktor-server-core:$ktorVersion")
     implementation("io.ktor:ktor-server-cio:$ktorVersion")
     implementation("io.ktor:ktor-html-builder:$ktorVersion")
     implementation("io.ktor:ktor-server-sessions:$ktorVersion")
@@ -30,10 +32,6 @@ dependencies {
 
 tasks.test {
     useJUnitPlatform()
-}
-
-tasks.withType<KotlinCompile> {
-    kotlinOptions.jvmTarget = "1.8"
 }
 
 application {
