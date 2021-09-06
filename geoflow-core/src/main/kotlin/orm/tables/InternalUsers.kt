@@ -1,5 +1,8 @@
 package orm.tables
 
+import at.favre.lib.crypto.bcrypt.BCrypt
+import database.DatabaseConnection
+import org.ktorm.dsl.*
 import org.ktorm.schema.long
 import org.ktorm.schema.Table
 import org.ktorm.schema.text
@@ -36,4 +39,29 @@ object InternalUsers: Table<InternalUser>("internal_users") {
             OIDS = FALSE
         )
     """.trimIndent()
+
+    data class ValidationResponse(val isSuccess: Boolean, val message: String = "")
+
+    fun validateUser(username: String, password: String): ValidationResponse {
+        val user = DatabaseConnection
+            .database
+            .from(this)
+            .select()
+            .where(this.username eq username)
+            .map(this::createEntity)
+            .firstOrNull() ?: return ValidationResponse(false, "Incorrect username or password")
+        val verified = BCrypt.verifyer().verify(password.toCharArray(), user.password).verified
+        return ValidationResponse(verified, if (verified) "" else "Incorrect username or password")
+    }
+
+    @Throws(IllegalArgumentException::class)
+    fun getUser(username: String): InternalUser {
+        return DatabaseConnection
+            .database
+            .from(this)
+            .select()
+            .where(this.username eq username)
+            .map(this::createEntity)
+            .firstOrNull() ?: throw IllegalArgumentException("User cannot be found")
+    }
 }

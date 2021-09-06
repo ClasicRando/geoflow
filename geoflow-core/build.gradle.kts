@@ -13,6 +13,7 @@ val dbcpVersion: String by project
 val univocityVersion: String by project
 val poiVersion: String by project
 val klaxonVersion: String by project
+val bcryptVersion: String by project
 
 dependencies {
     testImplementation(kotlin("test", "1.5.21"))
@@ -36,6 +37,9 @@ dependencies {
     implementation("org.apache.poi:poi:$poiVersion")
     // https://mvnrepository.com/artifact/org.jetbrains.kotlinx/kotlinx-serialization-json-jvm
     implementation("com.beust:klaxon:$klaxonVersion")
+    // https://mvnrepository.com/artifact/at.favre.lib/bcrypt
+    implementation("at.favre.lib:bcrypt:$bcryptVersion")
+
 }
 
 tasks.test {
