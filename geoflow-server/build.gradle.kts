@@ -1,6 +1,6 @@
 plugins {
     application
-    kotlin("plugin.serialization") version "1.5.21"
+    kotlin("plugin.serialization") version "1.5.30"
 }
 
 version = "0.1"
@@ -22,7 +22,6 @@ dependencies {
     implementation("io.ktor:ktor-auth:$ktorVersion")
     implementation("io.ktor:ktor-server-sessions:$ktorVersion")
     implementation("io.ktor:ktor-serialization:$ktorVersion")
-    implementation("io.ktor:ktor-jackson:$ktorVersion")
     implementation("org.jetbrains.kotlinx:kotlinx-html-jvm:$htmlJvmVersion")
     // https://mvnrepository.com/artifact/org.slf4j/slf4j-api
     implementation("org.slf4j:slf4j-api:$slf4Version")

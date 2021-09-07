@@ -1,6 +1,5 @@
-import org.jetbrains.kotlin.gradle.tasks.KotlinCompile
-
 plugins {
+    kotlin("plugin.serialization") version "1.5.30"
 }
 
 version = "0.1"
@@ -14,9 +13,11 @@ val univocityVersion: String by project
 val poiVersion: String by project
 val klaxonVersion: String by project
 val bcryptVersion: String by project
+val kotlinxJsonVersion: String by project
 
 dependencies {
-    testImplementation(kotlin("test", "1.5.21"))
+    testImplementation(kotlin("test", "1.5.30"))
+    implementation("org.jetbrains.kotlinx:kotlinx-serialization-json:$kotlinxJsonVersion")
     // https://mvnrepository.com/artifact/org.ktorm/ktorm-core
     implementation("org.ktorm:ktorm-core:$ktormVersion")
     // https://mvnrepository.com/artifact/org.ktorm/ktorm-support-postgresql

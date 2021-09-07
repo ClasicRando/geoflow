@@ -4,10 +4,9 @@ import io.ktor.application.*
 import io.ktor.auth.*
 import io.ktor.features.*
 import io.ktor.html.*
-import io.ktor.jackson.*
-import io.ktor.request.*
 import io.ktor.response.*
 import io.ktor.routing.*
+import io.ktor.serialization.*
 import io.ktor.sessions.*
 import orm.tables.InternalUsers
 import java.time.Instant
@@ -49,7 +48,7 @@ fun Application.module() {
         }
     }
     install(ContentNegotiation) {
-        jackson()
+        json()
     }
     routing {
         authenticate("auth-session") {

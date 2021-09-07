@@ -9,7 +9,7 @@ val kjobVersion = "0.2.0"
 
 dependencies {
     implementation(project(":geoflow-core"))
-    testImplementation(kotlin("test", "1.5.21"))
+    testImplementation(kotlin("test", "1.5.30"))
     // https://mvnrepository.com/artifact/it.justwrote/kjob-core
     implementation("it.justwrote:kjob-core:$kjobVersion")
     // https://mvnrepository.com/artifact/it.justwrote/kjob-mongo
@@ -18,10 +18,6 @@ dependencies {
 
 tasks.test {
     useJUnitPlatform()
-}
-
-tasks.withType<KotlinCompile> {
-    kotlinOptions.jvmTarget = "1.8"
 }
 
 application {
