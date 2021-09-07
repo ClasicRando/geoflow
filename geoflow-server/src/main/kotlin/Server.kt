@@ -1,35 +1,16 @@
 import auth.UserSession
-import io.ktor.html.respondHtml
-import io.ktor.http.HttpStatusCode
-import kotlinx.html.*
-import database.DatabaseConnection
-import database.roles
+import html.login
 import io.ktor.application.*
 import io.ktor.auth.*
 import io.ktor.features.*
+import io.ktor.html.*
 import io.ktor.jackson.*
+import io.ktor.request.*
 import io.ktor.response.*
 import io.ktor.routing.*
 import io.ktor.sessions.*
-import org.ktorm.entity.filter
 import orm.tables.InternalUsers
 import java.time.Instant
-
-fun HTML.index() {
-    head {
-        title("Hello from Ktor!")
-    }
-    body {
-        div {
-            +"Hello from Ktor"
-        }
-        for (role in DatabaseConnection.database.roles) {
-            p {
-                +role.name
-            }
-        }
-    }
-}
 
 fun main(args: Array<String>): Unit = io.ktor.server.cio.EngineMain.main(args)
 
@@ -43,26 +24,28 @@ fun Application.module() {
                 if (validateResult.isSuccess) {
                     UserIdPrincipal(credentials.name)
                 } else {
-                    log.debug(validateResult.message)
+                    log.info(validateResult.message)
                     null
                 }
             }
+            challenge("/login?message=invalid")
         }
         session<UserSession>("auth-session") {
             validate { session ->
                 if (session.isExpired) {
-                    log.debug("Session for ${session.username} expired")
+                    log.info("Session for ${session.username} expired")
                     null
                 } else {
                     session
                 }
             }
-            challenge("/login")
+            challenge("/login?message=expired")
         }
     }
     install(Sessions) {
-        cookie<UserSession>("user_session") {
+        cookie<UserSession>("user_session", storage = SessionStorageMemory()) {
             cookie.path = "/"
+            cookie.extensions["SameSite"] = "lax"
         }
     }
     install(ContentNegotiation) {
@@ -70,7 +53,7 @@ fun Application.module() {
     }
     routing {
         authenticate("auth-session") {
-
+            index()
         }
         authenticate("auth-form") {
             post("/login") {
@@ -82,19 +65,29 @@ fun Application.module() {
                             username = username,
                             name = user.name,
                             roles = user.roles.mapNotNull { it },
-                            expiration = Instant.now().plusSeconds(60).epochSecond
+                            expiration = Instant.now().plusSeconds(60L * 60).epochSecond
                         )
                     )
                     "/index"
                 }.getOrElse { t ->
-                    log.trace("Error session-auth", t)
-                    "/login"
+                    log.info("Error session-auth", t)
+                    "/login?message=lookup"
                 }
                 call.respondRedirect(redirect)
             }
         }
-        get("/") {
-            call.respondHtml(HttpStatusCode.OK, HTML::index)
+        get("/login") {
+            call.respondHtml {
+                val message = call.request.queryParameters["message"] ?: ""
+                login(
+                    when(message) {
+                        "invalid" -> "Invalid username or password"
+                        "lookup" -> "Lookup error for session creation"
+                        "expired" -> "Session has expired"
+                        else -> ""
+                    }
+                )
+            }
         }
     }
 }

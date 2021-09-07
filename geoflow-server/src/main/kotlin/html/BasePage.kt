@@ -3,12 +3,33 @@ package html
 import io.ktor.html.*
 import kotlinx.html.*
 
-class BasePage: Template<HTML> {
+open class BasePage: Template<HTML> {
 
     val content = Placeholder<FlowContent>()
     val script = Placeholder<FlowContent>()
+
+    fun setContent(addContent: FlowContent.() -> Unit) {
+        content {
+            this.addContent()
+        }
+    }
+    fun setScript(addScript: FlowContent.() -> Unit) {
+        script {
+            this.addScript()
+        }
+    }
+
     override fun HTML.apply() {
+        lang = "en-US"
         head {
+            title("GeoFlow")
+            meta {
+                charset = "utf-8"
+            }
+            meta {
+                name = "author"
+                content = "ClasicRando"
+            }
             link {
                 rel = "stylesheet"
                 href = "https://unpkg.com/bootstrap-table@1.18.3/dist/bootstrap-table.min.css"
@@ -27,29 +48,42 @@ class BasePage: Template<HTML> {
             }
         }
         body {
-            div {
-                +"GeoFlow"
-                a {
-                    href = "/index"
-                    +"Home"
+            div("container-fluid") {
+                nav(classes = "navbar navbar-expand-lg navbar-dark bg-dark") {
+                    h3(classes = "navbar-text mx-2") {
+                        +"GeoFlow"
+                    }
+                    ul(classes = "navbar-nav") {
+                        li(classes = "nav-item") {
+                            a(classes = "nav-link") {
+                                href = "/index"
+                                +"Home"
+                            }
+                        }
+                        li(classes = "nav-item") {
+                            a(classes = "nav-link") {
+                                href = "/logout"
+                                +"Logout"
+                            }
+                        }
+                    }
                 }
-            }
-            hr()
-            insert(content)
-            insert(script)
-            script {
-                src = "https://unpkg.com/bootstrap-table@1.18.3/dist/bootstrap-table.min.js"
-            }
-            script {
-                src = "https://cdn.jsdelivr.net/npm/jquery/dist/jquery.min.js"
-            }
-            script {
-                src = "https://cdn.jsdelivr.net/npm/popper.js@1.16.0/dist/umd/popper.min.js"
-            }
-            script {
-                src = "https://stackpath.bootstrapcdn.com/bootstrap/4.3.1/js/bootstrap.min.js"
-                integrity = "sha384-JjSmVgyd0p3pXB1rRibZUAYoIIy6OrQ6VrjIEaFf/nJGzIxFDsf4x0xIM+B07jRM"
-                attributes["crossorigin"] = "anonymous"
+                insert(content)
+                insert(script)
+                script {
+                    src = "https://unpkg.com/bootstrap-table@1.18.3/dist/bootstrap-table.min.js"
+                }
+                script {
+                    src = "https://cdn.jsdelivr.net/npm/jquery/dist/jquery.min.js"
+                }
+                script {
+                    src = "https://cdn.jsdelivr.net/npm/popper.js@1.16.0/dist/umd/popper.min.js"
+                }
+                script {
+                    src = "https://stackpath.bootstrapcdn.com/bootstrap/4.3.1/js/bootstrap.min.js"
+                    integrity = "sha384-JjSmVgyd0p3pXB1rRibZUAYoIIy6OrQ6VrjIEaFf/nJGzIxFDsf4x0xIM+B07jRM"
+                    attributes["crossorigin"] = "anonymous"
+                }
             }
         }
     }
