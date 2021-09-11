@@ -1,9 +1,13 @@
 package orm.tables
 
+import database.DatabaseConnection
+import kotlinx.serialization.Serializable
+import org.ktorm.dsl.*
 import org.ktorm.schema.Table
 import org.ktorm.schema.long
 import org.ktorm.schema.text
 import orm.entities.Action
+import kotlin.jvm.Throws
 
 object Actions: Table<Action>("actions") {
     val actionOid = long("action_oid").primaryKey().bindTo { it.actionOid }
@@ -12,6 +16,11 @@ object Actions: Table<Action>("actions") {
     val name = text("name").bindTo { it.name }
     val description = text("description").bindTo { it.description }
     val href = text("href").bindTo { it.href }
+
+    val tableDisplayFields = mapOf(
+        "name" to mapOf<String, String>(),
+        "description" to mapOf(),
+    )
 
     val createSequence = """
         CREATE SEQUENCE public.actions_action_oid_seq
@@ -36,4 +45,26 @@ object Actions: Table<Action>("actions") {
             OIDS = FALSE
         );
     """.trimIndent()
+
+    @Serializable
+    data class Record(val name: String, val description: String, val href: String)
+
+    @Throws(IllegalArgumentException::class)
+    fun userActions(roles: List<String>): List<Record> {
+        return DatabaseConnection
+            .database
+            .from(this)
+            .select(name, description, href)
+            .whereWithConditions {
+                if (!roles.contains("admin"))
+                    it += role.inList(roles)
+            }
+            .map { row ->
+                Record(
+                    row[name] ?: throw IllegalArgumentException("name cannot be null"),
+                    row[description] ?: throw IllegalArgumentException("description cannot be null"),
+                    row[href] ?: throw IllegalArgumentException("href cannot be null")
+                )
+            }
+    }
 }
