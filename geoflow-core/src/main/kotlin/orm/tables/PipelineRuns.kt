@@ -1,7 +1,13 @@
 package orm.tables
 
+import database.DatabaseConnection
+import kotlinx.serialization.SerialName
+import kotlinx.serialization.Serializable
+import org.ktorm.dsl.*
 import org.ktorm.schema.*
 import orm.entities.PipelineRun
+import java.time.format.DateTimeFormatter
+import kotlin.jvm.Throws
 
 object PipelineRuns: Table<PipelineRun>("pipeline_runs") {
     val runId = long("run_id").primaryKey().bindTo { it.runId }
@@ -13,6 +19,17 @@ object PipelineRuns: Table<PipelineRun>("pipeline_runs") {
     val loadUser = long("load_user_oid").references(InternalUsers) { it.loadUser }
     val checkUser = long("check_user_oid").references(InternalUsers) { it.checkUser }
     val qaUser = long("qa_user_oid").references(InternalUsers) { it.qaUser }
+
+    val tableDisplayFields = mapOf(
+        "ds_id" to mapOf("name" to "Data Source ID"),
+        "ds_code" to mapOf("name" to "Data Source Code"),
+        "record_date" to mapOf(),
+        "operation_state" to mapOf(),
+        "collection_user" to mapOf(),
+        "load_user" to mapOf(),
+        "check_user" to mapOf(),
+        "qa_user" to mapOf(),
+    )
 
     val createSequence = """
         CREATE SEQUENCE public.pipeline_runs_run_id_seq
@@ -46,4 +63,55 @@ object PipelineRuns: Table<PipelineRun>("pipeline_runs") {
             OIDS = FALSE
         )
     """.trimIndent()
+
+    @Serializable
+    data class Record(
+        @SerialName("run_id")
+        val runId: Long,
+        @SerialName("ds_id")
+        val dsId: Long,
+        @SerialName("ds_code")
+        val dsCode: String,
+        @SerialName("record_date")
+        val recordDate: String,
+        @SerialName("operation_state")
+        val operationState: String,
+        @SerialName("collection_user")
+        val collectionUser: String,
+        @SerialName("load_user")
+        val loadUser: String,
+        @SerialName("check_user")
+        val checkUser: String,
+        @SerialName("qa_user")
+        val qaUser: String)
+
+    @Throws(IllegalArgumentException::class)
+    fun userRuns(userId: Long, state: String): List<Record> {
+        val columnCheck = when(state) {
+            "collection" -> collectionUser
+            "load" -> loadUser
+            "check" -> checkUser
+            "qa" -> qaUser
+            else -> throw IllegalArgumentException("state provided does not point to anything")
+        }
+        return DatabaseConnection
+            .database
+            .from(this)
+            .select()
+            .where((columnCheck eq userId) or columnCheck.isNull())
+            .map(this::createEntity)
+            .map { run ->
+                Record(
+                    run.runId,
+                    run.dataSource.dsId,
+                    run.dataSource.code,
+                    run.recordDate.format(DateTimeFormatter.ISO_LOCAL_DATE),
+                    run.operationState,
+                    run.collectionUser?.name ?: "",
+                    run.loadUser?.name ?: "",
+                    run.checkUser?.name ?: "",
+                    run.qaUser?.name ?: ""
+                )
+            }
+    }
 }
