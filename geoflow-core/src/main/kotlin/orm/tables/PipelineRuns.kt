@@ -97,7 +97,7 @@ object PipelineRuns: Table<PipelineRun>("pipeline_runs") {
         return DatabaseConnection
             .database
             .from(this)
-            .select()
+            .joinReferencesAndSelect()
             .where((columnCheck eq userId) or columnCheck.isNull())
             .map(this::createEntity)
             .map { run ->
