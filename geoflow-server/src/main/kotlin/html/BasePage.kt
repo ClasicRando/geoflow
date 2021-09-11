@@ -46,6 +46,11 @@ open class BasePage: Template<HTML> {
                 rel = "stylesheet"
                 href = "https://unpkg.com/bootstrap-table@1.18.3/dist/bootstrap-table.min.css"
             }
+            style {
+                unsafe {
+                    raw("td { cursor: pointer; }")
+                }
+            }
         }
         body {
             div("container-fluid") {
