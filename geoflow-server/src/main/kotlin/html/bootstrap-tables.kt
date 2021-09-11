@@ -2,9 +2,12 @@ package html
 
 import kotlinx.html.*
 
-fun getFieldTable(field: String): String = field.fold(StringBuilder()) { acc, c ->
-    acc.append(if (acc.ifEmpty { " " }.last().isWhitespace()) c.titlecase() else c)
-}.toString()
+fun getFieldTable(field: String): String = field
+    .replace("_", " ")
+    .fold(StringBuilder()) { acc, c ->
+        acc.append(if (acc.ifEmpty { " " }.last().isWhitespace()) c.titlecase() else c)
+    }
+    .toString()
 
 fun FlowContent.basicTable(
     tableName: String,
