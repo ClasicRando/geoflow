@@ -4,6 +4,7 @@ import io.ktor.auth.*
 import java.time.Instant
 
 data class UserSession(
+    val userId: Long,
     val username: String,
     val name: String,
     val roles: List<String>,
