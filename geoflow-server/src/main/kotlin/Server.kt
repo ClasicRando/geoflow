@@ -69,6 +69,7 @@ fun Application.module() {
                     val user = InternalUsers.getUser(username)
                     call.sessions.set(
                         UserSession(
+                            userId = user.userOid,
                             username = username,
                             name = user.name,
                             roles = user.roles.mapNotNull { it },
