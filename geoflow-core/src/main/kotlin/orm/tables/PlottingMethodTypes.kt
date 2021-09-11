@@ -1,0 +1,23 @@
+package orm.tables
+
+import org.ktorm.schema.Table
+import org.ktorm.schema.int
+import org.ktorm.schema.text
+import orm.entities.PlottingMethodType
+
+object PlottingMethodTypes: Table<PlottingMethodType>("plotting_method_types") {
+    val methodId = int("method_id").primaryKey().bindTo { it.methodId }
+    val name = text("name").bindTo { it.name }
+
+    val createStatement = """
+        CREATE TABLE IF NOT EXISTS public.plotting_method_types
+        (
+            name text COLLATE pg_catalog."default" NOT NULL,
+            method_id integer NOT NULL DEFAULT nextval('plotting_method_types_method_id_seq'::regclass),
+            CONSTRAINT plotting_method_types_pkey PRIMARY KEY (method_id)
+        )
+        WITH (
+            OIDS = FALSE
+        );
+    """.trimIndent()
+}
