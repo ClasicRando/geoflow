@@ -38,7 +38,14 @@ fun Application.module() {
                     session
                 }
             }
-            challenge("/login?message=expired")
+            challenge { session ->
+                val redirect = when {
+                    session == null -> "/login"
+                    session.isExpired -> "/login?message=expired"
+                    else -> "/login?message=error"
+                }
+                call.respondRedirect(redirect)
+            }
         }
     }
     install(Sessions) {
@@ -53,6 +60,7 @@ fun Application.module() {
     routing {
         authenticate("auth-session") {
             index()
+            api()
         }
         authenticate("auth-form") {
             post("/login") {
@@ -83,6 +91,7 @@ fun Application.module() {
                         "invalid" -> "Invalid username or password"
                         "lookup" -> "Lookup error for session creation"
                         "expired" -> "Session has expired"
+                        "error" -> "Session error. Please login again"
                         else -> ""
                     }
                 )
