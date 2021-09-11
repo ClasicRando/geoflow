@@ -8,6 +8,12 @@ fun HTML.index() {
     }
 }
 
+fun HTML.pipelineStatus(workflowCode: String) {
+    with(PipelineStatus(workflowCode)) {
+        apply()
+    }
+}
+
 fun HTML.login(message: String) {
     lang = "en-US"
     head {
