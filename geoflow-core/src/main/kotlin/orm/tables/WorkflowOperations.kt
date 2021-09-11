@@ -53,4 +53,14 @@ object WorkflowOperations: Table<WorkflowOperation>("workflow_operations") {
                 )
             }
     }
+
+    fun workflowName(workflowCode: String): String {
+        return DatabaseConnection
+            .database
+            .from(this)
+            .select(name)
+            .where(code eq workflowCode)
+            .map { row -> row[name] }
+            .firstOrNull() ?: ""
+    }
 }
