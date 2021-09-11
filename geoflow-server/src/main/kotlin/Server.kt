@@ -61,6 +61,7 @@ fun Application.module() {
         authenticate("auth-session") {
             index()
             api()
+            pipelineStatus()
         }
         authenticate("auth-form") {
             post("/login") {
