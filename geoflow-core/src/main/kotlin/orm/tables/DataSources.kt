@@ -5,12 +5,12 @@ import orm.entities.DataSource
 
 object DataSources: Table<DataSource>("data_sources") {
     val dsId = long("ds_id").primaryKey().bindTo { it.dsId }
-    val code = text("code").primaryKey().bindTo { it.code }
-    val country = text("country").primaryKey().bindTo { it.country }
-    val prov = text("prov").primaryKey().bindTo { it.prov }
-    val description = text("description").primaryKey().bindTo { it.description }
-    val filesLocation = text("files_location").primaryKey().bindTo { it.filesLocation }
-    val provLevel = boolean("prov_level").primaryKey().bindTo { it.provLevel }
+    val code = text("code").bindTo { it.code }
+    val country = text("country").bindTo { it.country }
+    val prov = text("prov").bindTo { it.prov }
+    val description = text("description").bindTo { it.description }
+    val filesLocation = text("files_location").bindTo { it.filesLocation }
+    val provLevel = boolean("prov_level").bindTo { it.provLevel }
 
     val createSequence = """
         CREATE SEQUENCE public.data_sources_ds_id_seq
