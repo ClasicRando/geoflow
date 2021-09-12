@@ -8,6 +8,12 @@ fun HTML.index() {
     }
 }
 
+fun HTML.accessRestricted(missingRole: String) {
+    with(AccessRestricted(missingRole)) {
+        apply()
+    }
+}
+
 fun HTML.pipelineStatus(workflowCode: String) {
     with(PipelineStatus(workflowCode)) {
         apply()

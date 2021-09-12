@@ -1,4 +1,5 @@
 import auth.UserSession
+import html.accessRestricted
 import html.index
 import html.pipelineStatus
 import io.ktor.application.*
@@ -30,22 +31,38 @@ fun Route.index() {
 fun Route.pipelineStatus() {
     get("/collection") {
         call.respondHtml {
-            pipelineStatus("collection")
+            if (call.sessions.get<UserSession>()!!.hasRole("collection")) {
+                pipelineStatus("collection")
+            } else {
+                accessRestricted("collection")
+            }
         }
     }
     get("/load") {
         call.respondHtml {
-            pipelineStatus("load")
+            if (call.sessions.get<UserSession>()!!.hasRole("load")) {
+                pipelineStatus("load")
+            } else {
+                accessRestricted("load")
+            }
         }
     }
     get("/check") {
         call.respondHtml {
-            pipelineStatus("check")
+            if (call.sessions.get<UserSession>()!!.hasRole("check")) {
+                pipelineStatus("check")
+            } else {
+                accessRestricted("check")
+            }
         }
     }
     get("/qa") {
         call.respondHtml {
-            pipelineStatus("qa")
+            if (call.sessions.get<UserSession>()!!.hasRole("qa")) {
+                pipelineStatus("qa")
+            } else {
+                accessRestricted("qa")
+            }
         }
     }
 }
