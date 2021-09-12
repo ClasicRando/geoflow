@@ -6,6 +6,7 @@ import kotlinx.serialization.Serializable
 import org.ktorm.dsl.*
 import org.ktorm.schema.*
 import orm.entities.PipelineRun
+import orm.entities.PipelineRunTask
 import java.time.format.DateTimeFormatter
 import kotlin.jvm.Throws
 
@@ -55,7 +56,7 @@ object PipelineRuns: Table<PipelineRun>("pipeline_runs") {
             CONSTRAINT pipeline_runs_pkey PRIMARY KEY (run_id),
             CONSTRAINT ds_id FOREIGN KEY (ds_id)
                 REFERENCES public.data_sources (ds_id) MATCH SIMPLE
-                ON UPDATE NO ACTION
+                ON UPDATE CASCADE
                 ON DELETE CASCADE
                 NOT VALID
         )
@@ -113,5 +114,24 @@ object PipelineRuns: Table<PipelineRun>("pipeline_runs") {
                     run.qaUser?.name ?: ""
                 )
             }
+    }
+
+    fun lastRun(pipelineRunTask: PipelineRunTask): PipelineRun? {
+        val dsId = DatabaseConnection
+            .database
+            .from(this)
+            .select(dsId)
+            .where(runId eq pipelineRunTask.runId)
+            .map { row -> row[dsId] ?: 0 }
+            .first()
+        return DatabaseConnection
+            .database
+            .from(this)
+            .select()
+            .where(this.dsId eq dsId)
+            .orderBy(runId.desc())
+            .limit(1, 1)
+            .map(this::createEntity)
+            .firstOrNull()
     }
 }
