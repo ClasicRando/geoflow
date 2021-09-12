@@ -116,7 +116,7 @@ object PipelineRuns: Table<PipelineRun>("pipeline_runs") {
             }
     }
 
-    fun lastRun(pipelineRunTask: PipelineRunTask): PipelineRun? {
+    fun lastRun(pipelineRunTask: PipelineRunTask): Long? {
         val dsId = DatabaseConnection
             .database
             .from(this)
@@ -127,11 +127,11 @@ object PipelineRuns: Table<PipelineRun>("pipeline_runs") {
         return DatabaseConnection
             .database
             .from(this)
-            .select()
+            .select(runId)
             .where(this.dsId eq dsId)
             .orderBy(runId.desc())
             .limit(1, 1)
-            .map(this::createEntity)
+            .map { row -> row[runId] }
             .firstOrNull()
     }
 }
