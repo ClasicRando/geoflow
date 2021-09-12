@@ -20,4 +20,13 @@ object PlottingMethodTypes: Table<PlottingMethodType>("plotting_method_types") {
             OIDS = FALSE
         );
     """.trimIndent()
+
+    val createSequence = """
+        CREATE SEQUENCE public.plotting_method_types_method_id_seq
+            INCREMENT 1
+            START 1
+            MINVALUE 1
+            MAXVALUE 2147483647
+            CACHE 1;
+    """.trimIndent()
 }
