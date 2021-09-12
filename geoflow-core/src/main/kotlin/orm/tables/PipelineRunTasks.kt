@@ -4,6 +4,7 @@ import database.DatabaseConnection
 import org.ktorm.dsl.*
 import org.ktorm.schema.*
 import org.ktorm.support.postgresql.LockingMode
+import org.ktorm.support.postgresql.insertOrUpdateReturning
 import org.ktorm.support.postgresql.locking
 import orm.entities.PipelineRunTask
 
@@ -25,6 +26,10 @@ object PipelineRunTasks: Table<PipelineRunTask>("pipeline_run_tasks") {
             run_id bigint NOT NULL,
             task_running boolean NOT NULL,
             task_complete boolean NOT NULL,
+            task_start timestamp without time zone,
+            task_completed timestamp without time zone,
+            task_id bigint,
+            task_message text COLLATE pg_catalog."default",
             CONSTRAINT pipeline_run_tasks_pkey PRIMARY KEY (pr_task_id)
         )
         WITH (
@@ -50,5 +55,34 @@ object PipelineRunTasks: Table<PipelineRunTask>("pipeline_run_tasks") {
             .locking(LockingMode.FOR_SHARE)
             .map(this::createEntity)
             .first()
+    }
+
+    fun getRecord(pipelineRunTaskId: Long): PipelineRunTask {
+        return DatabaseConnection
+            .database
+            .from(this)
+            .select()
+            .where(this.pipelineRunTaskId eq pipelineRunTaskId)
+            .map(this::createEntity)
+            .first()
+    }
+
+    fun addTask(runId: Long, taskId: Long): Long? {
+        return DatabaseConnection
+            .database
+            .insertOrUpdateReturning(this, pipelineRunTaskId) {
+                set(PipelineRunTasks.runId, runId)
+                set(taskRunning, false)
+                set(taskComplete, false)
+                set(taskStart, null)
+                set(taskCompleted, null)
+                set(PipelineRunTasks.taskId, taskId)
+                onConflict(PipelineRunTasks.runId, PipelineRunTasks.taskId) {
+                    set(taskRunning, false)
+                    set(taskComplete, false)
+                    set(taskStart, null)
+                    set(taskCompleted, null)
+                }
+            }
     }
 }
