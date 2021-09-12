@@ -10,6 +10,6 @@ interface PipelineRunTask: Entity<PipelineRunTask> {
     val taskComplete: Boolean
     val taskStart: Instant
     val taskCompleted: Instant
-    val taskId: Long
-    val taskMessage: String
+    val taskId: Long?
+    val taskMessage: String?
 }
