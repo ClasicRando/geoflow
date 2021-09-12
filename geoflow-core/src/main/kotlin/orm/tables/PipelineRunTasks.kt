@@ -1,9 +1,6 @@
 package orm.tables
 
-import org.ktorm.schema.Table
-import org.ktorm.schema.boolean
-import org.ktorm.schema.long
-import org.ktorm.schema.timestamp
+import org.ktorm.schema.*
 import orm.entities.PipelineRunTask
 
 object PipelineRunTasks: Table<PipelineRunTask>("pipeline_run_tasks") {
@@ -14,6 +11,8 @@ object PipelineRunTasks: Table<PipelineRunTask>("pipeline_run_tasks") {
     val taskComplete = boolean("task_complete").bindTo { it.taskComplete }
     val taskStart = timestamp("task_start").bindTo { it.taskStart }
     val taskCompleted = timestamp("task_completed").bindTo { it.taskCompleted }
+    val taskId = long("task_id").bindTo { it.taskId }
+    val taskMessage = text("task_message").bindTo { it.taskMessage }
 
     val createStatement = """
         CREATE TABLE IF NOT EXISTS public.pipeline_run_tasks
