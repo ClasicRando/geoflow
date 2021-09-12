@@ -1,6 +1,10 @@
 package orm.tables
 
+import database.DatabaseConnection
+import org.ktorm.dsl.*
 import org.ktorm.schema.*
+import org.ktorm.support.postgresql.LockingMode
+import org.ktorm.support.postgresql.locking
 import orm.entities.PipelineRunTask
 
 object PipelineRunTasks: Table<PipelineRunTask>("pipeline_run_tasks") {
@@ -36,4 +40,15 @@ object PipelineRunTasks: Table<PipelineRunTask>("pipeline_run_tasks") {
             MAXVALUE 9223372036854775807
             CACHE 1;
     """.trimIndent()
+
+    fun reserveRecord(pipelineRunTaskId: Long): PipelineRunTask {
+        return DatabaseConnection
+            .database
+            .from(this)
+            .select()
+            .where(this.pipelineRunTaskId eq pipelineRunTaskId)
+            .locking(LockingMode.FOR_SHARE)
+            .map(this::createEntity)
+            .first()
+    }
 }
