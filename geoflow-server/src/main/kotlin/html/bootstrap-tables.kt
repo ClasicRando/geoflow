@@ -9,11 +9,27 @@ fun getFieldTable(field: String): String = field
     }
     .toString()
 
+val availableButtons = mapOf(
+    "btnRun" to """
+        btnRun: {
+            text: 'Run Next Task',
+            icon: 'fa-play',
+            event: () => {
+                alert('btnRun pressed');
+            },
+            attributes: {
+                title: 'Run the next available task if there is no other tasks running'
+            }
+        }
+    """.trimIndent()
+)
+
 fun FlowContent.basicTable(
     tableName: String,
     tableId: String,
     dataUrl: String,
-    fields: Map<String, Map<String, String>>
+    fields: Map<String, Map<String, String>>,
+    buttons: List<String> = listOf(),
 ) {
     h3 {
         +tableName
@@ -26,6 +42,9 @@ fun FlowContent.basicTable(
         attributes["data-classes"] = "table table-bordered table-hover"
         attributes["data-thead-classes"] = "thead-dark"
         attributes["data-search"] = "true"
+        if (buttons.isNotEmpty()) {
+            attributes["data-buttons"] = "buttons"
+        }
         thead {
             tr {
                 fields.forEach { (field, options) ->
@@ -36,6 +55,23 @@ fun FlowContent.basicTable(
                         }
                         text(options["name"] ?: getFieldTable(field))
                     }
+                }
+            }
+        }
+        if (buttons.isNotEmpty()) {
+            script {
+                unsafe {
+                    raw("""
+                        function buttons() {
+                            return {
+                                ${
+                                    buttons
+                                        .filter { name -> name in availableButtons }
+                                        .joinToString { name -> availableButtons[name]!! }
+                                }
+                            }
+                        }
+                    """.trimIndent())
                 }
             }
         }
