@@ -44,7 +44,7 @@ object WorkflowOperations: Table<WorkflowOperation>("workflow_operations") {
             .select(name, href)
             .whereWithConditions {
                 if (!roles.contains("admin"))
-                    it += Actions.role.inList(roles)
+                    it += role.inList(roles)
             }
             .map { row ->
                 Record(
