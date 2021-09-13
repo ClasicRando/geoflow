@@ -134,4 +134,14 @@ object PipelineRuns: Table<PipelineRun>("pipeline_runs") {
             .map { row -> row[runId] }
             .firstOrNull()
     }
+
+    fun getRun(runId: Long): PipelineRun? {
+        return DatabaseConnection
+            .database
+            .from(this)
+            .joinReferencesAndSelect()
+            .where(this.runId eq runId)
+            .map(this::createEntity)
+            .firstOrNull()
+    }
 }
