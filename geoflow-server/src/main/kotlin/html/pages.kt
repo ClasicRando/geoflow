@@ -14,8 +14,20 @@ fun HTML.accessRestricted(missingRole: String) {
     }
 }
 
+fun HTML.invalidParameter(message: String) {
+    with(InvalidParameter(message)) {
+        apply()
+    }
+}
+
 fun HTML.pipelineStatus(workflowCode: String) {
     with(PipelineStatus(workflowCode)) {
+        apply()
+    }
+}
+
+fun HTML.pipelineTasks(runId: Long) {
+    with(PipelineTasks(runId)) {
         apply()
     }
 }
@@ -30,10 +42,6 @@ fun HTML.login(message: String) {
         meta {
             name = "author"
             content = "ClasicRando"
-        }
-        link {
-            rel = "stylesheet"
-            href = "https://unpkg.com/bootstrap-table@1.18.3/dist/bootstrap-table.min.css"
         }
         link {
             rel = "stylesheet"
@@ -86,9 +94,6 @@ fun HTML.login(message: String) {
             submitInput(classes = "btn btn-primary") {
                 value = "Submit"
             }
-        }
-        script {
-            src = "https://unpkg.com/bootstrap-table@1.18.3/dist/bootstrap-table.min.js"
         }
         script {
             src = "https://cdn.jsdelivr.net/npm/jquery/dist/jquery.min.js"
