@@ -1,3 +1,5 @@
+@file:Suppress("unused")
+
 import auth.UserSession
 import html.login
 import io.ktor.application.*
@@ -13,6 +15,7 @@ import java.time.Instant
 
 fun main(args: Array<String>): Unit = io.ktor.server.cio.EngineMain.main(args)
 
+@Suppress("unused")
 fun Application.module() {
     install(Authentication) {
         form("auth-form") {
