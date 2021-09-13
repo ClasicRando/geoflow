@@ -1,6 +1,8 @@
 package orm.tables
 
 import database.DatabaseConnection
+import formatInstantDefault
+import kotlinx.serialization.Serializable
 import org.ktorm.dsl.*
 import org.ktorm.schema.*
 import org.ktorm.support.postgresql.LockingMode
@@ -16,8 +18,16 @@ object PipelineRunTasks: Table<PipelineRunTask>("pipeline_run_tasks") {
     val taskComplete = boolean("task_complete").bindTo { it.taskComplete }
     val taskStart = timestamp("task_start").bindTo { it.taskStart }
     val taskCompleted = timestamp("task_completed").bindTo { it.taskCompleted }
-    val taskId = long("task_id").bindTo { it.taskId }
+    val taskId = long("task_id").references(Tasks) { it.task}
     val taskMessage = text("task_message").bindTo { it.taskMessage }
+
+    val tableDisplayFields = mapOf(
+        "taskName" to mapOf("name" to "Task Name"),
+        "taskRunning" to mapOf("name" to "Running"),
+        "taskComplete" to mapOf("name" to "Complete"),
+        "taskStart" to mapOf("name" to "Start"),
+        "taskCompleted" to mapOf("name" to "Completed"),
+    )
 
     val createStatement = """
         CREATE TABLE IF NOT EXISTS public.pipeline_run_tasks
@@ -83,6 +93,37 @@ object PipelineRunTasks: Table<PipelineRunTask>("pipeline_run_tasks") {
                     set(taskStart, null)
                     set(taskCompleted, null)
                 }
+            }
+    }
+
+    @Serializable
+    data class Record(
+        val pipelineRunTaskId: Long,
+        val runId: Long,
+        val taskRunning: Boolean,
+        val taskComplete: Boolean,
+        val taskStart: String,
+        val taskCompleted: String,
+        val taskName: String,
+    )
+
+    fun getTasks(runId: Long): List<Record> {
+        return DatabaseConnection
+            .database
+            .from(this)
+            .joinReferencesAndSelect()
+            .where(this.runId eq runId)
+            .map(this::createEntity)
+            .map {
+                Record(
+                    it.pipelineRunTaskId,
+                    it.runId,
+                    it.taskRunning,
+                    it.taskComplete,
+                    formatInstantDefault(it.taskStart),
+                    formatInstantDefault(it.taskCompleted),
+                    it.task?.name ?: ""
+                )
             }
     }
 }
