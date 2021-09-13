@@ -65,6 +65,7 @@ fun Application.module() {
             index()
             api()
             pipelineStatus()
+            pipelineTasks()
         }
         authenticate("auth-form") {
             post("/login") {
