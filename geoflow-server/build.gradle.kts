@@ -4,6 +4,7 @@ plugins {
 }
 
 version = "0.1"
+val kjobVersion: String by project
 val ktormVersion: String by project
 val ktorVersion: String by project
 val htmlJvmVersion: String by project
@@ -13,6 +14,10 @@ val postgresqlVersion: String by project
 dependencies {
     implementation(project(":geoflow-core"))
     testImplementation(kotlin("test", "1.5.21"))
+    // https://mvnrepository.com/artifact/it.justwrote/kjob-core
+    implementation("it.justwrote:kjob-core:$kjobVersion")
+    // https://mvnrepository.com/artifact/it.justwrote/kjob-mongo
+    implementation("it.justwrote:kjob-mongo:$kjobVersion")
     // https://mvnrepository.com/artifact/org.ktorm/ktorm-core
     implementation("org.ktorm:ktorm-core:$ktormVersion")
     implementation("io.ktor:ktor-server-core:$ktorVersion")
