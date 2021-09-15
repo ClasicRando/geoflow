@@ -15,7 +15,8 @@ val availableButtons = mapOf(
             text: 'Run Next Task',
             icon: 'fa-play',
             event: () => {
-                alert('btnRun pressed');
+                const params = new URLSearchParams(window.location.href.replace(/^[^?]+/g, ''));
+                postValue(`/api/run-task?runId=${'$'}{params.get('runId')}`);
             },
             attributes: {
                 title: 'Run the next available task if there is no other tasks running'
