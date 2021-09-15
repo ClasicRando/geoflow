@@ -7,6 +7,7 @@ import io.ktor.response.*
 import io.ktor.routing.*
 import io.ktor.sessions.*
 import jobs.SystemJob
+import orm.entities.TaskStatus
 import orm.tables.Actions
 import orm.tables.PipelineRunTasks
 import orm.tables.PipelineRuns
@@ -158,11 +159,13 @@ fun Route.api() {
                     .runTask()
                 call.respond(mapOf("success" to "Completed ${pipelineRunTask.pipelineRunTaskId}"))
             } else {
+                pipelineRunTask.taskStatus = TaskStatus.Scheduled
+                pipelineRunTask.flushChanges()
                 kjob.schedule(SystemJob) {
                     props[it.pipelineRunTaskId] = pipelineRunTask.pipelineRunTaskId
                     props[it.taskClassName] = pipelineRunTask.task.taskClassName
                 }
-                call.respond(mapOf("success" to "Running ${pipelineRunTask.pipelineRunTaskId}"))
+                call.respond(mapOf("success" to "Scheduled ${pipelineRunTask.pipelineRunTaskId}"))
             }
         }
     }
