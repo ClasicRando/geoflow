@@ -9,6 +9,10 @@ fun formatInstantDefault(timestamp: Instant?) = timestamp
     ?.atZone(ZoneId.systemDefault())
     ?.format(DateTimeFormatter.ISO_LOCAL_DATE) ?: ""
 
+fun formatInstantDateTime(timestamp: Instant?) = timestamp
+    ?.atZone(ZoneId.systemDefault())
+    ?.format(DateTimeFormatter.ISO_LOCAL_DATE_TIME) ?: ""
+
 fun getUserPipelineTask(pipelineRunTaskId: Long, task: Task): UserTask {
     return ClassLoader
         .getSystemClassLoader()
