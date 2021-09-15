@@ -6,6 +6,7 @@ import io.ktor.request.*
 import io.ktor.response.*
 import io.ktor.routing.*
 import io.ktor.sessions.*
+import jobs.SystemJob
 import orm.tables.Actions
 import orm.tables.PipelineRunTasks
 import orm.tables.PipelineRuns
@@ -141,5 +142,27 @@ fun Route.api() {
             listOf()
         }
         call.respond(tasks)
+    }
+    post("/api/run-task") {
+        val runId = call.request.queryParameters["runId"]?.toLong() ?: 0
+        val result = runCatching {
+            PipelineRunTasks.getNextTask(runId)
+        }
+        if (result.isFailure) {
+            call.respond(mapOf("error" to result.exceptionOrNull()!!.message))
+        } else {
+            val pipelineRunTask = result.getOrNull()!!
+            if (pipelineRunTask.task.taskRunType == "user") {
+                getUserPipelineTask(pipelineRunTask.pipelineRunTaskId, pipelineRunTask.task)
+                    .runTask()
+                call.respond(mapOf("success" to "Completed ${pipelineRunTask.pipelineRunTaskId}"))
+            } else {
+                kjob.schedule(SystemJob) {
+                    props[it.pipelineRunTaskId] = pipelineRunTask.pipelineRunTaskId
+                    props[it.taskClassName] = pipelineRunTask.task.taskClassName
+                }
+                call.respond(mapOf("success" to "Running ${pipelineRunTask.pipelineRunTaskId}"))
+            }
+        }
     }
 }
