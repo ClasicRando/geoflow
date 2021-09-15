@@ -14,7 +14,7 @@ class PipelineTasks(runId: Long): BasePage() {
             )
         }
         setScript {
-
+            postValue()
         }
     }
 }
