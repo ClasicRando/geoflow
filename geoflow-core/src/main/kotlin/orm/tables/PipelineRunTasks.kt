@@ -1,7 +1,7 @@
 package orm.tables
 
 import database.DatabaseConnection
-import formatInstantDefault
+import formatInstantDateTime
 import kotlinx.serialization.Serializable
 import org.ktorm.dsl.*
 import org.ktorm.schema.*
@@ -118,8 +118,8 @@ object PipelineRunTasks: Table<PipelineRunTask>("pipeline_run_tasks") {
                     it.pipelineRunTaskId,
                     it.runId,
                     it.taskStatus.name,
-                    formatInstantDefault(it.taskStart),
-                    formatInstantDefault(it.taskCompleted),
+                    formatInstantDateTime(it.taskStart),
+                    formatInstantDateTime(it.taskCompleted),
                     it.task.name,
                     it.runTaskOrder
                 )
