@@ -1,6 +1,7 @@
 package tasks
 
 import database.DatabaseConnection
+import orm.entities.TaskStatus
 import orm.tables.PipelineRunTasks
 import java.time.Instant
 
@@ -12,13 +13,11 @@ abstract class SystemTask(pipelineRunTaskId: Long): PipelineTask(pipelineRunTask
         DatabaseConnection.database.useTransaction {
             val taskRecord = PipelineRunTasks.reserveRecord(pipelineRunTaskId)
             taskRecord.taskStart = Instant.now()
-            taskRecord.taskRunning = true
-            taskRecord.taskComplete = false
+            taskRecord.taskStatus = TaskStatus.Running.name
             taskRecord.taskCompleted = null
             taskRecord.flushChanges()
             run()
-            taskRecord.taskRunning = false
-            taskRecord.taskComplete = true
+            taskRecord.taskStatus = TaskStatus.Complete.name
             taskRecord.taskCompleted = Instant.now()
             taskRecord.flushChanges()
         }

@@ -9,23 +9,22 @@ import org.ktorm.support.postgresql.LockingMode
 import org.ktorm.support.postgresql.insertOrUpdateReturning
 import org.ktorm.support.postgresql.locking
 import orm.entities.PipelineRunTask
+import orm.entities.TaskStatus
 
 object PipelineRunTasks: Table<PipelineRunTask>("pipeline_run_tasks") {
 
     val pipelineRunTaskId = long("pr_task_id").primaryKey().bindTo { it.pipelineRunTaskId }
     val runId = long("run_id").bindTo { it.runId }
-    val taskRunning = boolean("task_running").bindTo { it.taskRunning }
-    val taskComplete = boolean("task_complete").bindTo { it.taskComplete }
     val taskStart = timestamp("task_start").bindTo { it.taskStart }
     val taskCompleted = timestamp("task_completed").bindTo { it.taskCompleted }
     val taskId = long("task_id").references(Tasks) { it.task }
     val taskMessage = text("task_message").bindTo { it.taskMessage }
     val runTaskOrder = int("run_task_order").bindTo { it.runTaskOrder }
+    val taskStatus = text("task_status").bindTo { it.taskStatus }
 
     val tableDisplayFields = mapOf(
         "taskName" to mapOf("name" to "Task Name"),
-        "taskRunning" to mapOf("name" to "Running"),
-        "taskComplete" to mapOf("name" to "Complete"),
+        "taskStatus" to mapOf("name" to "Status"),
         "taskStart" to mapOf("name" to "Start"),
         "taskCompleted" to mapOf("name" to "Completed"),
     )
@@ -83,14 +82,12 @@ object PipelineRunTasks: Table<PipelineRunTask>("pipeline_run_tasks") {
             .database
             .insertOrUpdateReturning(this, pipelineRunTaskId) {
                 set(PipelineRunTasks.runId, runId)
-                set(taskRunning, false)
-                set(taskComplete, false)
+                set(taskStatus, "Waiting")
                 set(taskStart, null)
                 set(taskCompleted, null)
                 set(PipelineRunTasks.taskId, taskId)
                 onConflict(PipelineRunTasks.runId, PipelineRunTasks.taskId) {
-                    set(taskRunning, false)
-                    set(taskComplete, false)
+                    set(taskStatus, "Waiting")
                     set(taskStart, null)
                     set(taskCompleted, null)
                 }
@@ -101,8 +98,7 @@ object PipelineRunTasks: Table<PipelineRunTask>("pipeline_run_tasks") {
     data class Record(
         val pipelineRunTaskId: Long,
         val runId: Long,
-        val taskRunning: Boolean,
-        val taskComplete: Boolean,
+        val taskStatus: String,
         val taskStart: String,
         val taskCompleted: String,
         val taskName: String,
@@ -119,8 +115,7 @@ object PipelineRunTasks: Table<PipelineRunTask>("pipeline_run_tasks") {
                 Record(
                     it.pipelineRunTaskId,
                     it.runId,
-                    it.taskRunning,
-                    it.taskComplete,
+                    it.taskStatus,
                     formatInstantDefault(it.taskStart),
                     formatInstantDefault(it.taskCompleted),
                     it.task.name
@@ -134,18 +129,21 @@ object PipelineRunTasks: Table<PipelineRunTask>("pipeline_run_tasks") {
             .database
             .from(this)
             .select(taskId)
-            .where((this.runId eq runId) and (taskRunning eq true))
+            .whereWithConditions {
+                it += this.runId eq runId
+                it += taskStatus.inList(TaskStatus.Scheduled.name, TaskStatus.Running.name)
+            }
             .limit(1)
             .map { row -> row[taskId] }
             .firstOrNull()
         if (running != null) {
-            throw IllegalArgumentException("Task currently running. $running")
+            throw IllegalArgumentException("Task currently scheduled/running (id = $running)")
         }
         return DatabaseConnection
             .database
             .from(this)
             .joinReferencesAndSelect()
-            .where((this.runId eq runId) and (taskComplete eq false))
+            .where((this.runId eq runId) and (taskStatus eq TaskStatus.Waiting.name))
             .orderBy(runTaskOrder.asc())
             .limit(1)
             .map(this::createEntity)
