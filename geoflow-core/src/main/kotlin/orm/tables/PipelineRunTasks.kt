@@ -20,7 +20,7 @@ object PipelineRunTasks: Table<PipelineRunTask>("pipeline_run_tasks") {
     val taskId = long("task_id").references(Tasks) { it.task }
     val taskMessage = text("task_message").bindTo { it.taskMessage }
     val runTaskOrder = int("run_task_order").bindTo { it.runTaskOrder }
-    val taskStatus = text("task_status").bindTo { it.taskStatus }
+    val taskStatus = enum<TaskStatus>("task_status").bindTo { it.taskStatus }
 
     val tableDisplayFields = mapOf(
         "taskName" to mapOf("name" to "Task Name"),
@@ -82,12 +82,12 @@ object PipelineRunTasks: Table<PipelineRunTask>("pipeline_run_tasks") {
             .database
             .insertOrUpdateReturning(this, pipelineRunTaskId) {
                 set(PipelineRunTasks.runId, runId)
-                set(taskStatus, "Waiting")
+                set(taskStatus, TaskStatus.Waiting)
                 set(taskStart, null)
                 set(taskCompleted, null)
                 set(PipelineRunTasks.taskId, taskId)
                 onConflict(PipelineRunTasks.runId, PipelineRunTasks.taskId) {
-                    set(taskStatus, "Waiting")
+                    set(taskStatus, TaskStatus.Waiting)
                     set(taskStart, null)
                     set(taskCompleted, null)
                 }
@@ -102,6 +102,7 @@ object PipelineRunTasks: Table<PipelineRunTask>("pipeline_run_tasks") {
         val taskStart: String,
         val taskCompleted: String,
         val taskName: String,
+        val runTaskOrder: Int
     )
 
     fun getTasks(runId: Long): List<Record> {
@@ -110,15 +111,17 @@ object PipelineRunTasks: Table<PipelineRunTask>("pipeline_run_tasks") {
             .from(this)
             .joinReferencesAndSelect()
             .where(this.runId eq runId)
+            .orderBy(runTaskOrder.asc())
             .map(this::createEntity)
             .map {
                 Record(
                     it.pipelineRunTaskId,
                     it.runId,
-                    it.taskStatus,
+                    it.taskStatus.name,
                     formatInstantDefault(it.taskStart),
                     formatInstantDefault(it.taskCompleted),
-                    it.task.name
+                    it.task.name,
+                    it.runTaskOrder
                 )
             }
     }
@@ -131,7 +134,7 @@ object PipelineRunTasks: Table<PipelineRunTask>("pipeline_run_tasks") {
             .select(taskId)
             .whereWithConditions {
                 it += this.runId eq runId
-                it += taskStatus.inList(TaskStatus.Scheduled.name, TaskStatus.Running.name)
+                it += taskStatus.inList(TaskStatus.Scheduled, TaskStatus.Running)
             }
             .limit(1)
             .map { row -> row[taskId] }
@@ -143,7 +146,7 @@ object PipelineRunTasks: Table<PipelineRunTask>("pipeline_run_tasks") {
             .database
             .from(this)
             .joinReferencesAndSelect()
-            .where((this.runId eq runId) and (taskStatus eq TaskStatus.Waiting.name))
+            .where((this.runId eq runId) and (taskStatus eq TaskStatus.Waiting))
             .orderBy(runTaskOrder.asc())
             .limit(1)
             .map(this::createEntity)

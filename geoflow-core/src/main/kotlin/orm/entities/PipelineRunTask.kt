@@ -11,5 +11,5 @@ interface PipelineRunTask: Entity<PipelineRunTask> {
     val task: Task
     var taskMessage: String?
     var runTaskOrder: Int
-    var taskStatus: String
+    var taskStatus: TaskStatus
 }

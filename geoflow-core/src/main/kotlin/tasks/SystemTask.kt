@@ -13,11 +13,11 @@ abstract class SystemTask(pipelineRunTaskId: Long): PipelineTask(pipelineRunTask
         DatabaseConnection.database.useTransaction {
             val taskRecord = PipelineRunTasks.reserveRecord(pipelineRunTaskId)
             taskRecord.taskStart = Instant.now()
-            taskRecord.taskStatus = TaskStatus.Running.name
+            taskRecord.taskStatus = TaskStatus.Running
             taskRecord.taskCompleted = null
             taskRecord.flushChanges()
             run()
-            taskRecord.taskStatus = TaskStatus.Complete.name
+            taskRecord.taskStatus = TaskStatus.Complete
             taskRecord.taskCompleted = Instant.now()
             taskRecord.flushChanges()
         }

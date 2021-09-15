@@ -12,7 +12,7 @@ abstract class UserTask(pipelineRunTaskId: Long): PipelineTask(pipelineRunTaskId
         DatabaseConnection.database.useTransaction {
             val taskRecord = PipelineRunTasks.reserveRecord(pipelineRunTaskId)
             taskRecord.taskStart = currentTime
-            taskRecord.taskStatus = TaskStatus.Complete.name
+            taskRecord.taskStatus = TaskStatus.Complete
             taskRecord.taskCompleted = currentTime
             taskRecord.flushChanges()
         }
