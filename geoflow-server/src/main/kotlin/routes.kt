@@ -149,6 +149,7 @@ fun Route.api() {
             PipelineRunTasks.getNextTask(runId)
         }
         if (result.isFailure) {
+            call.application.environment.log.info("/api/run-task", result.exceptionOrNull()!!)
             call.respond(mapOf("error" to result.exceptionOrNull()!!.message))
         } else {
             val pipelineRunTask = result.getOrNull()!!
