@@ -128,7 +128,19 @@ object PipelineRunTasks: Table<PipelineRunTask>("pipeline_run_tasks") {
             }
     }
 
+    @Throws(IllegalArgumentException::class)
     fun getNextTask(runId: Long): PipelineRunTask {
+        val running = DatabaseConnection
+            .database
+            .from(this)
+            .select(taskId)
+            .where((this.runId eq runId) and (taskRunning eq true))
+            .limit(1)
+            .map { row -> row[taskId] }
+            .firstOrNull()
+        if (running != null) {
+            throw IllegalArgumentException("Task currently running. $running")
+        }
         return DatabaseConnection
             .database
             .from(this)
