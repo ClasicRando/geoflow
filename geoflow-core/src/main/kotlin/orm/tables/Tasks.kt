@@ -14,6 +14,7 @@ object Tasks: Table<Task>("tasks") {
     val state = text("state").bindTo { it.state }
     val parentTaskOrder = int("parent_task_order").bindTo { it.parentTaskOrder }
     val taskRunType = text("task_run_type").bindTo { it.taskRunType }
+    val taskClassName = text("task_class_name").bindTo { it.taskClassName }
 
     val createStatement = """
         CREATE TABLE IF NOT EXISTS public.tasks
