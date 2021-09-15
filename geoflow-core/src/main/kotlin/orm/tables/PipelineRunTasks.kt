@@ -18,7 +18,7 @@ object PipelineRunTasks: Table<PipelineRunTask>("pipeline_run_tasks") {
     val taskComplete = boolean("task_complete").bindTo { it.taskComplete }
     val taskStart = timestamp("task_start").bindTo { it.taskStart }
     val taskCompleted = timestamp("task_completed").bindTo { it.taskCompleted }
-    val taskId = long("task_id").references(Tasks) { it.task}
+    val taskId = long("task_id").references(Tasks) { it.task }
     val taskMessage = text("task_message").bindTo { it.taskMessage }
 
     val tableDisplayFields = mapOf(
@@ -122,8 +122,18 @@ object PipelineRunTasks: Table<PipelineRunTask>("pipeline_run_tasks") {
                     it.taskComplete,
                     formatInstantDefault(it.taskStart),
                     formatInstantDefault(it.taskCompleted),
-                    it.task?.name ?: ""
+                    it.task.name
                 )
             }
+    }
+
+    fun getNextTask(runId: Long): PipelineRunTask {
+        return DatabaseConnection
+            .database
+            .from(this)
+            .joinReferencesAndSelect()
+            .where(this.runId eq runId)
+            .map(this::createEntity)
+            .first()
     }
 }
