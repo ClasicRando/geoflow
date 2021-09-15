@@ -12,7 +12,7 @@ fun formatInstantDefault(timestamp: Instant?) = timestamp
 fun getUserPipelineTask(pipelineRunTaskId: Long, task: Task): UserTask {
     return ClassLoader
         .getSystemClassLoader()
-        .loadClass(task.taskClassName)
+        .loadClass("tasks.${task.taskClassName}")
         .getConstructor(Long::class.java)
         .newInstance(pipelineRunTaskId) as UserTask
 }
