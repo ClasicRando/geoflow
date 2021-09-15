@@ -20,6 +20,7 @@ object PipelineRunTasks: Table<PipelineRunTask>("pipeline_run_tasks") {
     val taskCompleted = timestamp("task_completed").bindTo { it.taskCompleted }
     val taskId = long("task_id").references(Tasks) { it.task }
     val taskMessage = text("task_message").bindTo { it.taskMessage }
+    val runTaskOrder = int("run_task_order").bindTo { it.runTaskOrder }
 
     val tableDisplayFields = mapOf(
         "taskName" to mapOf("name" to "Task Name"),
@@ -132,7 +133,9 @@ object PipelineRunTasks: Table<PipelineRunTask>("pipeline_run_tasks") {
             .database
             .from(this)
             .joinReferencesAndSelect()
-            .where(this.runId eq runId)
+            .where((this.runId eq runId) and (taskComplete eq false))
+            .orderBy(runTaskOrder.asc())
+            .limit(1)
             .map(this::createEntity)
             .first()
     }

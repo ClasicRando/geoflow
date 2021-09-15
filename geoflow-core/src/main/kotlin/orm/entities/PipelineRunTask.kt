@@ -11,5 +11,6 @@ interface PipelineRunTask: Entity<PipelineRunTask> {
     var taskStart: Instant?
     var taskCompleted: Instant?
     val task: Task
-    val taskMessage: String?
+    var taskMessage: String?
+    var runTaskOrder: Int
 }
