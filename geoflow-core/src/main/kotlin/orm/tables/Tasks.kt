@@ -1,10 +1,8 @@
 package orm.tables
 
-import org.ktorm.schema.Table
-import org.ktorm.schema.int
-import org.ktorm.schema.long
-import org.ktorm.schema.text
+import org.ktorm.schema.*
 import orm.entities.Task
+import orm.entities.TaskRunType
 
 object Tasks: Table<Task>("tasks") {
     val taskId = long("task_id").primaryKey().bindTo { it.taskId }
@@ -13,7 +11,7 @@ object Tasks: Table<Task>("tasks") {
     val parentTaskId = long("parent_task_id").bindTo { it.parentTaskId }
     val state = text("state").bindTo { it.state }
     val parentTaskOrder = int("parent_task_order").bindTo { it.parentTaskOrder }
-    val taskRunType = text("task_run_type").bindTo { it.taskRunType }
+    val taskRunType = enum<TaskRunType>("task_run_type").bindTo { it.taskRunType }
     val taskClassName = text("task_class_name").bindTo { it.taskClassName }
 
     val createStatement = """

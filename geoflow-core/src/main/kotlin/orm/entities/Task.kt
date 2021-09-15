@@ -9,6 +9,6 @@ interface Task: Entity<Task> {
     val parentTaskId: Long?
     val state: String
     val parentTaskOrder: Int
-    val taskRunType: String
+    val taskRunType: TaskRunType
     val taskClassName: String?
 }

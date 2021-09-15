@@ -7,6 +7,7 @@ import io.ktor.response.*
 import io.ktor.routing.*
 import io.ktor.sessions.*
 import jobs.SystemJob
+import orm.entities.TaskRunType
 import orm.entities.TaskStatus
 import orm.tables.Actions
 import orm.tables.PipelineRunTasks
@@ -154,7 +155,7 @@ fun Route.api() {
             call.respond(mapOf("error" to result.exceptionOrNull()!!.message))
         } else {
             val pipelineRunTask = result.getOrNull()!!
-            if (pipelineRunTask.task.taskRunType == "user") {
+            if (pipelineRunTask.task.taskRunType == TaskRunType.user) {
                 getUserPipelineTask(pipelineRunTask.pipelineRunTaskId, pipelineRunTask.task)
                     .runTask()
                 call.respond(mapOf("success" to "Completed ${pipelineRunTask.pipelineRunTaskId}"))
