@@ -5,6 +5,7 @@ import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 import org.ktorm.dsl.*
 import org.ktorm.schema.*
+import orm.entities.OperationState
 import orm.entities.PipelineRun
 import orm.entities.PipelineRunTask
 import java.time.format.DateTimeFormatter
@@ -15,7 +16,7 @@ object PipelineRuns: Table<PipelineRun>("pipeline_runs") {
     val dsId = long("ds_id").references(DataSources) { it.dataSource }
     val recordDate = date("record_date").bindTo { it.recordDate }
     val workflowOperation = text("workflow_operation").bindTo { it.workflowOperation }
-    val operationState = text("operation_state").bindTo { it.operationState }
+    val operationState = enum<OperationState>("operation_state").bindTo { it.operationState }
     val collectionUser = long("collection_user_oid").references(InternalUsers) { it.collectionUser }
     val loadUser = long("load_user_oid").references(InternalUsers) { it.loadUser }
     val checkUser = long("check_user_oid").references(InternalUsers) { it.checkUser }
@@ -107,7 +108,7 @@ object PipelineRuns: Table<PipelineRun>("pipeline_runs") {
                     run.dataSource.dsId,
                     run.dataSource.code,
                     run.recordDate.format(DateTimeFormatter.ISO_LOCAL_DATE),
-                    run.operationState,
+                    run.operationState.name,
                     run.collectionUser?.name ?: "",
                     run.loadUser?.name ?: "",
                     run.checkUser?.name ?: "",

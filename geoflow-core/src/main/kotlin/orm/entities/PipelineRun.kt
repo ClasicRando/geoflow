@@ -8,7 +8,7 @@ interface PipelineRun: Entity<PipelineRun> {
     val dataSource: DataSource
     val recordDate: LocalDate
     val workflowOperation: String
-    val operationState: String
+    val operationState: OperationState
     val collectionUser: InternalUser?
     val loadUser: InternalUser?
     val checkUser: InternalUser?
