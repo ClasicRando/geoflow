@@ -52,8 +52,8 @@ object PipelineRuns: Table<PipelineRun>("pipeline_runs") {
             qa_user_oid bigint,
             collection_user_oid bigint,
             workflow_operation text COLLATE pg_catalog."default" NOT NULL,
-            operation_state text COLLATE pg_catalog."default" NOT NULL,
             run_id bigint NOT NULL DEFAULT nextval('pipeline_runs_run_id_seq'::regclass),
+            operation_state operation_state,
             CONSTRAINT pipeline_runs_pkey PRIMARY KEY (run_id),
             CONSTRAINT ds_id FOREIGN KEY (ds_id)
                 REFERENCES public.data_sources (ds_id) MATCH SIMPLE
@@ -64,6 +64,11 @@ object PipelineRuns: Table<PipelineRun>("pipeline_runs") {
         WITH (
             OIDS = FALSE
         )
+    """.trimIndent()
+
+    val createEnums = """
+        CREATE TYPE public.operation_state AS ENUM
+            ('Ready', 'Active');
     """.trimIndent()
 
     @Serializable

@@ -22,8 +22,9 @@ object Tasks: Table<Task>("tasks") {
             parent_task_id bigint,
             state text COLLATE pg_catalog."default" NOT NULL,
             parent_task_order integer,
-            task_run_type text COLLATE pg_catalog."default" NOT NULL,
             task_id bigint NOT NULL DEFAULT nextval('tasks_task_id_seq'::regclass),
+            task_class_name text COLLATE pg_catalog."default",
+            task_run_type task_run_type NOT NULL,
             CONSTRAINT tasks_pkey PRIMARY KEY (task_id)
         )
         WITH (
@@ -38,5 +39,10 @@ object Tasks: Table<Task>("tasks") {
             MINVALUE 1
             MAXVALUE 9223372036854775807
             CACHE 1;
+    """.trimIndent()
+
+    val createEnums = """
+        CREATE TYPE public.task_run_type AS ENUM
+            ('user', 'system');
     """.trimIndent()
 }

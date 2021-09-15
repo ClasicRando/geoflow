@@ -34,13 +34,19 @@ object PipelineRunTasks: Table<PipelineRunTask>("pipeline_run_tasks") {
         (
             pr_task_id bigint NOT NULL DEFAULT nextval('pipeline_run_tasks_pr_task_id_seq'::regclass),
             run_id bigint NOT NULL,
-            task_running boolean NOT NULL,
-            task_complete boolean NOT NULL,
             task_start timestamp without time zone,
             task_completed timestamp without time zone,
-            task_id bigint,
+            task_id bigint NOT NULL,
             task_message text COLLATE pg_catalog."default",
-            CONSTRAINT pipeline_run_tasks_pkey PRIMARY KEY (pr_task_id)
+            run_task_order integer,
+            task_status task_status NOT NULL,
+            CONSTRAINT pipeline_run_tasks_pkey PRIMARY KEY (pr_task_id),
+            CONSTRAINT task_per_run UNIQUE (run_id, task_id),
+            CONSTRAINT run_id FOREIGN KEY (pr_task_id)
+                REFERENCES public.pipeline_runs (run_id) MATCH SIMPLE
+                ON UPDATE CASCADE
+                ON DELETE CASCADE
+                NOT VALID
         )
         WITH (
             OIDS = FALSE
@@ -54,6 +60,11 @@ object PipelineRunTasks: Table<PipelineRunTask>("pipeline_run_tasks") {
             MINVALUE 1
             MAXVALUE 9223372036854775807
             CACHE 1;
+    """.trimIndent()
+
+    val createEnums = """
+        CREATE TYPE public.task_status AS ENUM
+            ('Waiting', 'Scheduled', 'Running', 'Complete');
     """.trimIndent()
 
     fun reserveRecord(pipelineRunTaskId: Long): PipelineRunTask {
