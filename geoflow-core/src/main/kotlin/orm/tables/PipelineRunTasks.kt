@@ -19,7 +19,8 @@ object PipelineRunTasks: Table<PipelineRunTask>("pipeline_run_tasks") {
     val taskCompleted = timestamp("task_completed").bindTo { it.taskCompleted }
     val taskId = long("task_id").references(Tasks) { it.task }
     val taskMessage = text("task_message").bindTo { it.taskMessage }
-    val runTaskOrder = int("run_task_order").bindTo { it.runTaskOrder }
+    val parentTaskId = long("parent_task_id").bindTo { it.parentTaskId }
+    val parentTaskOrder = int("parent_task_order").bindTo { it.parentTaskOrder }
     val taskStatus = enum<TaskStatus>("task_status").bindTo { it.taskStatus }
 
     val tableDisplayFields = mapOf(
@@ -38,8 +39,9 @@ object PipelineRunTasks: Table<PipelineRunTask>("pipeline_run_tasks") {
             task_completed timestamp without time zone,
             task_id bigint NOT NULL,
             task_message text COLLATE pg_catalog."default",
-            run_task_order integer,
             task_status task_status NOT NULL,
+            parent_task_id bigint NOT NULL DEFAULT 0,
+            parent_task_order bigint NOT NULL,
             CONSTRAINT pipeline_run_tasks_pkey PRIMARY KEY (pr_task_id),
             CONSTRAINT task_per_run UNIQUE (run_id, task_id),
             CONSTRAINT run_id FOREIGN KEY (pr_task_id)
@@ -113,7 +115,6 @@ object PipelineRunTasks: Table<PipelineRunTask>("pipeline_run_tasks") {
         val taskStart: String,
         val taskCompleted: String,
         val taskName: String,
-        val runTaskOrder: Int
     )
 
     fun getTasks(runId: Long): List<Record> {
@@ -122,7 +123,6 @@ object PipelineRunTasks: Table<PipelineRunTask>("pipeline_run_tasks") {
             .from(this)
             .joinReferencesAndSelect()
             .where(this.runId eq runId)
-            .orderBy(runTaskOrder.asc())
             .map(this::createEntity)
             .map {
                 Record(
@@ -132,7 +132,6 @@ object PipelineRunTasks: Table<PipelineRunTask>("pipeline_run_tasks") {
                     formatInstantDateTime(it.taskStart),
                     formatInstantDateTime(it.taskCompleted),
                     it.task.name,
-                    it.runTaskOrder
                 )
             }
     }
@@ -158,7 +157,6 @@ object PipelineRunTasks: Table<PipelineRunTask>("pipeline_run_tasks") {
             .from(this)
             .joinReferencesAndSelect()
             .where((this.runId eq runId) and (taskStatus eq TaskStatus.Waiting))
-            .orderBy(runTaskOrder.asc())
             .limit(1)
             .map(this::createEntity)
             .first()
