@@ -2,7 +2,7 @@ package orm.tables
 
 import org.ktorm.schema.*
 import orm.entities.Task
-import orm.entities.TaskRunType
+import orm.enums.TaskRunType
 
 object Tasks: Table<Task>("tasks") {
     val taskId = long("task_id").primaryKey().bindTo { it.taskId }

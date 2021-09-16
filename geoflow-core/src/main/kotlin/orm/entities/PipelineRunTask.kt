@@ -1,6 +1,7 @@
 package orm.entities
 
 import org.ktorm.entity.Entity
+import orm.enums.TaskStatus
 import java.time.Instant
 
 interface PipelineRunTask: Entity<PipelineRunTask> {

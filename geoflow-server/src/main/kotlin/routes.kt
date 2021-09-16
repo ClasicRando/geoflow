@@ -7,8 +7,8 @@ import io.ktor.response.*
 import io.ktor.routing.*
 import io.ktor.sessions.*
 import jobs.SystemJob
-import orm.entities.TaskRunType
-import orm.entities.TaskStatus
+import orm.enums.TaskRunType
+import orm.enums.TaskStatus
 import orm.tables.Actions
 import orm.tables.PipelineRunTasks
 import orm.tables.PipelineRuns

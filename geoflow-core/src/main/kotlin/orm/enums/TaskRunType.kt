@@ -1,4 +1,4 @@
-package orm.entities
+package orm.enums
 
 enum class TaskRunType {
     user,

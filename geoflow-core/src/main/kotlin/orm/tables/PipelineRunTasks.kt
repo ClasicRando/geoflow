@@ -9,7 +9,7 @@ import org.ktorm.support.postgresql.LockingMode
 import org.ktorm.support.postgresql.insertOrUpdateReturning
 import org.ktorm.support.postgresql.locking
 import orm.entities.PipelineRunTask
-import orm.entities.TaskStatus
+import orm.enums.TaskStatus
 
 object PipelineRunTasks: Table<PipelineRunTask>("pipeline_run_tasks") {
 

@@ -1,6 +1,7 @@
 package orm.entities
 
 import org.ktorm.entity.Entity
+import orm.enums.TaskRunType
 
 interface Task: Entity<Task> {
     val taskId: Long

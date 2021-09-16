@@ -1,7 +1,7 @@
 package tasks
 
 import database.DatabaseConnection
-import orm.entities.TaskStatus
+import orm.enums.TaskStatus
 import orm.tables.PipelineRunTasks
 import java.time.Instant
 

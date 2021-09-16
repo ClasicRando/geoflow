@@ -5,7 +5,7 @@ import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 import org.ktorm.dsl.*
 import org.ktorm.schema.*
-import orm.entities.OperationState
+import orm.enums.OperationState
 import orm.entities.PipelineRun
 import orm.entities.PipelineRunTask
 import java.time.format.DateTimeFormatter

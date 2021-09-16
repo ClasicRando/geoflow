@@ -1,6 +1,7 @@
 package orm.entities
 
 import org.ktorm.entity.Entity
+import orm.enums.OperationState
 import java.time.LocalDate
 
 interface PipelineRun: Entity<PipelineRun> {
