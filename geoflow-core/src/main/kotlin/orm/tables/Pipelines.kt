@@ -17,6 +17,10 @@ object Pipelines: Table<Pipeline>("pipelines") {
             name text COLLATE pg_catalog."default" NOT NULL,
             workflow_operation text COLLATE pg_catalog."default" NOT NULL,
             CONSTRAINT pipelines_pkey PRIMARY KEY (pipeline_id)
+                REFERENCES public.workflow_operations (code) MATCH SIMPLE
+                ON UPDATE CASCADE
+                ON DELETE SET NULL
+                NOT VALID
         )
         WITH (
             OIDS = FALSE
