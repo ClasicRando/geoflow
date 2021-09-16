@@ -155,7 +155,7 @@ fun Route.api() {
             call.respond(mapOf("error" to result.exceptionOrNull()!!.message))
         } else {
             val pipelineRunTask = result.getOrNull()!!
-            if (pipelineRunTask.task.taskRunType == TaskRunType.user) {
+            if (pipelineRunTask.task.taskRunType == TaskRunType.User) {
                 getUserPipelineTask(pipelineRunTask.pipelineRunTaskId, pipelineRunTask.task)
                     .runTask()
                 call.respond(mapOf("success" to "Completed ${pipelineRunTask.pipelineRunTaskId}"))
