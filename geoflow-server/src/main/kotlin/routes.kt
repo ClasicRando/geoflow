@@ -138,7 +138,7 @@ fun Route.api() {
     }
     get("/api/pipeline-run-tasks") {
         val tasks = runCatching {
-            PipelineRunTasks.getTasks(call.request.queryParameters["taskId"]?.toLong() ?: 0)
+            PipelineRunTasks.getOrderedTasks(call.request.queryParameters["taskId"]?.toLong() ?: 0)
         }.getOrElse { t ->
             call.application.environment.log.error("/api/pipeline-run-tasks", t)
             listOf()
