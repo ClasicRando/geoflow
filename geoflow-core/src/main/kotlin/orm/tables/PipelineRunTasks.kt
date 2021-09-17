@@ -1,6 +1,7 @@
 package orm.tables
 
 import database.DatabaseConnection
+import database.functions.GetTasksOrdered
 import formatInstantDateTime
 import kotlinx.serialization.Serializable
 import org.ktorm.dsl.*
@@ -10,6 +11,7 @@ import org.ktorm.support.postgresql.insertOrUpdateReturning
 import org.ktorm.support.postgresql.locking
 import orm.entities.PipelineRunTask
 import orm.enums.TaskStatus
+import java.sql.Timestamp
 
 object PipelineRunTasks: Table<PipelineRunTask>("pipeline_run_tasks") {
 
@@ -134,6 +136,19 @@ object PipelineRunTasks: Table<PipelineRunTask>("pipeline_run_tasks") {
                     it.task.name,
                 )
             }
+    }
+
+    fun getOrderedTasks(runId: Long): List<Record> {
+        return GetTasksOrdered.call(runId).map { row ->
+            Record(
+                row["pr_task_id"] as Long,
+                row["run_id"] as Long,
+                TaskStatus.valueOf(row["task_status"] as String).name,
+                formatInstantDateTime((row["task_start"] as Timestamp?)?.toInstant()),
+                formatInstantDateTime((row["task_completed"] as Timestamp?)?.toInstant()),
+                row["task_name"] as String
+            )
+        }
     }
 
     @Throws(IllegalArgumentException::class)
