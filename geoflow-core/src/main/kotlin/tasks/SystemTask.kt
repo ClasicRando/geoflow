@@ -16,10 +16,17 @@ abstract class SystemTask(pipelineRunTaskId: Long): PipelineTask(pipelineRunTask
             taskRecord.taskStatus = TaskStatus.Running
             taskRecord.taskCompleted = null
             taskRecord.flushChanges()
-            run()
-            taskRecord.taskStatus = TaskStatus.Complete
-            taskRecord.taskCompleted = Instant.now()
-            taskRecord.flushChanges()
+            runCatching {
+                run()
+                taskRecord.taskStatus = TaskStatus.Complete
+                taskRecord.taskCompleted = Instant.now()
+                taskRecord.flushChanges()
+            }.getOrElse { t ->
+                taskRecord.taskMessage = "ERROR: ${t.message}"
+                taskRecord.taskStatus = TaskStatus.Failed
+                taskRecord.taskCompleted = null
+                taskRecord.flushChanges()
+            }
         }
     }
 }
