@@ -138,6 +138,7 @@ object PipelineRunTasks: Table<PipelineRunTask>("pipeline_run_tasks") {
             }
     }
 
+    @Throws(IllegalArgumentException::class)
     fun getOrderedTasks(runId: Long): List<Record> {
         return GetTasksOrdered.call(runId).map { row ->
             Record(
