@@ -39,6 +39,15 @@ object DataSources: Table<DataSource>("data_sources") {
             description text COLLATE pg_catalog."default" NOT NULL,
             files_location text COLLATE pg_catalog."default" NOT NULL,
             prov_level boolean NOT NULL,
+            comments text COLLATE pg_catalog."default",
+            assigned_user bigint NOT NULL,
+            created_by bigint NOT NULL,
+            last_updated timestamp without time zone,
+            updated_by bigint,
+            search_radius double precision NOT NULL,
+            record_warehouse_type integer NOT NULL,
+            reporting_type text COLLATE pg_catalog."default" NOT NULL,
+            created timestamp without time zone NOT NULL DEFAULT timezone('utc'::text, now()),
             CONSTRAINT data_sources_pkey PRIMARY KEY (ds_id)
         )
         WITH (
