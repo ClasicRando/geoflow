@@ -31,42 +31,6 @@ fun Route.index() {
 }
 
 fun Route.pipelineStatus() {
-    get("/collection") {
-        call.respondHtml {
-            if (call.sessions.get<UserSession>()!!.hasRole("collection")) {
-                pipelineStatus("collection")
-            } else {
-                accessRestricted("collection")
-            }
-        }
-    }
-    get("/load") {
-        call.respondHtml {
-            if (call.sessions.get<UserSession>()!!.hasRole("load")) {
-                pipelineStatus("load")
-            } else {
-                accessRestricted("load")
-            }
-        }
-    }
-    get("/check") {
-        call.respondHtml {
-            if (call.sessions.get<UserSession>()!!.hasRole("check")) {
-                pipelineStatus("check")
-            } else {
-                accessRestricted("check")
-            }
-        }
-    }
-    get("/qa") {
-        call.respondHtml {
-            if (call.sessions.get<UserSession>()!!.hasRole("qa")) {
-                pipelineStatus("qa")
-            } else {
-                accessRestricted("qa")
-            }
-        }
-    }
     get("/pipeline-status") {
         val code = call.request.queryParameters["code"] ?: ""
         call.respondHtml {
