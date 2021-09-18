@@ -9,5 +9,5 @@ interface SourceTableColumn: Entity<SourceTableColumn> {
     val maxLength: Int
     val minLength: Int
     val label: String
-    val sourceTable: SourceTable
+    val stOid: Long
 }

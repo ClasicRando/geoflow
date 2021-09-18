@@ -6,7 +6,7 @@ import orm.entities.SourceTable
 object SourceTables: Table<SourceTable>("source_tables") {
 
     val stOid = long("st_oid").primaryKey().bindTo { it.stOid }
-    val run = long("run_id").references(PipelineRuns) { it.run }
+    val runId = long("run_id").bindTo { it.runId }
     val sourceTableName = text("table_name").bindTo { it.tableName }
     val fileName = text("file_name").bindTo { it.fileName }
     val analyze = boolean("analyze").bindTo { it.analyze }

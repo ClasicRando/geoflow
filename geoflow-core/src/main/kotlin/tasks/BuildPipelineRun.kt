@@ -19,15 +19,15 @@ class BuildPipelineRun(pipelineRunTaskId: Long): SystemTask(pipelineRunTaskId) {
             }
         } else {
             DatabaseConnection.database.run {
-                delete(SourceTables) { it.run eq task.runId }
+                delete(SourceTables) { it.runId eq task.runId }
                 from(SourceTables)
                     .select()
-                    .where(SourceTables.run eq lastRun)
+                    .where(SourceTables.runId eq lastRun)
                     .insertTo(SourceTables)
                 update(SourceTables) {
                     set(SourceTables.analyze, true)
                     set(SourceTables.load, true)
-                    where { it.run eq task.runId }
+                    where { it.runId eq task.runId }
                 }
             }
         }

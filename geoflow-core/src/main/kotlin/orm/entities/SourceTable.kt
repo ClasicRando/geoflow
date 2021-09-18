@@ -4,7 +4,7 @@ import org.ktorm.entity.Entity
 
 interface SourceTable: Entity<SourceTable> {
     val stOid: Long
-    val run: PipelineRun
+    val runId: Long
     val tableName: String
     val fileName: String
     val analyze: Boolean

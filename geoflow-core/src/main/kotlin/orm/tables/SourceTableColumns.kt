@@ -13,7 +13,7 @@ object SourceTableColumns: Table<SourceTableColumn>("source_table_columns") {
     val maxLength = int("max_length").bindTo { it.maxLength }
     val minLength = int("min_length").bindTo { it.minLength }
     val label = text("label").bindTo { it.label }
-    val sourceTable = long("st_oid").references(SourceTables) { it.sourceTable }
+    val stOid = long("st_oid").bindTo { it.stOid }
 
     val createSequence = """
         CREATE SEQUENCE public.source_table_columns_stc_oid_seq
