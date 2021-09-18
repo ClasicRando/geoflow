@@ -1,6 +1,7 @@
 package orm.tables
 
 import database.DatabaseConnection
+import formatLocalDateDefault
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 import org.ktorm.dsl.*
@@ -10,7 +11,6 @@ import orm.enums.OperationState
 import orm.entities.PipelineRun
 import orm.entities.PipelineRunTask
 import orm.enums.MergeType
-import java.time.format.DateTimeFormatter
 import kotlin.jvm.Throws
 
 object PipelineRuns: Table<PipelineRun>("pipeline_runs") {
@@ -123,7 +123,7 @@ object PipelineRuns: Table<PipelineRun>("pipeline_runs") {
                     run.runId,
                     run.dataSource.dsId,
                     run.dataSource.code,
-                    run.recordDate.format(DateTimeFormatter.ISO_LOCAL_DATE),
+                    formatLocalDateDefault(run.recordDate),
                     run.operationState.name,
                     run.collectionUser?.name ?: "",
                     run.loadUser?.name ?: "",
