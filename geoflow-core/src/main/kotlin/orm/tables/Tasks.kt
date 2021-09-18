@@ -40,9 +40,4 @@ object Tasks: Table<Task>("tasks") {
             MAXVALUE 9223372036854775807
             CACHE 1;
     """.trimIndent()
-
-    val createEnums = """
-        CREATE TYPE public.task_run_type AS ENUM
-            ('user', 'system');
-    """.trimIndent()
 }

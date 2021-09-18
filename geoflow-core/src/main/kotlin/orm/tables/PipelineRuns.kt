@@ -66,11 +66,6 @@ object PipelineRuns: Table<PipelineRun>("pipeline_runs") {
         )
     """.trimIndent()
 
-    val createEnums = """
-        CREATE TYPE public.operation_state AS ENUM
-            ('Ready', 'Active');
-    """.trimIndent()
-
     @Serializable
     data class Record(
         @SerialName("run_id")

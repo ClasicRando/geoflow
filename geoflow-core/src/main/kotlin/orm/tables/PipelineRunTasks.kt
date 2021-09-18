@@ -66,11 +66,6 @@ object PipelineRunTasks: Table<PipelineRunTask>("pipeline_run_tasks") {
             CACHE 1;
     """.trimIndent()
 
-    val createEnums = """
-        CREATE TYPE public.task_status AS ENUM
-            ('Waiting', 'Scheduled', 'Running', 'Complete');
-    """.trimIndent()
-
     fun reserveRecord(pipelineRunTaskId: Long): PipelineRunTask {
         return DatabaseConnection
             .database
