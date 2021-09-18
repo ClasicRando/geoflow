@@ -8,9 +8,7 @@ object Tasks: Table<Task>("tasks") {
     val taskId = long("task_id").primaryKey().bindTo { it.taskId }
     val name = text("name").bindTo { it.name }
     val description = text("description").bindTo { it.description }
-    val parentTaskId = long("parent_task_id").bindTo { it.parentTaskId }
     val state = text("state").bindTo { it.state }
-    val parentTaskOrder = int("parent_task_order").bindTo { it.parentTaskOrder }
     val taskRunType = enum<TaskRunType>("task_run_type").bindTo { it.taskRunType }
     val taskClassName = text("task_class_name").bindTo { it.taskClassName }
 
