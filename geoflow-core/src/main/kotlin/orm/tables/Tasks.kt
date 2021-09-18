@@ -17,13 +17,17 @@ object Tasks: Table<Task>("tasks") {
         (
             name text COLLATE pg_catalog."default" NOT NULL,
             description text COLLATE pg_catalog."default" NOT NULL,
-            parent_task_id bigint,
             state text COLLATE pg_catalog."default" NOT NULL,
-            parent_task_order integer,
             task_id bigint NOT NULL DEFAULT nextval('tasks_task_id_seq'::regclass),
             task_class_name text COLLATE pg_catalog."default",
             task_run_type task_run_type NOT NULL,
-            CONSTRAINT tasks_pkey PRIMARY KEY (task_id)
+            CONSTRAINT tasks_pkey PRIMARY KEY (task_id),
+            CONSTRAINT name_unique UNIQUE (name),
+            CONSTRAINT workflow_state_fk FOREIGN KEY (state)
+                REFERENCES public.workflow_operations (code) MATCH SIMPLE
+                ON UPDATE NO ACTION
+                ON DELETE NO ACTION
+                NOT VALID
         )
         WITH (
             OIDS = FALSE
