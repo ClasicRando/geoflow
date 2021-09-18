@@ -11,6 +11,15 @@ object DataSources: Table<DataSource>("data_sources") {
     val description = text("description").bindTo { it.description }
     val filesLocation = text("files_location").bindTo { it.filesLocation }
     val provLevel = boolean("prov_level").bindTo { it.provLevel }
+    val comments = text("comments").bindTo { it.comments }
+    val assignedUser = long("assigned_user").references(InternalUsers) { it.assignedUser }
+    val created = timestamp("created").bindTo { it.created }
+    val createdBy = long("created_by").references(InternalUsers) { it.createdBy }
+    val lastUpdated = timestamp("last_updated").bindTo { it.lastUpdated }
+    val updatedBy = long("updated_by").references(InternalUsers) { it.updatedBy }
+    val searchRadius = double("search_radius").bindTo { it.searchRadius }
+    val recordWarehouseType = int("record_warehouse_type").references(RecordWarehouseTypes) { it.recordWarehouseType }
+    val reportingType = text("reporting_type").bindTo { it.reportingType }
 
     val createSequence = """
         CREATE SEQUENCE public.data_sources_ds_id_seq
