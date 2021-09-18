@@ -81,25 +81,36 @@ object PipelineRunTasks: Table<PipelineRunTask>("pipeline_run_tasks") {
         return DatabaseConnection
             .database
             .from(this)
-            .select()
+            .joinReferencesAndSelect()
             .where(this.pipelineRunTaskId eq pipelineRunTaskId)
             .map(this::createEntity)
             .first()
     }
 
-    fun addTask(runId: Long, taskId: Long): Long? {
+    fun addTask(pipelineRunTask: PipelineRunTask, taskId: Long): Long? {
+        val nextOrder = DatabaseConnection
+            .database
+            .from(this)
+            .select(max(parentTaskOrder))
+            .where(parentTaskId eq pipelineRunTask.task.taskId)
+            .map { row -> row.getInt(1) }
+            .firstOrNull() ?: 1
         return DatabaseConnection
             .database
             .insertOrUpdateReturning(this, pipelineRunTaskId) {
-                set(PipelineRunTasks.runId, runId)
+                set(runId, pipelineRunTask.runId)
                 set(taskStatus, TaskStatus.Waiting)
                 set(taskStart, null)
                 set(taskCompleted, null)
                 set(PipelineRunTasks.taskId, taskId)
-                onConflict(PipelineRunTasks.runId, PipelineRunTasks.taskId) {
+                set(parentTaskId, pipelineRunTask.task.taskId)
+                set(parentTaskOrder, nextOrder)
+                onConflict(runId, PipelineRunTasks.taskId) {
                     set(taskStatus, TaskStatus.Waiting)
                     set(taskStart, null)
                     set(taskCompleted, null)
+                    set(parentTaskId, pipelineRunTask.task.taskId)
+                    set(parentTaskOrder, nextOrder)
                 }
             }
     }

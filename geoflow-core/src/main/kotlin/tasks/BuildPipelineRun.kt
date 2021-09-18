@@ -14,8 +14,8 @@ class BuildPipelineRun(pipelineRunTaskId: Long): SystemTask(pipelineRunTaskId) {
         val lastRun = PipelineRuns.lastRun(task)
         if (lastRun == null) {
             with(PipelineRunTasks) {
-                addTask(task.runId, FirstPipelineDetected.taskId)
-                addTask(task.runId, ValidateFirstPipeline.taskId)
+                addTask(task, FirstPipelineDetected.taskId)
+                addTask(task, ValidateFirstPipeline.taskId)
             }
         } else {
             DatabaseConnection.database.run {
