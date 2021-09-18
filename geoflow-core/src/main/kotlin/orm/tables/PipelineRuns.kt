@@ -4,10 +4,12 @@ import database.DatabaseConnection
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 import org.ktorm.dsl.*
+import org.ktorm.jackson.json
 import org.ktorm.schema.*
 import orm.enums.OperationState
 import orm.entities.PipelineRun
 import orm.entities.PipelineRunTask
+import orm.enums.MergeType
 import java.time.format.DateTimeFormatter
 import kotlin.jvm.Throws
 
@@ -21,6 +23,13 @@ object PipelineRuns: Table<PipelineRun>("pipeline_runs") {
     val loadUser = long("load_user_oid").references(InternalUsers) { it.loadUser }
     val checkUser = long("check_user_oid").references(InternalUsers) { it.checkUser }
     val qaUser = long("qa_user_oid").references(InternalUsers) { it.qaUser }
+    val productionCount = int("production_count").bindTo { it.productionCount }
+    val stagingCount = int("staging_count").bindTo { it.stagingCount }
+    val matchCount = int("match_count").bindTo { it.matchCount }
+    val newCount = int("new_count").bindTo { it.newCount }
+    val plottingStats = json<Map<String, Int>>("plotting_stats").bindTo { it.plottingStats }
+    val hasChildTables = boolean("has_child_tables").bindTo { it.hasChildTables }
+    val mergeType = enum<MergeType>("merge_type").bindTo { it.mergeType }
 
     val tableDisplayFields = mapOf(
         "ds_id" to mapOf("name" to "Data Source ID"),
@@ -53,7 +62,14 @@ object PipelineRuns: Table<PipelineRun>("pipeline_runs") {
             collection_user_oid bigint,
             workflow_operation text COLLATE pg_catalog."default" NOT NULL,
             run_id bigint NOT NULL DEFAULT nextval('pipeline_runs_run_id_seq'::regclass),
-            operation_state operation_state,
+            operation_state operation_state NOT NULL,
+            production_count integer NOT NULL,
+            staging_count integer NOT NULL,
+            match_count integer NOT NULL,
+            new_count integer NOT NULL,
+            plotting_stats jsonb NOT NULL,
+            has_child_tables boolean NOT NULL,
+            merge_type merge_type,
             CONSTRAINT pipeline_runs_pkey PRIMARY KEY (run_id),
             CONSTRAINT ds_id FOREIGN KEY (ds_id)
                 REFERENCES public.data_sources (ds_id) MATCH SIMPLE
