@@ -14,6 +14,7 @@ val poiVersion: String by project
 val klaxonVersion: String by project
 val bcryptVersion: String by project
 val kotlinxJsonVersion: String by project
+val ktorVersion: String by project
 
 dependencies {
     testImplementation(kotlin("test", "1.5.30"))
@@ -42,7 +43,8 @@ dependencies {
     implementation("com.beust:klaxon:$klaxonVersion")
     // https://mvnrepository.com/artifact/at.favre.lib/bcrypt
     implementation("at.favre.lib:bcrypt:$bcryptVersion")
-
+    implementation("io.ktor:ktor-client-core:$ktorVersion")
+    implementation("io.ktor:ktor-client-cio:$ktorVersion")
 }
 
 tasks.test {
