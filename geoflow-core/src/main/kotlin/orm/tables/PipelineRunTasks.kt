@@ -7,7 +7,7 @@ import kotlinx.serialization.Serializable
 import org.ktorm.dsl.*
 import org.ktorm.schema.*
 import org.ktorm.support.postgresql.LockingMode
-import org.ktorm.support.postgresql.insertOrUpdateReturning
+import org.ktorm.support.postgresql.insertReturning
 import org.ktorm.support.postgresql.locking
 import orm.entities.PipelineRunTask
 import orm.enums.TaskStatus
@@ -97,21 +97,14 @@ object PipelineRunTasks: Table<PipelineRunTask>("pipeline_run_tasks") {
             .firstOrNull() ?: 1
         return DatabaseConnection
             .database
-            .insertOrUpdateReturning(this, pipelineRunTaskId) {
+            .insertReturning(this, pipelineRunTaskId) {
                 set(runId, pipelineRunTask.runId)
                 set(taskStatus, TaskStatus.Waiting)
                 set(taskStart, null)
                 set(taskCompleted, null)
                 set(PipelineRunTasks.taskId, taskId)
-                set(parentTaskId, pipelineRunTask.task.taskId)
+                set(parentTaskId, pipelineRunTask.pipelineRunTaskId)
                 set(parentTaskOrder, nextOrder)
-                onConflict(runId, PipelineRunTasks.taskId) {
-                    set(taskStatus, TaskStatus.Waiting)
-                    set(taskStart, null)
-                    set(taskCompleted, null)
-                    set(parentTaskId, pipelineRunTask.task.taskId)
-                    set(parentTaskOrder, nextOrder)
-                }
             }
     }
 
@@ -125,6 +118,7 @@ object PipelineRunTasks: Table<PipelineRunTask>("pipeline_run_tasks") {
         val taskName: String,
     )
 
+    @Deprecated("Use Ordered task list", ReplaceWith("getOrderedTasks"))
     fun getTasks(runId: Long): List<Record> {
         return DatabaseConnection
             .database

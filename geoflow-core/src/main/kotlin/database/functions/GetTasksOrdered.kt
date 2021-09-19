@@ -56,7 +56,7 @@ object GetTasksOrdered: PlPgSqlTableFunction(
         			  from   pipeline_run_tasks t1
         			  left join pipeline_run_tasks t2
         			  on     t1.run_id = t2.run_id
-        			  and    t1.task_id = t2.parent_task_id
+        			  and    t1.pr_task_id = t2.parent_task_id
         			  left join tasks t3
         			  on     t1.task_id = t3.task_id
         			  where  t1.run_id = $1
@@ -67,7 +67,7 @@ object GetTasksOrdered: PlPgSqlTableFunction(
         		into   pr_task_id, run_id, task_start, task_completed, task_id, task_name, task_status, parent_task_id, parent_task_order;
         		return next;
         		if r.has_children then
-        			for i in (select * from GetTaskChildren($1, r.task_id))
+        			for i in (select * from GetTaskChildren($1, r.pr_task_id))
         			loop
         				select i.pr_task_id, i.run_id, i.task_start, i.task_completed, i.task_id, i.task_name, i.task_status, i.parent_task_id, i.parent_task_order
         				into   pr_task_id, run_id, task_start, task_completed, task_id, task_name, task_status, parent_task_id, parent_task_order;
