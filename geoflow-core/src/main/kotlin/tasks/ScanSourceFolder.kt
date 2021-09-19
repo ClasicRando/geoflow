@@ -7,6 +7,7 @@ import formatLocalDateDefault
 import org.ktorm.dsl.eq
 import org.ktorm.entity.any
 import org.ktorm.entity.filter
+import org.ktorm.entity.first
 import org.ktorm.entity.toList
 import orm.tables.PipelineRunTasks
 import orm.tables.PipelineRuns
@@ -43,7 +44,25 @@ class ScanSourceFolder(pipelineTaskId: Long): SystemTask(pipelineTaskId) {
         if (missingFiles.isNotEmpty()) {
             when {
                 hasScanned -> throw Exception("Attempted to rescan after download but still missing files")
-                missingFiles.any { it.url.isNotEmpty() } -> PipelineRunTasks.addTask(task, DownloadMissingFiles.taskId)
+                missingFiles.any { it.url.isNotEmpty() } -> {
+                    PipelineRunTasks.addTask(task, DownloadMissingFiles.taskId)?.let { downloadTaskId ->
+                        DatabaseConnection
+                            .database
+                            .pipelineRunTasks
+                            .filter { it.pipelineRunTaskId eq downloadTaskId }
+                            .first()
+                            .apply {
+                                taskMessage = missingFiles.joinToString(
+                                    separator = "','",
+                                    prefix = "['",
+                                    postfix = "']"
+                                ) {
+                                    it.fileName
+                                }
+                            }
+                    }
+                    PipelineRunTasks.addTask(task, taskId)
+                }
                 else -> throw Exception("Found missing files and non of them could be downloaded")
             }
         }
