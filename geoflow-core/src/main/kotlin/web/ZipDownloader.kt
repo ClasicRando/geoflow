@@ -20,7 +20,7 @@ class ZipDownloader(private val url: String, private val outputPath: String) {
     suspend fun request() {
         HttpClient(CIO).use { client ->
             client.get<HttpStatement>(url).execute { response ->
-                with(File.createTempFile("temp", "zip", File(outputPath))) {
+                with(File.createTempFile("temp", ".zip", File(outputPath))) {
                     val channel: ByteReadChannel = response.receive()
                     while (!channel.isClosedForRead) {
                         val packet = channel.readRemaining(DEFAULT_BUFFER_SIZE.toLong())
