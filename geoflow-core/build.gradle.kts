@@ -18,6 +18,7 @@ val ktorVersion: String by project
 
 dependencies {
     testImplementation(kotlin("test", "1.5.30"))
+    // https://mvnrepository.com/artifact/org.jetbrains.kotlinx/kotlinx-serialization-json-jvm
     implementation("org.jetbrains.kotlinx:kotlinx-serialization-json:$kotlinxJsonVersion")
     // https://mvnrepository.com/artifact/org.ktorm/ktorm-core
     implementation("org.ktorm:ktorm-core:$ktormVersion")
@@ -26,7 +27,7 @@ dependencies {
     // https://mvnrepository.com/artifact/org.ktorm/ktorm-support-postgresql
     implementation("org.ktorm:ktorm-support-postgresql:$ktormVersion")
     // https://mvnrepository.com/artifact/org.postgresql/postgresql
-    implementation("org.postgresql:postgresql:$postgresqlVersion")
+    implementation("org.postgresql","postgresql", postgresqlVersion)
     // https://mvnrepository.com/artifact/it.justwrote/kjob-core
     implementation("it.justwrote:kjob-core:$kjobVersion")
     // https://mvnrepository.com/artifact/com.github.albfernandez/javadbf
@@ -39,12 +40,12 @@ dependencies {
     implementation("com.univocity:univocity-parsers:$univocityVersion")
     // https://mvnrepository.com/artifact/org.apache.poi/poi
     implementation("org.apache.poi:poi:$poiVersion")
-    // https://mvnrepository.com/artifact/org.jetbrains.kotlinx/kotlinx-serialization-json-jvm
     implementation("com.beust:klaxon:$klaxonVersion")
     // https://mvnrepository.com/artifact/at.favre.lib/bcrypt
     implementation("at.favre.lib:bcrypt:$bcryptVersion")
     implementation("io.ktor:ktor-client-core:$ktorVersion")
     implementation("io.ktor:ktor-client-cio:$ktorVersion")
+    implementation("io.ktor:ktor-client-serialization:$ktorVersion")
 }
 
 tasks.test {

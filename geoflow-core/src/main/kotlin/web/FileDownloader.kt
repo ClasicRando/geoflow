@@ -5,8 +5,11 @@ import io.ktor.client.call.*
 import io.ktor.client.engine.cio.*
 import io.ktor.client.request.*
 import io.ktor.client.statement.*
+import io.ktor.utils.io.*
+import io.ktor.utils.io.core.*
 import io.ktor.utils.io.errors.*
 import java.io.File
+import kotlin.io.use
 import kotlin.jvm.Throws
 
 class FileDownloader(private val url: String, private val outputPath: String, private val filename: String) {
@@ -17,18 +20,15 @@ class FileDownloader(private val url: String, private val outputPath: String, pr
         HttpClient(CIO).use { client ->
             val file = File(outputPath, filename)
             file.createNewFile()
-            val response: HttpResponse = client.get(url)
-            val hasContentLength = "Content-Length" in response.headers
-            when (response.headers["Content-Type"]) {
-                "txt/csv", "text/plain", "application/json" -> file.writeText(response.readText())
-                "application/vnd.oasis.opendocument.spreadsheet",
-                "application/vnd.ms-excel",
-                "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-                "application/octet-stream" -> {
-                    val bytes = if (hasContentLength) response.readBytes() else response.receive()
-                    file.writeBytes(bytes)
+            client.get<HttpStatement>(url).execute { response ->
+                val channel: ByteReadChannel = response.receive()
+                while (!channel.isClosedForRead) {
+                    val packet = channel.readRemaining(DEFAULT_BUFFER_SIZE.toLong())
+                    while (!packet.isEmpty) {
+                        val bytes = packet.readBytes()
+                        file.appendBytes(bytes)
+                    }
                 }
-                else -> throw IOException("Unknown content type for response")
             }
         }
     }
