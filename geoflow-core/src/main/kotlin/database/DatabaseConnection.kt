@@ -1,14 +1,17 @@
 package database
 
-import com.beust.klaxon.Klaxon
+import kotlinx.serialization.ExperimentalSerializationApi
+import kotlinx.serialization.decodeFromString
+import kotlinx.serialization.json.Json
 import org.apache.commons.dbcp2.BasicDataSource
 import org.ktorm.database.Database
 import java.io.File
 
 object DatabaseConnection {
+    @OptIn(ExperimentalSerializationApi::class)
     private val dataSource = BasicDataSource().apply {
         val json = File(System.getProperty("user.dir"), "db_config.json").readText()
-        Klaxon().parse<ConnectionProperties>(json)?.let { props ->
+        Json.decodeFromString<ConnectionProperties>(json).let { props ->
             driverClassName = props.className
             url = props.url
             username = props.username
