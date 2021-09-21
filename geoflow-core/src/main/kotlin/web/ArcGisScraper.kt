@@ -5,7 +5,6 @@ import com.univocity.parsers.csv.CsvParserSettings
 import com.univocity.parsers.csv.CsvWriter
 import com.univocity.parsers.csv.CsvWriterSettings
 import io.ktor.client.*
-import io.ktor.client.call.*
 import io.ktor.client.engine.cio.*
 import io.ktor.client.request.*
 import io.ktor.client.statement.*
@@ -15,6 +14,7 @@ import kotlinx.coroutines.flow.asFlow
 import kotlinx.coroutines.flow.collect
 import kotlinx.coroutines.flow.map
 import kotlinx.serialization.ExperimentalSerializationApi
+import kotlinx.serialization.decodeFromString
 import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.*
 import java.io.File
@@ -29,73 +29,79 @@ class ArcGisScraper private constructor(
     private val csvSettings = CsvWriterSettings().apply {
         setHeaders(*metadata.fields.toTypedArray())
     }
+    private val csvParserSettings = CsvParserSettings().apply {
+        isHeaderExtractionEnabled = true
+    }
 
     @Throws(IOException::class)
     @Suppress("BlockingMethodInNonBlockingContext")
     suspend fun scrape() {
-        HttpClient(CIO).use { client ->
-            val file = File(outputPath, "${metadata.name}.csv")
-            file.createNewFile()
-            with(CsvWriter(file, csvSettings)) {
-                writeHeaders()
-                metadata.queries.asFlow().map { query ->
-                    fetchQuery(client, query)
-                }.collect { tempFile ->
-                    val reader = CsvParser(CsvParserSettings())
-                    reader.iterate(tempFile.bufferedReader()).forEach { record ->
-                        writeRow(record)
-                    }
+        val file = File(outputPath, "${metadata.name}.csv")
+        file.createNewFile()
+        with(CsvWriter(file, csvSettings)) {
+            writeHeaders()
+            metadata.queries.asFlow().map { url ->
+                fetchQuery(url)
+            }.collect { tempFile ->
+                val reader = CsvParser(csvParserSettings)
+                reader.iterate(tempFile.bufferedReader()).forEach { record ->
+                    writeRow(record)
                 }
-                close()
             }
+            close()
         }
     }
 
     @OptIn(ExperimentalSerializationApi::class)
     private fun handleRecord(feature: JsonObject): Map<String, Any?> {
-        val record = Json.decodeFromJsonElement<Map<String, Any?>>(feature)
+        val record = Json.decodeFromJsonElement<Map<String, JsonPrimitive>>(
+            feature["attributes"] ?: JsonObject(mapOf())
+        ).mapValues { (_, value) -> value.contentOrNull }
         val geoFields = when (metadata.geoType) {
             "esriGeometryPoint" -> feature["geometry"]
                 ?.jsonObject
                 ?.mapValues { (_, value) -> value.jsonPrimitive.contentOrNull } ?: mapOf()
             "esriGeometryMultipoint" -> mapOf(
-                "" to Json.encodeToString(feature["geometry"]?.jsonObject?.get("points")?.jsonArray).trim()
+                "POINTS" to Json.encodeToString(feature["geometry"]?.jsonObject?.get("points")?.jsonArray).trim()
             )
             "esriGeometryPolygon" -> mapOf(
-                "" to Json.encodeToString(feature["geometry"]?.jsonObject?.get("rings")?.jsonArray).trim()
+                "RINGS" to Json.encodeToString(feature["geometry"]?.jsonObject?.get("rings")?.jsonArray).trim()
             )
             else -> mapOf()
         }
         return record + geoFields
     }
 
+    @OptIn(ExperimentalSerializationApi::class)
     @Suppress("BlockingMethodInNonBlockingContext")
     @Throws(IllegalStateException::class)
-    private suspend fun fetchQuery(client: HttpClient, url: String): File {
+    private suspend fun fetchQuery(url: String): File {
         var tryNumber = 1
         var invalidResponse = true
         var jsonResponse = JsonObject(mapOf())
-        while (invalidResponse) {
-            if (tryNumber > maxTries)
-                throw IllegalArgumentException("Too many tries to fetch query. $url")
-            val response = client.get<HttpResponse>(url)
-            if (!response.status.isSuccess()) {
-                tryNumber++
-                delay(delayMilli)
-                continue
-            }
-            val json = response.receive<JsonObject>()
-            if ("features" !in json) {
-                if ("error" in json) {
+        HttpClient(CIO).use { client ->
+            while (invalidResponse) {
+                if (tryNumber > maxTries)
+                    throw IllegalArgumentException("Too many tries to fetch query. $url")
+                val response = client.get<HttpResponse>(url)
+                if (!response.status.isSuccess()) {
                     tryNumber++
                     delay(delayMilli)
                     continue
-                } else {
-                    throw IllegalStateException("Response was not an error but no features found")
                 }
-            } else {
-                invalidResponse = false
-                jsonResponse = json
+                val json = Json.decodeFromString<JsonObject>(response.readText())
+                if ("features" !in json) {
+                    if ("error" in json) {
+                        tryNumber++
+                        delay(delayMilli)
+                        continue
+                    } else {
+                        throw IllegalStateException("Response was not an error but no features found")
+                    }
+                } else {
+                    invalidResponse = false
+                    jsonResponse = json
+                }
             }
         }
         return File.createTempFile("temp", ".csv").also { file ->

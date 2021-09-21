@@ -42,14 +42,14 @@ class ArcGisServiceMetadata private constructor(
         return """
             /query?where=1+%3D+1&resultOffset=${queryNumber * scrapeCount}
             &resultRecordCount=${scrapeCount}${geoText}&outFields=*&f=json
-        """.trimIndent()
+        """.trimIndent().replace("\n", "")
     }
 
     private fun oidQuery(minOid: Int): String {
         return """
             /query?where=${oidField}+>%3D+${minOid}+and+${oidField}+<%3D+${minOid + scrapeCount - 1}
             ${geoText}&outFields=*&f=json
-        """.trimIndent()
+        """.trimIndent().replace("\n", "")
     }
 
     companion object {
@@ -62,7 +62,7 @@ class ArcGisServiceMetadata private constructor(
            ++%7D%2C%0D%0A++%7B%0D%0A++++"statisticType"%3A+"min"%2C%0D%0A++++"onStatisticField
            "%3A+"$oidField"%2C+++++%0D%0A++++"outStatisticFieldName"%3A+"MIN_VALUE"%0D%0A
            ++%7D%0D%0A%5D&f=json'
-        """.trimIndent()
+        """.trimIndent().replace("\n", "")
 
         @Throws(TypeCastException::class)
         suspend fun fromUrl(url: String): ArcGisServiceMetadata {
@@ -108,6 +108,7 @@ class ArcGisServiceMetadata private constructor(
                     .plus(geoFields)
                 val oidField = fields
                     .firstOrNull { it["type"]?.jsonPrimitive?.content == "esriFieldTypeOID" }
+                    ?.get("name")
                     ?.jsonPrimitive?.content ?: ""
                 val maxMinOid = when {
                     !pagination && stats && oidField.isNotEmpty() -> {
