@@ -15,9 +15,13 @@ val klaxonVersion: String by project
 val bcryptVersion: String by project
 val kotlinxJsonVersion: String by project
 val ktorVersion: String by project
+val junitVersion: String by project
 
 dependencies {
     testImplementation(kotlin("test", "1.5.30"))
+    testCompileOnly("org.junit.jupiter:junit-jupiter-api:$junitVersion")
+    testCompileOnly("org.junit.jupiter:junit-jupiter-params:$junitVersion")
+    testCompileOnly("org.junit.jupiter:junit-jupiter-engine:$junitVersion")
     // https://mvnrepository.com/artifact/org.jetbrains.kotlinx/kotlinx-serialization-json-jvm
     implementation("org.jetbrains.kotlinx:kotlinx-serialization-json:$kotlinxJsonVersion")
     // https://mvnrepository.com/artifact/org.ktorm/ktorm-core
