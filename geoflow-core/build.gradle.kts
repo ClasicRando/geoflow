@@ -16,12 +16,13 @@ val bcryptVersion: String by project
 val kotlinxJsonVersion: String by project
 val ktorVersion: String by project
 val junitVersion: String by project
+val kotlinLoggingVersion: String by project
 
 dependencies {
     testImplementation(kotlin("test", "1.5.30"))
-    testCompileOnly("org.junit.jupiter:junit-jupiter-api:$junitVersion")
-    testCompileOnly("org.junit.jupiter:junit-jupiter-params:$junitVersion")
-    testCompileOnly("org.junit.jupiter:junit-jupiter-engine:$junitVersion")
+    testImplementation("org.junit.jupiter:junit-jupiter-api:$junitVersion")
+    testImplementation("org.junit.jupiter:junit-jupiter-params:$junitVersion")
+    testRuntimeOnly("org.junit.jupiter:junit-jupiter-engine:$junitVersion")
     // https://mvnrepository.com/artifact/org.jetbrains.kotlinx/kotlinx-serialization-json-jvm
     implementation("org.jetbrains.kotlinx:kotlinx-serialization-json:$kotlinxJsonVersion")
     // https://mvnrepository.com/artifact/org.ktorm/ktorm-core
@@ -50,8 +51,29 @@ dependencies {
     implementation("io.ktor:ktor-client-core:$ktorVersion")
     implementation("io.ktor:ktor-client-cio:$ktorVersion")
     implementation("io.ktor:ktor-client-serialization:$ktorVersion")
+    implementation("io.github.microutils:kotlin-logging-jvm:$kotlinLoggingVersion")
 }
 
 tasks.test {
+    testLogging {
+        setExceptionFormat("full")
+        events = setOf(
+            org.gradle.api.tasks.testing.logging.TestLogEvent.FAILED,
+            org.gradle.api.tasks.testing.logging.TestLogEvent.SKIPPED,
+            org.gradle.api.tasks.testing.logging.TestLogEvent.PASSED,
+        )
+        showStandardStreams = true
+        afterSuite(KotlinClosure2<TestDescriptor,TestResult,Unit>({ descriptor, result ->
+            if (descriptor.parent == null) {
+                println("\nTest Result: ${result.resultType}")
+                println("""
+                    Test summary: ${result.testCount} tests, 
+                    ${result.successfulTestCount} succeeded, 
+                    ${result.failedTestCount} failed, 
+                    ${result.skippedTestCount} skipped
+                """.trimIndent().replace("\n", ""))
+            }
+        }))
+    }
     useJUnitPlatform()
 }
