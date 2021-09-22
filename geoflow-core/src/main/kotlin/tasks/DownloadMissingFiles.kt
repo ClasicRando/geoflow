@@ -8,6 +8,7 @@ import org.ktorm.dsl.isNotNull
 import org.ktorm.entity.filter
 import org.ktorm.entity.forEach
 import orm.tables.PipelineRuns
+import web.ArcGisScraper
 import web.FileDownloader
 
 class DownloadMissingFiles(pipelineRunTaskId: Long): SystemTask(pipelineRunTaskId) {
@@ -33,11 +34,18 @@ class DownloadMissingFiles(pipelineRunTaskId: Long): SystemTask(pipelineRunTaskI
             .filter { it.fileName.inList(filenames) }
             .filter { it.url.isNotNull() }
             .forEach { sourceTable ->
-                FileDownloader(
-                    url = sourceTable.url,
-                    outputPath = outputFolder,
-                    filename = sourceTable.fileName
-                ).request()
+                if (sourceTable.url.contains("/arcgis/rest/", ignoreCase = true)) {
+                    ArcGisScraper.fromUrl(
+                        url = sourceTable.url,
+                        outputPath = outputFolder
+                    ).scrape()
+                } else {
+                    FileDownloader(
+                        url = sourceTable.url,
+                        outputPath = outputFolder,
+                        filename = sourceTable.fileName
+                    ).request()
+                }
             }
     }
 }
