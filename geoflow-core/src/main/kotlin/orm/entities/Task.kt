@@ -9,5 +9,5 @@ interface Task: Entity<Task> {
     val description: String
     val state: String
     val taskRunType: TaskRunType
-    val taskClassName: String?
+    val taskClassName: String
 }
