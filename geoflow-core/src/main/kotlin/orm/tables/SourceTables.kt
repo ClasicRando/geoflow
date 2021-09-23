@@ -22,6 +22,7 @@ object SourceTables: Table<SourceTable>("source_tables") {
     val url = text("url").bindTo { it.url }
     val comments = text("comments").bindTo { it.comments }
     val collectType = enum<FileCollectType>("collect_type").bindTo { it.collectType }
+    val delimiter = varchar("delimiter").bindTo { it.delimiter }
 
     val createSequence = """
         CREATE SEQUENCE public.source_tables_st_oid_seq
@@ -49,6 +50,7 @@ object SourceTables: Table<SourceTable>("source_tables") {
             st_oid bigint NOT NULL DEFAULT nextval('source_tables_st_oid_seq'::regclass),
             collect_type file_collect_type NOT NULL,
             loader_type loader_type NOT NULL,
+            delimiter character(1) COLLATE pg_catalog."default",
             CONSTRAINT source_tables_pkey PRIMARY KEY (st_oid)
         )
         WITH (

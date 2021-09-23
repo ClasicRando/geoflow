@@ -20,4 +20,5 @@ interface SourceTable: Entity<SourceTable> {
     val url: String?
     val comments: String?
     val collectType: FileCollectType
+    val delimiter: String?
 }
