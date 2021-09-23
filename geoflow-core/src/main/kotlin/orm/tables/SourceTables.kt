@@ -40,9 +40,9 @@ object SourceTables: Table<SourceTable>("source_tables") {
             qualified boolean NOT NULL,
             encoding text COLLATE pg_catalog."default" NOT NULL,
             sub_table text COLLATE pg_catalog."default",
-            record_count integer NOT NULL,
+            record_count integer NOT NULL DEFAULT 0,
             file_id text COLLATE pg_catalog."default" NOT NULL,
-            url text COLLATE pg_catalog."default" NOT NULL,
+            url text COLLATE pg_catalog."default",
             comments text COLLATE pg_catalog."default",
             st_oid bigint NOT NULL DEFAULT nextval('source_tables_st_oid_seq'::regclass),
             CONSTRAINT source_tables_pkey PRIMARY KEY (st_oid)

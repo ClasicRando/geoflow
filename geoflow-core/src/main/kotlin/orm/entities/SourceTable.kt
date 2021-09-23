@@ -15,6 +15,6 @@ interface SourceTable: Entity<SourceTable> {
     val subTable: String?
     val recordCount: Int
     val fileId: String
-    val url: String
+    val url: String?
     val comments: String?
 }
