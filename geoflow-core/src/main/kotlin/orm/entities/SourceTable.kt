@@ -1,6 +1,7 @@
 package orm.entities
 
 import org.ktorm.entity.Entity
+import orm.enums.FileCollectType
 
 interface SourceTable: Entity<SourceTable> {
     val stOid: Long
@@ -17,4 +18,5 @@ interface SourceTable: Entity<SourceTable> {
     val fileId: String
     val url: String?
     val comments: String?
+    val collectType: FileCollectType
 }

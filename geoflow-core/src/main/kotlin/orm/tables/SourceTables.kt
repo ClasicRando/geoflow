@@ -2,6 +2,7 @@ package orm.tables
 
 import org.ktorm.schema.*
 import orm.entities.SourceTable
+import orm.enums.FileCollectType
 
 object SourceTables: Table<SourceTable>("source_tables") {
 
@@ -19,6 +20,7 @@ object SourceTables: Table<SourceTable>("source_tables") {
     val fileId = text("file_id").bindTo { it.fileId }
     val url = text("url").bindTo { it.url }
     val comments = text("comments").bindTo { it.comments }
+    val collectType = enum<FileCollectType>("collect_type").bindTo { it.collectType }
 
     val createSequence = """
         CREATE SEQUENCE public.source_tables_st_oid_seq
