@@ -42,28 +42,58 @@ class ScanSourceFolder(pipelineTaskId: Long): SystemTask(pipelineTaskId) {
         val missingFiles = sourceFiles.filter { sourceFile -> !files.any { sourceFile.fileName == it.name } }
         val extraFiles = files.filter { file -> !sourceFiles.any { file.name == it.fileName } }
         if (missingFiles.isNotEmpty()) {
-            when {
-                hasScanned -> throw Exception("Attempted to rescan after download but still missing files")
-                missingFiles.any { it.url.isNotEmpty() } -> {
-                    PipelineRunTasks.addTask(task, DownloadMissingFiles.taskId)?.let { downloadTaskId ->
-                        DatabaseConnection
-                            .database
-                            .pipelineRunTasks
-                            .filter { it.pipelineRunTaskId eq downloadTaskId }
-                            .first()
-                            .apply {
-                                taskMessage = missingFiles.joinToString(
-                                    separator = "','",
-                                    prefix = "['",
-                                    postfix = "']"
-                                ) {
-                                    it.fileName
+            if (hasScanned)
+                throw Exception("Attempted to rescan after download but still missing files")
+            val downloadTaskId = missingFiles
+                .filter { it.url != null }
+                .let { downloadFiles ->
+                    if (downloadFiles.isNotEmpty()) {
+                        PipelineRunTasks.addTask(task, DownloadMissingFiles.taskId)?.also { downloadTaskId ->
+                            DatabaseConnection
+                                .database
+                                .pipelineRunTasks
+                                .filter { it.pipelineRunTaskId eq downloadTaskId }
+                                .first()
+                                .apply {
+                                    taskMessage = downloadFiles.joinToString(
+                                        separator = "','",
+                                        prefix = "['",
+                                        postfix = "']"
+                                    ) {
+                                        it.fileName
+                                    }
                                 }
-                            }
+                        }
+                    } else {
+                        null
                     }
-                    PipelineRunTasks.addTask(task, taskId)
                 }
-                else -> throw Exception("Found missing files and non of them could be downloaded")
+            val collectFilesTaskId = missingFiles
+                .filter { it.url == null }
+                .let { collectFiles ->
+                    if (collectFiles.isNotEmpty()) {
+                        PipelineRunTasks.addTask(task, CollectMissingFiles.taskId)?.also { downloadTaskId ->
+                            DatabaseConnection
+                                .database
+                                .pipelineRunTasks
+                                .filter { it.pipelineRunTaskId eq downloadTaskId }
+                                .first()
+                                .apply {
+                                    taskMessage = collectFiles.joinToString(
+                                        separator = "','",
+                                        prefix = "['",
+                                        postfix = "']"
+                                    ) {
+                                        it.fileName
+                                    }
+                                }
+                        }
+                    } else {
+                        null
+                    }
+                }
+            if (downloadTaskId != null || collectFilesTaskId != null) {
+                PipelineRunTasks.addTask(task, taskId)
             }
         }
         if (extraFiles.isNotEmpty()) {
