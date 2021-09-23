@@ -12,7 +12,7 @@ object UpdateFiles: SqlProcedure(
         update source_tables t1
         set    loader_type = t2.loader_type
         from   file_types t2
-        where  trim(leading '.' from substring(t1.file_name from '\.[^.]+$')) = t2.file_extension
+        where  lower(trim(leading '.' from substring(t1.file_name from '\.[^.]+$'))) = t2.file_extension
         and    t1.run_id = $1;
 
         with max_file_id as (
