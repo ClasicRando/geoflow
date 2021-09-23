@@ -9,6 +9,7 @@ import org.ktorm.entity.any
 import org.ktorm.entity.filter
 import org.ktorm.entity.first
 import org.ktorm.entity.toList
+import orm.entities.runFilesLocation
 import orm.tables.PipelineRunTasks
 import orm.tables.PipelineRuns
 import java.io.File
@@ -30,8 +31,7 @@ class ScanSourceFolder(pipelineTaskId: Long): SystemTask(pipelineTaskId) {
             .sourceTables
             .filter { it.runId eq task.runId }
             .toList()
-        val path = "${pipelineRun.dataSource.filesLocation}/${formatLocalDateDefault(pipelineRun.recordDate)}/files"
-        val folder = File(path)
+        val folder = File(pipelineRun.runFilesLocation)
         if (!folder.exists())
             throw Exception("Files location specified by data source does not exist or the system does not have access")
         if (!folder.isDirectory)
