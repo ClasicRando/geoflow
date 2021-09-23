@@ -10,6 +10,7 @@ import org.ktorm.entity.filter
 import org.ktorm.entity.first
 import org.ktorm.entity.toList
 import orm.entities.runFilesLocation
+import orm.enums.FileCollectType
 import orm.tables.PipelineRunTasks
 import orm.tables.PipelineRuns
 import java.io.File
@@ -41,11 +42,12 @@ class ScanSourceFolder(pipelineTaskId: Long): SystemTask(pipelineTaskId) {
             .toList()
         val missingFiles = sourceFiles.filter { sourceFile -> !files.any { sourceFile.fileName == it.name } }
         val extraFiles = files.filter { file -> !sourceFiles.any { file.name == it.fileName } }
+        val downloadTypes = listOf(FileCollectType.REST, FileCollectType.Download)
         if (missingFiles.isNotEmpty()) {
             if (hasScanned)
                 throw Exception("Attempted to rescan after download but still missing files")
             val downloadTaskId = missingFiles
-                .filter { it.url != null }
+                .filter { it.collectType in downloadTypes }
                 .let { downloadFiles ->
                     if (downloadFiles.isNotEmpty()) {
                         PipelineRunTasks.addTask(task, DownloadMissingFiles.taskId)?.also { downloadTaskId ->
@@ -69,7 +71,7 @@ class ScanSourceFolder(pipelineTaskId: Long): SystemTask(pipelineTaskId) {
                     }
                 }
             val collectFilesTaskId = missingFiles
-                .filter { it.url == null }
+                .filter { it.collectType !in downloadTypes }
                 .let { collectFiles ->
                     if (collectFiles.isNotEmpty()) {
                         PipelineRunTasks.addTask(task, CollectMissingFiles.taskId)?.also { downloadTaskId ->
