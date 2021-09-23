@@ -29,6 +29,16 @@ object UpdateFiles: SqlProcedure(
         set    file_id = 'F'||t2.new_file_id
         from   null_file_ids t2
         where  t1.st_oid = t2.st_oid;
+        
+        update source_tables
+        set    qualified = false
+        where  run_id = $1
+        and    loader_type != 'Flat';
+
+        update source_tables
+        set    sub_table = null
+        where  run_id = $1
+        and    loader_type not in ('MDB', 'Excel');
         ${'$'}BODY${'$'};
     """.trimIndent()
 }
