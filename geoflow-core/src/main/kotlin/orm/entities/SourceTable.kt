@@ -2,6 +2,7 @@ package orm.entities
 
 import org.ktorm.entity.Entity
 import orm.enums.FileCollectType
+import orm.enums.LoaderType
 
 interface SourceTable: Entity<SourceTable> {
     val stOid: Long
@@ -10,7 +11,7 @@ interface SourceTable: Entity<SourceTable> {
     val fileName: String
     val analyze: Boolean
     val load: Boolean
-    val fileType: String
+    val loaderType: LoaderType
     val qualified: Boolean
     val encoding: String
     val subTable: String?

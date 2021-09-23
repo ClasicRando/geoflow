@@ -3,6 +3,7 @@ package orm.tables
 import org.ktorm.schema.*
 import orm.entities.SourceTable
 import orm.enums.FileCollectType
+import orm.enums.LoaderType
 
 object SourceTables: Table<SourceTable>("source_tables") {
 
@@ -12,7 +13,7 @@ object SourceTables: Table<SourceTable>("source_tables") {
     val fileName = text("file_name").bindTo { it.fileName }
     val analyze = boolean("analyze").bindTo { it.analyze }
     val load = boolean("load").bindTo { it.load }
-    val fileType = text("file_type").bindTo { it.fileType }
+    val loaderType = enum<LoaderType>("loader_type").bindTo { it.loaderType }
     val qualified = boolean("qualified").bindTo { it.qualified }
     val encoding = text("encoding").bindTo { it.encoding }
     val subTable = text("sub_table").bindTo { it.subTable }
@@ -38,7 +39,6 @@ object SourceTables: Table<SourceTable>("source_tables") {
             file_name text COLLATE pg_catalog."default" NOT NULL,
             "analyze" boolean NOT NULL,
             load boolean NOT NULL,
-            file_type text COLLATE pg_catalog."default" NOT NULL,
             qualified boolean NOT NULL,
             encoding text COLLATE pg_catalog."default" NOT NULL,
             sub_table text COLLATE pg_catalog."default",
@@ -47,6 +47,8 @@ object SourceTables: Table<SourceTable>("source_tables") {
             url text COLLATE pg_catalog."default",
             comments text COLLATE pg_catalog."default",
             st_oid bigint NOT NULL DEFAULT nextval('source_tables_st_oid_seq'::regclass),
+            collect_type file_collect_type NOT NULL,
+            loader_type loader_type NOT NULL,
             CONSTRAINT source_tables_pkey PRIMARY KEY (st_oid)
         )
         WITH (
