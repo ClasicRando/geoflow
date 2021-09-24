@@ -1,20 +1,19 @@
 package tasks
 
 import database.DatabaseConnection
-import database.sourceTables
-import org.ktorm.dsl.eq
-import org.ktorm.dsl.inList
-import org.ktorm.dsl.isNotNull
-import org.ktorm.entity.filter
-import org.ktorm.entity.forEach
+import org.ktorm.dsl.*
+import orm.enums.FileCollectType
 import orm.tables.PipelineRuns
+import orm.tables.SourceTables
 import web.ArcGisScraper
 import web.FileDownloader
+import web.ZipDownloader
 
 class DownloadMissingFiles(pipelineRunTaskId: Long): SystemTask(pipelineRunTaskId) {
 
     companion object {
         const val taskId: Long = 4
+        val downloadCollectTypes = listOf(FileCollectType.Download, FileCollectType.REST)
     }
     override val taskId: Long = 4
 
@@ -25,26 +24,39 @@ class DownloadMissingFiles(pipelineRunTaskId: Long): SystemTask(pipelineRunTaskI
         val outputFolder = pipelineRun.dataSource.filesLocation
         val filenames = task.taskMessage!!
             .trim('[', ']')
-            .split(",")
+            .split("','")
             .map { it.trim('\'') }
         DatabaseConnection
             .database
-            .sourceTables
-            .filter { it.runId eq task.runId }
-            .filter { it.fileName.inList(filenames) }
-            .filter { it.url.isNotNull() }
-            .forEach { sourceTable ->
-                if (sourceTable.url.contains("/arcgis/rest/", ignoreCase = true)) {
-                    ArcGisScraper.fromUrl(
-                        url = sourceTable.url,
-                        outputPath = outputFolder
-                    ).scrape()
-                } else {
-                    FileDownloader(
-                        url = sourceTable.url,
-                        outputPath = outputFolder,
-                        filename = sourceTable.fileName
-                    ).request()
+            .from(SourceTables)
+            .selectDistinct(SourceTables.url)
+            .whereWithConditions {
+                it += SourceTables.runId eq task.runId
+                it += SourceTables.fileName.inList(filenames)
+                it += SourceTables.collectType.inList(downloadCollectTypes)
+                it += SourceTables.url.isNotNull()
+            }
+            .mapNotNull { row -> row[SourceTables.url] }
+            .forEach { url ->
+                when {
+                    url.contains("/arcgis/rest/", ignoreCase = true) -> {
+                        ArcGisScraper.fromUrl(
+                            url = url,
+                            outputPath = outputFolder
+                        ).scrape()
+                    }
+                    url.endsWith(".zip") -> {
+                        ZipDownloader(
+                            url = url,
+                            outputPath = outputFolder
+                        )
+                    }
+                    else -> {
+                        FileDownloader(
+                            url = url,
+                            outputPath = outputFolder
+                        )
+                    }
                 }
             }
     }
