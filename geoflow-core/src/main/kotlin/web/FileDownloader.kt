@@ -12,7 +12,9 @@ import java.io.File
 import kotlin.io.use
 import kotlin.jvm.Throws
 
-class FileDownloader(private val url: String, private val outputPath: String, private val filename: String) {
+class FileDownloader(private val url: String, private val outputPath: String, filename: String? = null) {
+
+    private val filename = filename ?: url.substringAfterLast('/')
 
     @Throws(IOException::class)
     @Suppress("BlockingMethodInNonBlockingContext")
