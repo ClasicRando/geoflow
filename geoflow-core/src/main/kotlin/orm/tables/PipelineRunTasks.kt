@@ -28,6 +28,7 @@ object PipelineRunTasks: Table<PipelineRunTask>("pipeline_run_tasks") {
 
     val tableDisplayFields = mapOf(
         "taskName" to mapOf("name" to "Task Name"),
+        "taskRunType" to mapOf("name" to "Run Type"),
         "taskStatus" to mapOf("name" to "Status"),
         "taskStart" to mapOf("name" to "Start"),
         "taskCompleted" to mapOf("name" to "Completed"),
@@ -117,6 +118,7 @@ object PipelineRunTasks: Table<PipelineRunTask>("pipeline_run_tasks") {
         val taskStart: String,
         val taskCompleted: String,
         val taskName: String,
+        val taskRunType: String,
     )
 
     @Deprecated("Use Ordered task list", ReplaceWith("getOrderedTasks"))
@@ -135,6 +137,7 @@ object PipelineRunTasks: Table<PipelineRunTask>("pipeline_run_tasks") {
                     formatInstantDateTime(it.taskStart),
                     formatInstantDateTime(it.taskCompleted),
                     it.task.name,
+                    it.task.taskRunType.name,
                 )
             }
     }
@@ -148,7 +151,8 @@ object PipelineRunTasks: Table<PipelineRunTask>("pipeline_run_tasks") {
                 TaskStatus.valueOf(row["task_status"] as String).name,
                 formatInstantDateTime((row["task_start"] as Timestamp?)?.toInstant()),
                 formatInstantDateTime((row["task_completed"] as Timestamp?)?.toInstant()),
-                row["task_name"] as String
+                row["task_name"] as String,
+                row["task_run_type"] as String,
             )
         }
     }
