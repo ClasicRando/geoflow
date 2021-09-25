@@ -45,7 +45,7 @@ object PipelineRunTasks: Table<PipelineRunTask>("pipeline_run_tasks") {
             task_message text COLLATE pg_catalog."default",
             task_status task_status NOT NULL DEFAULT 'Waiting'::task_status,
             parent_task_id bigint NOT NULL DEFAULT 0,
-            parent_task_order bigint NOT NULL,
+            parent_task_order integer NOT NULL,
             CONSTRAINT pipeline_run_tasks_pkey PRIMARY KEY (pr_task_id),
             CONSTRAINT task_per_run UNIQUE (run_id, task_id),
             CONSTRAINT run_id FOREIGN KEY (pr_task_id)
@@ -112,46 +112,39 @@ object PipelineRunTasks: Table<PipelineRunTask>("pipeline_run_tasks") {
 
     @Serializable
     data class Record(
+        val taskOrder: Long,
         val pipelineRunTaskId: Long,
         val runId: Long,
-        val taskStatus: String,
         val taskStart: String,
         val taskCompleted: String,
+        val taskId: Long,
+        val taskMessage: String,
+        val taskStatus: String,
+        val parentTaskId: Long,
+        val parentTaskOrder: Int,
         val taskName: String,
+        val taskDescription: String,
+        val taskClassName: String,
         val taskRunType: String,
     )
-
-    @Deprecated("Use Ordered task list", ReplaceWith("getOrderedTasks"))
-    fun getTasks(runId: Long): List<Record> {
-        return DatabaseConnection
-            .database
-            .from(this)
-            .joinReferencesAndSelect()
-            .where(this.runId eq runId)
-            .map(this::createEntity)
-            .map {
-                Record(
-                    it.pipelineRunTaskId,
-                    it.runId,
-                    it.taskStatus.name,
-                    formatInstantDateTime(it.taskStart),
-                    formatInstantDateTime(it.taskCompleted),
-                    it.task.name,
-                    it.task.taskRunType.name,
-                )
-            }
-    }
 
     @Throws(IllegalArgumentException::class)
     fun getOrderedTasks(runId: Long): List<Record> {
         return GetTasksOrdered.call(runId).map { row ->
             Record(
+                row["task_order"] as Long,
                 row["pr_task_id"] as Long,
                 row["run_id"] as Long,
-                TaskStatus.valueOf(row["task_status"] as String).name,
                 formatInstantDateTime((row["task_start"] as Timestamp?)?.toInstant()),
                 formatInstantDateTime((row["task_completed"] as Timestamp?)?.toInstant()),
+                row["task_id"] as Long,
+                (row["task_message"] as String?) ?: "",
+                row["task_status"] as String,
+                row["parent_task_id"] as Long,
+                row["parent_task_order"] as Int,
                 row["task_name"] as String,
+                row["task_description"] as String,
+                row["task_class_name"] as String,
                 row["task_run_type"] as String,
             )
         }

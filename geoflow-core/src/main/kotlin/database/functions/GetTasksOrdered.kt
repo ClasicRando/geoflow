@@ -3,7 +3,7 @@ package database.functions
 import orm.enums.TaskStatus
 
 object GetTasksOrdered: PlPgSqlTableFunction(
-    name = "gettasksordered",
+    name = "get_tasks_ordered",
     parameterTypes = listOf(Long::class)
 ) {
 
@@ -14,55 +14,60 @@ object GetTasksOrdered: PlPgSqlTableFunction(
     }
 
     val code = """
-        CREATE OR REPLACE FUNCTION public.gettasksordered(
-        	p_run_id bigint,
-        	OUT pr_task_id bigint,
-        	OUT run_id bigint,
-        	OUT task_start timestamp without time zone,
-        	OUT task_completed timestamp without time zone,
-        	OUT task_id bigint,
-        	OUT task_name text,
-        	OUT task_status task_status,
-        	OUT parent_task_id bigint,
-        	OUT parent_task_order bigint)
-        	RETURNS SETOF RECORD 
-        	LANGUAGE 'sql'
-        	COST 100
-        	VOLATILE PARALLEL UNSAFE
-        	ROWS 1000
-
-        AS ${'$'}BODY${'$'}
-        	select * from GetTaskChildren($1, 0);
-        ${'$'}BODY${'$'};
-    """.trimIndent()
-
-    val innerFunction = """
-        CREATE OR REPLACE FUNCTION public.gettaskchildren(
+        CREATE OR REPLACE FUNCTION public.get_tasks_ordered(
             p_run_id bigint,
-            p_parent_task_id bigint,
+            OUT task_order bigint,
             OUT pr_task_id bigint,
             OUT run_id bigint,
             OUT task_start timestamp without time zone,
             OUT task_completed timestamp without time zone,
             OUT task_id bigint,
-            OUT task_name text,
+            OUT task_message text,
             OUT task_status task_status,
             OUT parent_task_id bigint,
-            OUT parent_task_order bigint,
-            OUT task_run_type task_run_type,
-            OUT task_class_name text)
+            OUT parent_task_order integer,
+            OUT task_name text,
+            OUT task_description text,
+            OUT task_class_name text,
+            OUT task_run_type task_run_type)
             RETURNS SETOF record 
+            LANGUAGE 'sql'
+            COST 100
+            VOLATILE PARALLEL UNSAFE
+            ROWS 1000
+        
+        AS ${'$'}BODY${'$'}
+            with run_tasks as (
+                select pr_task_id, row_number() over () task_order
+                from   get_task_children($1,0)
+            )
+            select t1.task_order, t2.*, t3.name, t3.description, t3.task_class_name, t3.task_run_type
+            from   run_tasks t1
+            join   pipeline_run_tasks t2
+            on     t1.pr_task_id = t2.pr_task_id
+            join   tasks t3
+            on     t2.task_id = t3.task_id
+            order by 1;
+        ${'$'}BODY${'$'};
+    """.trimIndent()
+
+    val innerFunction = """
+        CREATE OR REPLACE FUNCTION public.get_task_children(
+            p_run_id bigint,
+            p_parent_task_id bigint,
+            OUT pr_task_id bigint)
+            RETURNS SETOF bigint 
             LANGUAGE 'plpgsql'
             COST 100
             VOLATILE PARALLEL UNSAFE
             ROWS 1000
-
+        
         AS ${'$'}BODY${'$'}
         declare
             r record;
             i record;
         begin
-            for r in (select distinct t1.*, t3.name, t3.task_run_type, t3.task_class_name, case when t2.task_id is not null then true else false end has_children
+            for r in (select distinct t1.pr_task_id, t1.parent_task_order, case when t2.task_id is not null then true else false end has_children
                       from   pipeline_run_tasks t1
                       left join pipeline_run_tasks t2
                       on     t1.run_id = t2.run_id
@@ -73,14 +78,12 @@ object GetTasksOrdered: PlPgSqlTableFunction(
                       and    t1.parent_task_id = $2
                       order by t1.parent_task_order)
             loop
-                select r.pr_task_id, r.run_id, r.task_start, r.task_completed, r.task_id, r.name, r.task_status, r.parent_task_id, r.parent_task_order, r.task_run_type, r.task_class_name
-                into   pr_task_id, run_id, task_start, task_completed, task_id, task_name, task_status, parent_task_id, parent_task_order, task_run_type, task_class_name;
+                pr_task_id := r.pr_task_id;
                 return next;
                 if r.has_children then
-                    for i in (select * from GetTaskChildren($1, r.pr_task_id))
+                    for i in (select * from get_task_children($1, r.pr_task_id))
                     loop
-                        select i.pr_task_id, i.run_id, i.task_start, i.task_completed, i.task_id, i.task_name, i.task_status, i.parent_task_id, i.parent_task_order, i.task_run_type, i.task_class_name
-                        into   pr_task_id, run_id, task_start, task_completed, task_id, task_name, task_status, parent_task_id, parent_task_order, task_run_type, task_class_name;
+                        pr_task_id := i.pr_task_id;
                         return next;
                     end loop;
                 end if;
