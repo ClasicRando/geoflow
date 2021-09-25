@@ -6,11 +6,12 @@ import orm.tables.WorkflowOperations
 
 class PipelineStatus(workflowCode: String): BasePage() {
     private val modalId = "selectReadyRun"
+    private val tableId = "runs"
     init {
         setContent {
             basicTable(
                 WorkflowOperations.workflowName(workflowCode),
-                "runs",
+                tableId,
                 "/api/pipeline-runs?code=$workflowCode",
                 PipelineRuns.tableDisplayFields
             )
@@ -42,7 +43,7 @@ class PipelineStatus(workflowCode: String): BasePage() {
                                 post(row);
                             }
                         }
-                        $('#runs').on('click-row.bs.table', (e, row, element, field) => { handleRowClick(row) });
+                        $('#$tableId').on('click-row.bs.table', (e, row, element, field) => { handleRowClick(row) });
                     """.trimIndent())
                 }
             }
