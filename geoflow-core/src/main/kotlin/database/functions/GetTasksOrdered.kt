@@ -1,9 +1,17 @@
 package database.functions
 
+import orm.enums.TaskStatus
+
 object GetTasksOrdered: PlPgSqlTableFunction(
     name = "gettasksordered",
     parameterTypes = listOf(Long::class)
 ) {
+
+    fun nextToRun(runId: Long): Map<String, Any?>? {
+        return call(runId).firstOrNull { task ->
+            (task["task_status"] as String) == TaskStatus.Waiting.name
+        }
+    }
 
     val code = """
         CREATE OR REPLACE FUNCTION public.gettasksordered(
@@ -30,18 +38,20 @@ object GetTasksOrdered: PlPgSqlTableFunction(
 
     val innerFunction = """
         CREATE OR REPLACE FUNCTION public.gettaskchildren(
-        	p_run_id bigint,
-        	p_parent_task_id bigint,
-        	OUT pr_task_id bigint,
-        	OUT run_id bigint,
-        	OUT task_start timestamp without time zone,
-        	OUT task_completed timestamp without time zone,
-        	OUT task_id bigint,
-        	OUT task_name text,
-        	OUT task_status task_status,
-        	OUT parent_task_id bigint,
-        	OUT parent_task_order bigint)
-            RETURNS SETOF RECORD 
+            p_run_id bigint,
+            p_parent_task_id bigint,
+            OUT pr_task_id bigint,
+            OUT run_id bigint,
+            OUT task_start timestamp without time zone,
+            OUT task_completed timestamp without time zone,
+            OUT task_id bigint,
+            OUT task_name text,
+            OUT task_status task_status,
+            OUT parent_task_id bigint,
+            OUT parent_task_order bigint,
+            OUT task_run_type task_run_type,
+            OUT task_class_name text)
+            RETURNS SETOF record 
             LANGUAGE 'plpgsql'
             COST 100
             VOLATILE PARALLEL UNSAFE
@@ -49,32 +59,32 @@ object GetTasksOrdered: PlPgSqlTableFunction(
 
         AS ${'$'}BODY${'$'}
         declare
-        	r record;
-        	i record;
+            r record;
+            i record;
         begin
-        	for r in (select distinct t1.*, t3.name, case when t2.task_id is not null then true else false end has_children
-        			  from   pipeline_run_tasks t1
-        			  left join pipeline_run_tasks t2
-        			  on     t1.run_id = t2.run_id
-        			  and    t1.pr_task_id = t2.parent_task_id
-        			  left join tasks t3
-        			  on     t1.task_id = t3.task_id
-        			  where  t1.run_id = $1
-        			  and    t1.parent_task_id = $2
-        			  order by t1.parent_task_order)
-        	loop
-        		select r.pr_task_id, r.run_id, r.task_start, r.task_completed, r.task_id, r.name, r.task_status, r.parent_task_id, r.parent_task_order
-        		into   pr_task_id, run_id, task_start, task_completed, task_id, task_name, task_status, parent_task_id, parent_task_order;
-        		return next;
-        		if r.has_children then
-        			for i in (select * from GetTaskChildren($1, r.pr_task_id))
-        			loop
-        				select i.pr_task_id, i.run_id, i.task_start, i.task_completed, i.task_id, i.task_name, i.task_status, i.parent_task_id, i.parent_task_order
-        				into   pr_task_id, run_id, task_start, task_completed, task_id, task_name, task_status, parent_task_id, parent_task_order;
-        				return next;
-        			end loop;
-        		end if;
-        	end loop;
+            for r in (select distinct t1.*, t3.name, t3.task_run_type, t3.task_class_name, case when t2.task_id is not null then true else false end has_children
+                      from   pipeline_run_tasks t1
+                      left join pipeline_run_tasks t2
+                      on     t1.run_id = t2.run_id
+                      and    t1.pr_task_id = t2.parent_task_id
+                      left join tasks t3
+                      on     t1.task_id = t3.task_id
+                      where  t1.run_id = $1
+                      and    t1.parent_task_id = $2
+                      order by t1.parent_task_order)
+            loop
+                select r.pr_task_id, r.run_id, r.task_start, r.task_completed, r.task_id, r.name, r.task_status, r.parent_task_id, r.parent_task_order, r.task_run_type, r.task_class_name
+                into   pr_task_id, run_id, task_start, task_completed, task_id, task_name, task_status, parent_task_id, parent_task_order, task_run_type, task_class_name;
+                return next;
+                if r.has_children then
+                    for i in (select * from GetTaskChildren($1, r.pr_task_id))
+                    loop
+                        select i.pr_task_id, i.run_id, i.task_start, i.task_completed, i.task_id, i.task_name, i.task_status, i.parent_task_id, i.parent_task_order, i.task_run_type, i.task_class_name
+                        into   pr_task_id, run_id, task_start, task_completed, task_id, task_name, task_status, parent_task_id, parent_task_order, task_run_type, task_class_name;
+                        return next;
+                    end loop;
+                end if;
+            end loop;
         end;
         ${'$'}BODY${'$'};
     """.trimIndent()
