@@ -41,7 +41,7 @@ object PipelineRunTasks: Table<PipelineRunTask>("pipeline_run_tasks") {
             task_completed timestamp without time zone,
             task_id bigint NOT NULL,
             task_message text COLLATE pg_catalog."default",
-            task_status task_status NOT NULL,
+            task_status task_status NOT NULL DEFAULT 'Waiting'::task_status,
             parent_task_id bigint NOT NULL DEFAULT 0,
             parent_task_order bigint NOT NULL,
             CONSTRAINT pipeline_run_tasks_pkey PRIMARY KEY (pr_task_id),
