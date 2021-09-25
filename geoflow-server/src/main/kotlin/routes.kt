@@ -2,10 +2,12 @@ import auth.UserSession
 import html.*
 import io.ktor.application.*
 import io.ktor.html.*
+import io.ktor.http.*
 import io.ktor.request.*
 import io.ktor.response.*
 import io.ktor.routing.*
 import io.ktor.sessions.*
+import io.ktor.util.*
 import jobs.SystemJob
 import orm.enums.TaskRunType
 import orm.enums.TaskStatus
@@ -56,7 +58,10 @@ fun Route.pipelineStatus() {
                 "/tasks?runId=$runId"
             }.getOrElse { t ->
                 call.application.environment.log.error("/pipeline-stats: pickup", t)
-                "/invalid-parameter?message=Could+not+pickup+run"
+                url {
+                    path("/invalid-parameter")
+                    parametersOf("message", "Error: Could not pickup run")
+                }
             }
         }
         call.respondRedirect(redirect)
@@ -76,11 +81,17 @@ fun Route.pipelineTasks() {
         ).mapNotNull { it }
         val user = call.sessions.get<UserSession>()!!
         when {
-            run == null -> call.respondHtml { invalidParameter("Run ID provided cannot be found") }
+            run == null -> call.respondRedirect {
+                path("invalid-parameter")
+                parametersOf("message", "Run ID provided cannot be found")
+            }
             user.hasRole("admin") || user.username in runUsernames -> {
                 call.respondHtml { pipelineTasks(runId) }
             }
-            else -> call.respondHtml { invalidParameter("You must be a part of this run to view it") }
+            else -> call.respondRedirect {
+                path("invalid-parameter")
+                parametersOf("message", "You must be a part of this run to view it")
+            }
         }
     }
 }
