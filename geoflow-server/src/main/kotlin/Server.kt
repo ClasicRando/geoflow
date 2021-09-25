@@ -128,5 +128,9 @@ fun Application.module() {
                 )
             }
         }
+        get("/logout") {
+            call.sessions.clear<UserSession>()
+            call.respondRedirect("/login")
+        }
     }
 }
