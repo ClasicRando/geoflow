@@ -39,7 +39,7 @@ object PipelineRuns: Table<PipelineRun>("pipeline_runs") {
         "collection_user" to mapOf(),
         "load_user" to mapOf(),
         "check_user" to mapOf(),
-        "qa_user" to mapOf(),
+        "qa_user" to mapOf("name" to "QA User"),
     )
 
     val createSequence = """
