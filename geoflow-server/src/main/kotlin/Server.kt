@@ -90,6 +90,7 @@ fun Application.module() {
             api()
             pipelineStatus()
             pipelineTasks()
+            invalidParameter()
         }
         authenticate("auth-form") {
             post("/login") {

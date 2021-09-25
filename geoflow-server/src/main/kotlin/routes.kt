@@ -42,8 +42,24 @@ fun Route.pipelineStatus() {
         }
     }
     post("/pipeline-status") {
-        val runId = call.receiveParameters()["run_id"] ?: ""
-        call.respondRedirect("/tasks?runId=$runId")
+        val params = call.receiveParameters()
+        val pickup = params["pickup"] ?: ""
+        val runId = params["run_id"] ?: ""
+        val redirect = if (pickup.isEmpty()) {
+            "/tasks?runId=$runId"
+        } else {
+            runCatching {
+                PipelineRuns.pickupRun(
+                    runId.toLong(),
+                    call.sessions.get<UserSession>()!!.userId
+                )
+                "/tasks?runId=$runId"
+            }.getOrElse { t ->
+                call.application.environment.log.error("/pipeline-stats: pickup", t)
+                "/invalid-parameter?message=Could+not+pickup+run"
+            }
+        }
+        call.respondRedirect(redirect)
     }
 }
 
@@ -65,6 +81,14 @@ fun Route.pipelineTasks() {
                 call.respondHtml { pipelineTasks(runId) }
             }
             else -> call.respondHtml { invalidParameter("You must be a part of this run to view it") }
+        }
+    }
+}
+
+fun Route.invalidParameter() {
+    get("/invalid-parameter") {
+        call.respondHtml {
+            invalidParameter(call.request.queryParameters["message"] ?: "")
         }
     }
 }
