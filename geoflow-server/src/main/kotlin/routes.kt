@@ -135,27 +135,25 @@ fun Route.api() {
     }
     post("/api/run-task") {
         val runId = call.request.queryParameters["runId"]?.toLong() ?: 0
-        val result = runCatching {
-            PipelineRunTasks.getNextTask(runId)
-        }
-        if (result.isFailure) {
-            call.application.environment.log.info("/api/run-task", result.exceptionOrNull()!!)
-            call.respond(mapOf("error" to result.exceptionOrNull()!!.message))
-        } else {
-            val pipelineRunTask = result.getOrNull()!!
-            if (pipelineRunTask.task.taskRunType == TaskRunType.User) {
-                getUserPipelineTask(pipelineRunTask.pipelineRunTaskId, pipelineRunTask.task)
-                    .runTask()
-                call.respond(mapOf("success" to "Completed ${pipelineRunTask.pipelineRunTaskId}"))
-            } else {
-                pipelineRunTask.taskStatus = TaskStatus.Scheduled
-                pipelineRunTask.flushChanges()
-                kjob.schedule(SystemJob) {
-                    props[it.pipelineRunTaskId] = pipelineRunTask.pipelineRunTaskId
-                    props[it.taskClassName] = pipelineRunTask.task.taskClassName
+        val response = runCatching {
+            PipelineRunTasks.getNextTask(runId)?.let { pipelineRunTask ->
+                if (pipelineRunTask.taskRunType == TaskRunType.User) {
+                    getUserPipelineTask(pipelineRunTask.pipelineRunTaskId, pipelineRunTask.taskClassName)
+                        .runTask()
+                    mapOf("success" to "Completed ${pipelineRunTask.pipelineRunTaskId}")
+                } else {
+                    PipelineRunTasks.setStatus(pipelineRunTask.pipelineRunTaskId, TaskStatus.Scheduled)
+                    kjob.schedule(SystemJob) {
+                        props[it.pipelineRunTaskId] = pipelineRunTask.pipelineRunTaskId
+                        props[it.taskClassName] = pipelineRunTask.taskClassName
+                    }
+                    mapOf("success" to "Scheduled ${pipelineRunTask.pipelineRunTaskId}")
                 }
-                call.respond(mapOf("success" to "Scheduled ${pipelineRunTask.pipelineRunTaskId}"))
-            }
+            } ?: mapOf("error" to "Could not get next task")
+        }.getOrElse { t ->
+            call.application.environment.log.info("/api/run-task", t)
+            mapOf("error" to t.message)
         }
+        call.respond(response)
     }
 }

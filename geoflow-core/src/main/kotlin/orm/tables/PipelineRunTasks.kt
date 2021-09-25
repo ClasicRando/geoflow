@@ -10,6 +10,7 @@ import org.ktorm.support.postgresql.LockingMode
 import org.ktorm.support.postgresql.insertReturning
 import org.ktorm.support.postgresql.locking
 import orm.entities.PipelineRunTask
+import orm.enums.TaskRunType
 import orm.enums.TaskStatus
 import java.sql.Timestamp
 
@@ -152,8 +153,15 @@ object PipelineRunTasks: Table<PipelineRunTask>("pipeline_run_tasks") {
         }
     }
 
+    data class NextTask(
+        val pipelineRunTaskId: Long,
+        val taskId: Long,
+        val taskRunType: TaskRunType,
+        val taskClassName: String,
+    )
+
     @Throws(IllegalArgumentException::class)
-    fun getNextTask(runId: Long): PipelineRunTask {
+    fun getNextTask(runId: Long): NextTask? {
         val running = DatabaseConnection
             .database
             .from(this)
@@ -168,13 +176,22 @@ object PipelineRunTasks: Table<PipelineRunTask>("pipeline_run_tasks") {
         if (running != null) {
             throw IllegalArgumentException("Task currently scheduled/running (id = $running)")
         }
-        return DatabaseConnection
+        return GetTasksOrdered.nextToRun(runId)?.let { task ->
+            NextTask(
+                task["pr_task_id"] as Long,
+                task["task_id"] as Long,
+                TaskRunType.valueOf(task["task_run_type"] as String),
+                task["task_class_name"] as String,
+            )
+        }
+    }
+
+    fun setStatus(pipelineRunTaskId: Long, status: TaskStatus) {
+        DatabaseConnection
             .database
-            .from(this)
-            .joinReferencesAndSelect()
-            .where((this.runId eq runId) and (taskStatus eq TaskStatus.Waiting))
-            .limit(1)
-            .map(this::createEntity)
-            .first()
+            .update(this) {
+                set(taskStatus, status)
+                where { this@PipelineRunTasks.pipelineRunTaskId eq pipelineRunTaskId }
+            }
     }
 }

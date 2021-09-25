@@ -15,10 +15,10 @@ fun formatInstantDateTime(timestamp: Instant?) = timestamp
     ?.atZone(ZoneId.systemDefault())
     ?.format(DateTimeFormatter.ISO_LOCAL_DATE_TIME) ?: ""
 
-fun getUserPipelineTask(pipelineRunTaskId: Long, task: Task): UserTask {
+fun getUserPipelineTask(pipelineRunTaskId: Long, taskClassName: String): UserTask {
     return ClassLoader
         .getSystemClassLoader()
-        .loadClass("tasks.${task.taskClassName}")
+        .loadClass("tasks.$taskClassName")
         .getConstructor(Long::class.java)
         .newInstance(pipelineRunTaskId) as UserTask
 }
