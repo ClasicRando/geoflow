@@ -20,4 +20,8 @@ interface DataSource: Entity<DataSource> {
     val searchRadius: Double
     val recordWarehouseType: RecordWarehouseType
     val reportingType: String
+    val collectionPipeline: Long
+    val loadPipeline: Long?
+    val checkPipeline: Long?
+    val qaPipeline: Long?
 }

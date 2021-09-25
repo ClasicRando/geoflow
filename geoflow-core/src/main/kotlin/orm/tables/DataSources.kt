@@ -20,6 +20,10 @@ object DataSources: Table<DataSource>("data_sources") {
     val searchRadius = double("search_radius").bindTo { it.searchRadius }
     val recordWarehouseType = int("record_warehouse_type").references(RecordWarehouseTypes) { it.recordWarehouseType }
     val reportingType = text("reporting_type").bindTo { it.reportingType }
+    val collectionPipeline = long("collection_pipeline").bindTo { it.collectionPipeline }
+    val loadPipeline = long("load_pipeline").bindTo { it.loadPipeline }
+    val checkPipeline = long("check_pipeline").bindTo { it.checkPipeline }
+    val qaPipeline = long("qa_pipeline").bindTo { it.qaPipeline }
 
     val createSequence = """
         CREATE SEQUENCE public.data_sources_ds_id_seq
@@ -48,10 +52,14 @@ object DataSources: Table<DataSource>("data_sources") {
             record_warehouse_type integer NOT NULL,
             reporting_type text COLLATE pg_catalog."default" NOT NULL,
             created timestamp without time zone NOT NULL DEFAULT timezone('utc'::text, now()),
+            collection_pipeline bigint NOT NULL,
+            load_pipeline bigint,
+            check_pipeline bigint,
+            qa_pipeline bigint,
             CONSTRAINT data_sources_pkey PRIMARY KEY (ds_id)
         )
         WITH (
             OIDS = FALSE
-        )
+        );
     """.trimIndent()
 }
