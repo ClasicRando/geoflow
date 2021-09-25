@@ -7,6 +7,8 @@ import kotlinx.serialization.Serializable
 import org.ktorm.dsl.*
 import org.ktorm.jackson.json
 import org.ktorm.schema.*
+import org.ktorm.support.postgresql.LockingMode
+import org.ktorm.support.postgresql.locking
 import orm.enums.OperationState
 import orm.entities.PipelineRun
 import orm.entities.PipelineRunTask
@@ -79,7 +81,48 @@ object PipelineRuns: Table<PipelineRun>("pipeline_runs") {
         )
         WITH (
             OIDS = FALSE
-        )
+        );
+    """.trimIndent()
+
+    // Trigger function for updating a pipeline run record
+    val updatePipelineRun = """
+        CREATE OR REPLACE FUNCTION public.update_pipeline_run()
+            RETURNS trigger
+            LANGUAGE 'plpgsql'
+            COST 100
+            VOLATILE NOT LEAKPROOF
+        AS ${'$'}BODY${'$'}
+        DECLARE
+            v_pipeline_id BIGINT;
+        BEGIN
+            SELECT CASE NEW.workflow_operation
+                    WHEN 'collection' THEN collection_pipeline
+                    WHEN 'load' THEN load_pipeline
+                    WHEN 'check' THEN check_pipeline
+                    WHEN 'qa' THEN qa_pipeline
+                   END
+            INTO   v_pipeline_id
+            FROM   data_sources
+            WHERE  ds_id = NEW.ds_id;
+            IF NEW.operation_state = 'Active' AND OLD.operation_state = 'Ready' THEN
+                INSERT INTO pipeline_run_tasks(run_id,task_id,parent_task_id,parent_task_order)
+                SELECT NEW.run_id, t2.task_id, t2.parent_task, t2.parent_task_order
+                FROM   pipelines t1
+                JOIN   pipeline_tasks t2
+                ON	   t1.pipeline_id = t2.pipeline_id
+                WHERE  t1.pipeline_id = v_pipeline_id;
+            END IF;
+            RETURN NEW;
+        END;
+        ${'$'}BODY${'$'};
+    """.trimIndent()
+
+    val updateTrigger = """
+        CREATE TRIGGER update_record
+            BEFORE UPDATE 
+            ON public.pipeline_runs
+            FOR EACH ROW
+            EXECUTE FUNCTION public.update_pipeline_run();
     """.trimIndent()
 
     @Serializable
@@ -160,5 +203,38 @@ object PipelineRuns: Table<PipelineRun>("pipeline_runs") {
             .where(this.runId eq runId)
             .map(this::createEntity)
             .firstOrNull()
+    }
+
+    @Throws(NoSuchElementException::class)
+    private fun reserveRecord(runId: Long): PipelineRun {
+        return DatabaseConnection
+            .database
+            .from(this)
+            .select()
+            .locking(LockingMode.FOR_SHARE)
+            .where(this.runId eq runId)
+            .map(this::createEntity)
+            .first()
+    }
+
+    @Throws(NoSuchElementException::class, IllegalArgumentException::class)
+    fun pickupRun(runId: Long, userId: Long) {
+        DatabaseConnection.database.run {
+            useTransaction {
+                val run = reserveRecord(runId)
+                val updateColumn = when(run.workflowOperation) {
+                    "collection" -> collectionUser
+                    "load" -> loadUser
+                    "check" -> checkUser
+                    "qa" -> qaUser
+                    else -> throw IllegalArgumentException("Run's workflow operation is not valid")
+                }
+                update(PipelineRuns) {
+                    set(operationState, OperationState.Active)
+                    set(updateColumn, userId)
+                    where { PipelineRuns.runId eq runId }
+                }
+            }
+        }
     }
 }
