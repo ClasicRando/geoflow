@@ -2,6 +2,8 @@ package html
 
 import kotlinx.html.*
 
+const val messageBoxId = "msgBox"
+
 fun FlowContent.basicModal(modalId: String, headerText: String, bodyMessage: String) {
     div(classes = "modal fade") {
         id = modalId
@@ -67,6 +69,49 @@ fun FlowContent.dataDisplayModal(modalId: String, headerText: String) {
                     }
                 }
             }
+        }
+    }
+}
+
+fun FlowContent.messageBoxModal() {
+    div(classes = "modal fade") {
+        id = messageBoxId
+        attributes["data-backdrop"] = "static"
+        attributes["data-keyboard"] = "false"
+        attributes["tabindex"] = "-1"
+        attributes["aria-labelledby"] = "msgBoxHeader"
+        attributes["aria-hidden"] = "true"
+        div(classes = "modal-dialog modal-dialog-centered modal-dialog-scrollable") {
+            div(classes = "modal-content") {
+                div(classes = "modal-header") {
+                    h5(classes = "modal-title") {
+                        id = "msgBoxHeader"
+                    }
+                }
+                div(classes = "modal-body") {
+                    p {
+                        id = "msgBoxBody"
+                    }
+                }
+                div(classes = "modal-footer") {
+                    button(classes = "btn btn-secondary") {
+                        type = ButtonType.button
+                        attributes["data-dismiss"] = "modal"
+                        +"Close"
+                    }
+                }
+            }
+        }
+    }
+    script {
+        unsafe {
+            raw("""
+                function showMessageBox(title, message) {
+                    ${'$'}('#msgBoxHeader').text(title);
+                    ${'$'}('#msgBoxBody').text(message);
+                    $('#$messageBoxId').modal('toggle');
+                }
+            """.trimIndent())
         }
     }
 }
