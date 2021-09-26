@@ -48,7 +48,7 @@ fun FlowContent.dataDisplayModal(modalId: String, headerText: String) {
         attributes["tabindex"] = "-1"
         attributes["aria-labelledby"] = "staticBackdropLabel"
         attributes["aria-hidden"] = "true"
-        div(classes = "modal-dialog modal-dialog-centered") {
+        div(classes = "modal-dialog modal-dialog-centered modal-dialog-scrollable") {
             div(classes = "modal-content") {
                 div(classes = "modal-header") {
                     h5(classes = "modal-title") {
@@ -64,11 +64,6 @@ fun FlowContent.dataDisplayModal(modalId: String, headerText: String) {
                         type = ButtonType.button
                         attributes["data-dismiss"] = "modal"
                         +"Close"
-                    }
-                    button(classes = "btn btn-secondary") {
-                        type = ButtonType.button
-                        onClick = "pickup()"
-                        +"OK"
                     }
                 }
             }

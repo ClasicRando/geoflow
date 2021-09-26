@@ -32,6 +32,9 @@ class PipelineTasks(runId: Long): BasePage() {
                                 function(txt) {
                                     return txt.charAt(0).toUpperCase() + txt.substr(1).toLowerCase();
                                 }
+                            ).replace(
+                                'Id',
+                                'ID'
                             );
                         }
                         function handleRowClick(row) {
@@ -40,11 +43,13 @@ class PipelineTasks(runId: Long): BasePage() {
                             for (const [key, value] of Object.entries(row)) {
                                 const div = document.createElement('div');
                                 const label = document.createElement('label');
-                                label['for'] = key.replace(' ', '_');
-                                label.innerHTML = titleCase(key);
+                                label['for'] = key.replace(/\s+/g, '_');
+                                label.innerHTML = titleCase(key.replace(/_+/g, ' '));
                                 div.appendChild(label);
                                 const textValue = document.createElement('p');
-                                textValue.innerHTML = value;
+                                textValue.id = key.replace(/\s+/g, '_');
+                                textValue.innerHTML = value === '' ? ' ' : value;
+                                textValue.classList.add('border', 'rounded');
                                 div.appendChild(textValue);
                                 modalBody.append(div);
                             }
