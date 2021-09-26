@@ -16,7 +16,7 @@ object WorkflowOperations: Table<WorkflowOperation>("workflow_operations") {
     val name = text("name").bindTo { it.name }
     val workflowOrder = int("workflow_order").bindTo { it.workflowOrder }
 
-    val tableDisplayFields = mapOf("name" to mapOf<String, String>())
+    val tableDisplayFields = mapOf("name" to mapOf("name" to "Operation"))
 
     val createStatement = """
         CREATE TABLE IF NOT EXISTS public.workflow_operations

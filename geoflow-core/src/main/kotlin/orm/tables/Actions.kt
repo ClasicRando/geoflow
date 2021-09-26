@@ -18,7 +18,7 @@ object Actions: Table<Action>("actions") {
     val href = text("href").bindTo { it.href }
 
     val tableDisplayFields = mapOf(
-        "name" to mapOf<String, String>(),
+        "name" to mapOf("name" to "Action"),
         "description" to mapOf(),
     )
 
