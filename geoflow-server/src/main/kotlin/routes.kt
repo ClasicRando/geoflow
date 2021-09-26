@@ -70,8 +70,8 @@ fun Route.pipelineStatus() {
 
 fun Route.pipelineTasks() {
     get("/tasks") {
-        val runIdStr = call.request.queryParameters["runId"] ?: "0"
-        val runId = runIdStr.toLong()
+        val user = call.sessions.get<UserSession>()!!
+        val runId = call.request.queryParameters["runId"]?.toLong() ?: 0
         val run = PipelineRuns.getRun(runId)
         val runUsernames = listOf(
             run?.collectionUser?.username,
@@ -79,7 +79,6 @@ fun Route.pipelineTasks() {
             run?.checkUser?.username,
             run?.qaUser?.username,
         ).mapNotNull { it }
-        val user = call.sessions.get<UserSession>()!!
         when {
             run == null -> call.respondRedirect {
                 path("invalid-parameter")
@@ -145,22 +144,23 @@ fun Route.api() {
         call.respond(tasks)
     }
     post("/api/run-task") {
+        val user = call.sessions.get<UserSession>()!!
         val runId = call.request.queryParameters["runId"]?.toLong() ?: 0
+        val pipelineRunTaskId = call.request.queryParameters["prTaskId"]?.toLong() ?: 0
         val response = runCatching {
-            PipelineRunTasks.getNextTask(runId)?.let { pipelineRunTask ->
-                if (pipelineRunTask.taskRunType == TaskRunType.User) {
-                    getUserPipelineTask(pipelineRunTask.pipelineRunTaskId, pipelineRunTask.taskClassName)
-                        .runTask()
-                    mapOf("success" to "Completed ${pipelineRunTask.pipelineRunTaskId}")
-                } else {
-                    PipelineRunTasks.setStatus(pipelineRunTask.pipelineRunTaskId, TaskStatus.Scheduled)
-                    kjob.schedule(SystemJob) {
-                        props[it.pipelineRunTaskId] = pipelineRunTask.pipelineRunTaskId
-                        props[it.taskClassName] = pipelineRunTask.taskClassName
-                    }
-                    mapOf("success" to "Scheduled ${pipelineRunTask.pipelineRunTaskId}")
+            val pipelineRunTask = PipelineRunTasks.getRecordForRun(user.username, runId, pipelineRunTaskId)
+            if (pipelineRunTask.task.taskRunType == TaskRunType.User) {
+                getUserPipelineTask(pipelineRunTask.pipelineRunTaskId, pipelineRunTask.task.taskClassName)
+                    .runTask()
+                mapOf("success" to "Completed ${pipelineRunTask.pipelineRunTaskId}")
+            } else {
+                PipelineRunTasks.setStatus(pipelineRunTask.pipelineRunTaskId, TaskStatus.Scheduled)
+                kjob.schedule(SystemJob) {
+                    props[it.pipelineRunTaskId] = pipelineRunTask.pipelineRunTaskId
+                    props[it.taskClassName] = pipelineRunTask.task.taskClassName
                 }
-            } ?: mapOf("error" to "Could not get next task")
+                mapOf("success" to "Scheduled ${pipelineRunTask.pipelineRunTaskId}")
+            }
         }.getOrElse { t ->
             call.application.environment.log.info("/api/run-task", t)
             mapOf("error" to t.message)
