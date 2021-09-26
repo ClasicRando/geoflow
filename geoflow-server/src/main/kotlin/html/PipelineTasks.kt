@@ -49,7 +49,7 @@ class PipelineTasks(runId: Long): BasePage() {
                                 const textValue = document.createElement('p');
                                 textValue.id = key.replace(/\s+/g, '_');
                                 textValue.innerHTML = value === '' ? ' ' : value;
-                                textValue.classList.add('border', 'rounded');
+                                textValue.classList.add('border', 'rounded', 'p-3');
                                 div.appendChild(textValue);
                                 modalBody.append(div);
                             }
