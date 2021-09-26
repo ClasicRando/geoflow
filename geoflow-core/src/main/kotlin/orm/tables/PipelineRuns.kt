@@ -125,6 +125,22 @@ object PipelineRuns: Table<PipelineRun>("pipeline_runs") {
             EXECUTE FUNCTION public.update_pipeline_run();
     """.trimIndent()
 
+    fun checkUserRun(runId: Long, username: String): Boolean {
+        val user = InternalUsers.getUser(username)
+        if ("admin" in user.roles) {
+            return true
+        }
+        val runUserIds = getRun(runId)?.let { run ->
+            listOf(
+                run.collectionUser?.userOid,
+                run.loadUser?.userOid,
+                run.checkUser?.userOid,
+                run.qaUser?.userOid,
+            ).mapNotNull { it }
+        } ?: listOf()
+        return user.userOid in runUserIds
+    }
+
     @Serializable
     data class Record(
         @SerialName("run_id")
