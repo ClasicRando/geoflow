@@ -30,6 +30,20 @@ class PipelineTasks(runId: Long): BasePage() {
             script {
                 unsafe {
                     raw("""
+                        function statusFormatter(value, row) {
+                            switch(value) {
+                                case 'Waiting':
+                                    return '';
+                                case 'Scheduled':
+                                    return '<i class="fa fa-arrow-circle-right"></i>';
+                                case 'Running':
+                                    return '<i class="fa fa-cog fa-spin"></i>';
+                                case 'Complete':
+                                    return '<i class="fa fa-check"></i>';
+                                case 'Failed':
+                                    return '<t class="fa fa-exclamation"></i>';
+                            }
+                        }
                         function titleCase(title) {
                             return title.replace(
                                 /\w\S*/g,

@@ -28,9 +28,9 @@ object PipelineRunTasks: Table<PipelineRunTask>("pipeline_run_tasks") {
     val taskStatus = enum<TaskStatus>("task_status").bindTo { it.taskStatus }
 
     val tableDisplayFields = mapOf(
+        "task_status" to mapOf("name" to "Status", "formatter" to "statusFormatter"),
         "task_name" to mapOf("name" to "Task Name"),
         "task_run_type" to mapOf("name" to "Run Type"),
-        "task_status" to mapOf("name" to "Status"),
         "task_start" to mapOf("name" to "Start"),
         "task_completed" to mapOf("name" to "Completed"),
     )
