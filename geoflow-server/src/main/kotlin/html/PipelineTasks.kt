@@ -20,6 +20,7 @@ class PipelineTasks(runId: Long): BasePage() {
                 taskDataModalId,
                 "Task Details",
             )
+            messageBoxModal()
         }
         setScript {
             script {

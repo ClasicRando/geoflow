@@ -18,17 +18,17 @@ val availableButtons = mapOf(
                 let ${'$'}table = $('#tasks');
                 let options = ${'$'}table.bootstrapTable('getOptions');
                 if (options.autoRefreshStatus === false) {
-                    alert('Please turn on auto refresh to run tasks');
+                    showMessageBox('Error', 'Please turn on auto refresh to run tasks');
                     return;
                 }
                 let data = ${'$'}table.bootstrapTable('getData');
                 if (data.find(row => row.task_status === 'Running' || row.task_status === 'Scheduled') != undefined) {
-                    alert('Task already running');
+                    showMessageBox('Error', 'Task already running');
                     return;
                 }
                 let row = data.find(row => row.task_status === 'Waiting');
                 if (row == undefined) {
-                    alert('No task to run');
+                    showMessageBox('Error', 'No task to run');
                     return;
                 }
                 const params = new URLSearchParams(window.location.href.replace(/^[^?]+/g, ''));
