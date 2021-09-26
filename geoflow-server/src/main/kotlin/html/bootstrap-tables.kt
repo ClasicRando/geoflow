@@ -14,21 +14,27 @@ val availableButtons = mapOf(
         btnRun: {
             text: 'Run Next Task',
             icon: 'fa-play',
-            event: () => {
+            event: async () => {
                 let ${'$'}table = $('#tasks');
-                const params = new URLSearchParams(window.location.href.replace(/^[^?]+/g, ''));
                 let data = ${'$'}table.bootstrapTable('getData');
                 if (data.find(row => row.task_status === 'Running' || row.task_status === 'Scheduled') != undefined) {
                     alert('Task already running');
                     return;
                 }
                 let row = data.find(row => row.task_status === 'Waiting');
-                if (row != undefined) {
-                   postValue(`/api/run-task?runId=${'$'}{params.get('runId')}&prTaskId=${'$'}{row.pipeline_run_task_id}`);
-                   ${'$'}table.bootstrapTable('refresh');
-                } else {
-                    alert('No Task to run');
+                if (row == undefined) {
+                    alert('No task to run');
+                    return;
                 }
+                let remoteStatus = await fetch(`/api/task-status?prTaskId=${'$'}{row.pipeline_run_task_id}`);
+                if (remoteStatus.status !== 'Waiting') {
+                    alert('Task status has changed. Refreshing list');
+                    ${'$'}table.bootstrapTable('refresh');
+                    return;
+                }
+                const params = new URLSearchParams(window.location.href.replace(/^[^?]+/g, ''));
+                postValue(`/api/run-task?runId=${'$'}{params.get('runId')}&prTaskId=${'$'}{row.pipeline_run_task_id}`);
+                ${'$'}table.bootstrapTable('refresh');
             },
             attributes: {
                 title: 'Run the next available task if there is no other tasks running'

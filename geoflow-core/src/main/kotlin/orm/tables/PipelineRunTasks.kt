@@ -218,6 +218,17 @@ object PipelineRunTasks: Table<PipelineRunTask>("pipeline_run_tasks") {
         }
     }
 
+    fun getStatus(pipelineRunTaskId: Long): String {
+        return DatabaseConnection
+            .database
+            .from(this)
+            .select(taskStatus)
+            .where { this.pipelineRunTaskId eq pipelineRunTaskId }
+            .map { row -> row[taskStatus] }
+            .firstOrNull()
+            ?.name ?: ""
+    }
+
     fun setStatus(pipelineRunTaskId: Long, status: TaskStatus) {
         DatabaseConnection
             .database

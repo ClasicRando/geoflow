@@ -167,4 +167,9 @@ fun Route.api() {
         }
         call.respond(response)
     }
+    get("/api/task-status") {
+        val pipelineRunTaskId = call.request.queryParameters["prTaskId"]?.toLong() ?: 0
+        val status = PipelineRunTasks.getStatus(pipelineRunTaskId)
+        call.respond(mapOf("status" to status))
+    }
 }
