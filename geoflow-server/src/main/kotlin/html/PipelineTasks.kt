@@ -38,8 +38,8 @@ class PipelineTasks(runId: Long): BasePage() {
                             );
                         }
                         function handleRowClick(row) {
-                            let modalBody = $('#modalBody');
-                            modalBody.empty();
+                            let ${'$'}modalBody = $('#modalBody');
+                            ${'$'}modalBody.empty();
                             for (const [key, value] of Object.entries(row)) {
                                 const div = document.createElement('div');
                                 const label = document.createElement('label');
@@ -51,7 +51,7 @@ class PipelineTasks(runId: Long): BasePage() {
                                 textValue.innerHTML = value === '' ? ' ' : value;
                                 textValue.classList.add('border', 'rounded', 'p-3');
                                 div.appendChild(textValue);
-                                modalBody.append(div);
+                                ${'$'}modalBody.append(div);
                             }
                             $('#$taskDataModalId').modal('toggle');
                         }
