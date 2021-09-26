@@ -55,7 +55,8 @@ open class BasePage: Template<HTML> {
         body {
             div("container-fluid") {
                 nav(classes = "navbar navbar-expand-lg navbar-dark bg-dark") {
-                    h3(classes = "navbar-text mx-2") {
+                    a(classes = "navbar-brand") {
+                        href = "#"
                         +"GeoFlow"
                     }
                     ul(classes = "navbar-nav") {
