@@ -15,8 +15,20 @@ val availableButtons = mapOf(
             text: 'Run Next Task',
             icon: 'fa-play',
             event: () => {
+                let ${'$'}table = $('#tasks');
                 const params = new URLSearchParams(window.location.href.replace(/^[^?]+/g, ''));
-                postValue(`/api/run-task?runId=${'$'}{params.get('runId')}`);
+                let data = ${'$'}table.bootstrapTable('getData');
+                if (data.find(row => row.task_status === 'Running' || row.task_status === 'Scheduled') != undefined) {
+                    alert('Task already running');
+                    return;
+                }
+                let row = data.find(row => row.task_status === 'Waiting');
+                if (row != undefined) {
+                   postValue(`/api/run-task?runId=${'$'}{params.get('runId')}&prTaskId=${'$'}{row.pipeline_run_task_id}`);
+                   ${'$'}table.bootstrapTable('refresh');
+                } else {
+                    alert('No Task to run');
+                }
             },
             attributes: {
                 title: 'Run the next available task if there is no other tasks running'
