@@ -10,7 +10,6 @@ class PipelineTasks(runId: Long): BasePage() {
     init {
         setContent {
             autoRefreshTable(
-                "Tasks",
                 taskTableId,
                 "/api/pipeline-run-tasks?taskId=$runId",
                 PipelineRunTasks.tableDisplayFields,

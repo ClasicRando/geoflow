@@ -2,7 +2,6 @@ package html
 
 import kotlinx.html.*
 import orm.tables.PipelineRuns
-import orm.tables.WorkflowOperations
 
 class PipelineStatus(workflowCode: String): BasePage() {
     private val modalId = "selectReadyRun"
@@ -10,7 +9,6 @@ class PipelineStatus(workflowCode: String): BasePage() {
     init {
         setContent {
             basicTable(
-                WorkflowOperations.workflowName(workflowCode),
                 tableId,
                 "/api/pipeline-runs?code=$workflowCode",
                 PipelineRuns.tableDisplayFields

@@ -43,15 +43,11 @@ val availableButtons = mapOf(
 )
 
 fun FlowContent.basicTable(
-    tableName: String,
     tableId: String,
     dataUrl: String,
     fields: Map<String, Map<String, String>>,
     buttons: List<String> = listOf(),
 ) {
-    h3 {
-        +tableName
-    }
     table {
         id = tableId
         attributes["data-toggle"] = "table"
@@ -97,15 +93,11 @@ fun FlowContent.basicTable(
 }
 
 fun FlowContent.autoRefreshTable(
-    tableName: String,
     tableId: String,
     dataUrl: String,
     fields: Map<String, Map<String, String>>,
     buttons: List<String> = listOf(),
 ) {
-    h3 {
-        +tableName
-    }
     table {
         id = tableId
         attributes["data-toggle"] = "table"

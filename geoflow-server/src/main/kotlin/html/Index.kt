@@ -14,7 +14,6 @@ class Index: BasePage() {
             div(classes = "row") {
                 div(classes = "col") {
                     basicTable(
-                        "Operations",
                         operationsTableId,
                         "/api/operations",
                         WorkflowOperations.tableDisplayFields
@@ -22,7 +21,6 @@ class Index: BasePage() {
                 }
                 div(classes = "col") {
                     basicTable(
-                        "Actions",
                         actionsTableId,
                         "/api/actions",
                         Actions.tableDisplayFields
