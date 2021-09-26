@@ -3,6 +3,7 @@ package orm.tables
 import database.DatabaseConnection
 import database.functions.GetTasksOrdered
 import formatInstantDateTime
+import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 import org.ktorm.dsl.*
 import org.ktorm.schema.*
@@ -27,11 +28,11 @@ object PipelineRunTasks: Table<PipelineRunTask>("pipeline_run_tasks") {
     val taskStatus = enum<TaskStatus>("task_status").bindTo { it.taskStatus }
 
     val tableDisplayFields = mapOf(
-        "taskName" to mapOf("name" to "Task Name"),
-        "taskRunType" to mapOf("name" to "Run Type"),
-        "taskStatus" to mapOf("name" to "Status"),
-        "taskStart" to mapOf("name" to "Start"),
-        "taskCompleted" to mapOf("name" to "Completed"),
+        "task_name" to mapOf("name" to "Task Name"),
+        "task_run_type" to mapOf("name" to "Run Type"),
+        "task_status" to mapOf("name" to "Status"),
+        "task_start" to mapOf("name" to "Start"),
+        "task_completed" to mapOf("name" to "Completed"),
     )
 
     val createStatement = """
@@ -112,19 +113,33 @@ object PipelineRunTasks: Table<PipelineRunTask>("pipeline_run_tasks") {
 
     @Serializable
     data class Record(
+        @SerialName("task_order")
         val taskOrder: Long,
+        @SerialName("pipeline_run_task_id")
         val pipelineRunTaskId: Long,
+        @SerialName("run_id")
         val runId: Long,
+        @SerialName("task_start")
         val taskStart: String,
+        @SerialName("task_completed")
         val taskCompleted: String,
+        @SerialName("task_id")
         val taskId: Long,
+        @SerialName("task_message")
         val taskMessage: String,
+        @SerialName("task_status")
         val taskStatus: String,
+        @SerialName("parent_task_id")
         val parentTaskId: Long,
+        @SerialName("parent_task_order")
         val parentTaskOrder: Int,
+        @SerialName("task_name")
         val taskName: String,
+        @SerialName("task_description")
         val taskDescription: String,
+        @SerialName("task_class_name")
         val taskClassName: String,
+        @SerialName("task_run_type")
         val taskRunType: String,
     )
 
