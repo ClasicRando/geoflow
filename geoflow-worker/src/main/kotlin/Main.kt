@@ -10,7 +10,7 @@ fun main() {
     val kjob = kjob(Mongo) {
         nonBlockingMaxJobs = 10
         blockingMaxJobs = 1
-        maxRetries = 3
+        maxRetries = 0
         defaultJobExecutor = JobExecutionType.NON_BLOCKING
 
         exceptionHandler = { t -> logger.error("Unhandled exception", t)}
