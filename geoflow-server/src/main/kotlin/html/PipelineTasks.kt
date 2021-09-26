@@ -9,7 +9,7 @@ class PipelineTasks(runId: Long): BasePage() {
     private val taskTableId = "tasks"
     init {
         setContent {
-            basicTable(
+            autoRefreshTable(
                 "Tasks",
                 taskTableId,
                 "/api/pipeline-run-tasks?taskId=$runId",
@@ -22,6 +22,9 @@ class PipelineTasks(runId: Long): BasePage() {
             )
         }
         setScript {
+            script {
+                src = "https://unpkg.com/bootstrap-table@1.18.3/dist/extensions/auto-refresh/bootstrap-table-auto-refresh.js"
+            }
             postValue()
             script {
                 unsafe {
