@@ -90,6 +90,26 @@ object PipelineRunTasks: Table<PipelineRunTask>("pipeline_run_tasks") {
             .first()
     }
 
+    @Throws(IllegalArgumentException::class)
+    fun getRecordForRun(username: String, runId: Long, pipelineRunTaskId: Long): PipelineRunTask {
+        if (!PipelineRuns.checkUserRun(runId, username)) {
+            throw IllegalArgumentException("User provided cannot run tasks for this pipeline run")
+        }
+        val record = getRecord(pipelineRunTaskId)
+        return when {
+            record.runId != runId ->
+                throw IllegalArgumentException("Specified run task is not part of the run referenced")
+            record.taskStatus != TaskStatus.Waiting ->
+                throw IllegalArgumentException("Specified run task must be waiting to be run")
+            else -> {
+                val nextTask = getNextTask(runId) ?: throw IllegalArgumentException("Cannot find next task")
+                if (nextTask.pipelineRunTaskId != record.pipelineRunTaskId)
+                    throw IllegalArgumentException("Selected task to run is not next")
+                record
+            }
+        }
+    }
+
     fun addTask(pipelineRunTask: PipelineRunTask, taskId: Long): Long? {
         val nextOrder = DatabaseConnection
             .database
