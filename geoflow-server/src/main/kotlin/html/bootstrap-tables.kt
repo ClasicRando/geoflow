@@ -14,7 +14,7 @@ val availableButtons = mapOf(
         btnRun: {
             text: 'Run Next Task',
             icon: 'fa-play',
-            event: async () => {
+            event: () => {
                 let ${'$'}table = $('#tasks');
                 let options = ${'$'}table.bootstrapTable('getOptions');
                 if (options.autoRefreshStatus === false) {
@@ -22,7 +22,7 @@ val availableButtons = mapOf(
                     return;
                 }
                 let data = ${'$'}table.bootstrapTable('getData');
-                if (data.find(row => row.task_status === 'Running' || row.task_status === 'Scheduled') != undefined) {
+                if (data.find(row => row.task_status === 'Running' || row.task_status === 'Scheduled') !== undefined) {
                     showMessageBox('Error', 'Task already running');
                     return;
                 }
@@ -33,13 +33,12 @@ val availableButtons = mapOf(
                 }
                 const params = new URLSearchParams(window.location.href.replace(/^[^?]+/g, ''));
                 postValue(`/api/run-task?runId=${'$'}{params.get('runId')}&prTaskId=${'$'}{row.pipeline_run_task_id}`);
-                ${'$'}table.bootstrapTable('refresh');
             },
             attributes: {
                 title: 'Run the next available task if there is no other tasks running'
             }
         }
-    """.trimIndent()
+    """.trimIndent(),
 )
 
 fun FlowContent.basicTable(
