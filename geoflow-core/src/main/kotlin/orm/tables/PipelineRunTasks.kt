@@ -260,4 +260,17 @@ object PipelineRunTasks: Table<PipelineRunTask>("pipeline_run_tasks") {
                 where { this@PipelineRunTasks.pipelineRunTaskId eq pipelineRunTaskId }
             }
     }
+
+    @Throws(IllegalArgumentException::class)
+    fun getTaskClassName(pipelineRunTaskId: Long): String {
+        return DatabaseConnection
+            .database
+            .from(this)
+            .joinReferencesAndSelect()
+            .where(this.pipelineRunTaskId eq pipelineRunTaskId)
+            .map(this::createEntity)
+            .firstOrNull()
+            ?.task
+            ?.taskClassName ?: throw IllegalArgumentException("pr_task_id passed does not link to a record")
+    }
 }
