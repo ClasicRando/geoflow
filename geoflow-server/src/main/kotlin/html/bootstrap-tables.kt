@@ -39,6 +39,35 @@ val availableButtons = mapOf(
             }
         }
     """.trimIndent(),
+    "btnRunAll" to """
+        btnRunAll: {
+            text: 'Run All Tasks',
+            icon: 'fa-fast-forward',
+            event: () => {
+                let ${'$'}table = ${'$'}('#tasks');
+                let options =  ${'$'}table.bootstrapTable('getOptions');
+                if (options.autoRefreshStatus === false) {
+                    showMessageBox('Error', 'Please turn on auto refresh to run tasks');
+                    return;
+                }
+                let data = ${'$'}table.bootstrapTable('getData');
+                if (data.find(row => row.task_status === 'Running' || row.task_status === 'Scheduled') !== undefined) {
+                    showMessageBox('Error', 'Task already running');
+                    return;
+                }
+                let row = data.find(row => row.task_status === 'Waiting');
+                if (row == undefined) {
+                    showMessageBox('Error', 'No task to run');
+                    return;
+                }
+                const params = new URLSearchParams(window.location.href.replace(/^[^?]+/g, ''));
+                postValue(`/api/run-all?runId=${'$'}{params.get('runId')}&prTaskId=${'$'}{row.pipeline_run_task_id}`);
+            },
+            attributes: {
+                title: 'Run the next available tasks if there is no other tasks running. Stops upon task failure or User Task'
+            }
+        }
+    """.trimIndent()
 )
 
 fun FlowContent.basicTable(
