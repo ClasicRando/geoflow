@@ -157,7 +157,6 @@ fun Route.api() {
                 PipelineRunTasks.setStatus(pipelineRunTask.pipelineRunTaskId, TaskStatus.Scheduled)
                 kjob.schedule(SystemJob) {
                     props[it.pipelineRunTaskId] = pipelineRunTask.pipelineRunTaskId
-                    props[it.taskClassName] = pipelineRunTask.task.taskClassName
                 }
                 mapOf("success" to "Scheduled ${pipelineRunTask.pipelineRunTaskId}")
             }

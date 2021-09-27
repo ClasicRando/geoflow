@@ -7,7 +7,7 @@ import java.time.Instant
 
 abstract class UserTask(pipelineRunTaskId: Long): PipelineTask(pipelineRunTaskId) {
 
-    override suspend fun runTask() {
+    override suspend fun runTask(): Boolean {
         val currentTime = Instant.now()
         DatabaseConnection.database.useTransaction {
             val taskRecord = PipelineRunTasks.reserveRecord(pipelineRunTaskId)
@@ -16,5 +16,6 @@ abstract class UserTask(pipelineRunTaskId: Long): PipelineTask(pipelineRunTaskId
             taskRecord.taskCompleted = currentTime
             taskRecord.flushChanges()
         }
+        return true
     }
 }

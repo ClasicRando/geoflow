@@ -3,6 +3,7 @@ import it.justwrote.kjob.job.JobExecutionType
 import it.justwrote.kjob.kjob
 import jobs.SystemJob
 import mu.KotlinLogging
+import orm.tables.PipelineRunTasks
 import tasks.SystemTask
 
 fun main() {
@@ -27,15 +28,20 @@ fun main() {
     }.start()
     kjob.register(SystemJob) {
         executionType = JobExecutionType.NON_BLOCKING
-        maxRetries = 3
+        maxRetries = 0
         execute {
-            val className = props[it.taskClassName]
+            val className = PipelineRunTasks.getTaskClassName(props[it.pipelineRunTaskId])
             val task = ClassLoader
                 .getSystemClassLoader()
                 .loadClass("tasks.$className")
                 .getConstructor(Long::class.java)
                 .newInstance(props[it.pipelineRunTaskId]) as SystemTask
-            task.runTask()
+            val taskResult = task.runTask()
+            if (taskResult && task.nextTaskId != null) {
+                kjob.schedule(SystemJob) {
+                    props[it.pipelineRunTaskId] = task.nextTaskId
+                }
+            }
         }
     }
     Runtime.getRuntime().addShutdownHook(Thread {
