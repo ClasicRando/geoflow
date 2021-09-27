@@ -1,9 +1,11 @@
+import database.DatabaseConnection
 import it.justwrote.kjob.Mongo
 import it.justwrote.kjob.job.JobExecutionType
 import it.justwrote.kjob.kjob
 import jobs.SystemJob
 import mu.KotlinLogging
 import orm.enums.TaskRunType
+import orm.enums.TaskStatus
 import orm.tables.PipelineRunTasks
 import tasks.SystemTask
 
@@ -31,23 +33,34 @@ fun main() {
         executionType = JobExecutionType.NON_BLOCKING
         maxRetries = 0
         execute {
-            val runId = props[it.runId]
-            val task = ClassLoader
-                .getSystemClassLoader()
-                .loadClass("tasks.${props[it.taskClassName]}")
-                .getConstructor(Long::class.java, Long::class.java)
-                .newInstance(props[it.pipelineRunTaskId]) as SystemTask
-            val taskResult = task.runTask()
-            if (taskResult && props[it.runNext]) {
-                PipelineRunTasks.getNextTask(props[it.runId])?.let { nextTask ->
-                    if (nextTask.taskRunType == TaskRunType.System) {
-                        kjob.schedule(SystemJob) {
-                            props[it.runId] = runId
-                            props[it.pipelineRunTaskId] = nextTask.taskId
-                            props[it.taskClassName] = nextTask.taskClassName
-                            props[it.runNext] = true
+            runCatching {
+                val runId = props[it.runId]
+                val task = ClassLoader
+                    .getSystemClassLoader()
+                    .loadClass("tasks.${props[it.taskClassName]}")
+                    .getConstructor(Long::class.java)
+                    .newInstance(props[it.pipelineRunTaskId]) as SystemTask
+                val taskResult = task.runTask()
+                if (taskResult && props[it.runNext]) {
+                    PipelineRunTasks.getNextTask(props[it.runId])?.let { nextTask ->
+                        if (nextTask.taskRunType == TaskRunType.System) {
+                            kjob.schedule(SystemJob) {
+                                props[it.runId] = runId
+                                props[it.pipelineRunTaskId] = nextTask.taskId
+                                props[it.taskClassName] = nextTask.taskClassName
+                                props[it.runNext] = true
+                            }
                         }
                     }
+                }
+            }.getOrElse { t ->
+                val pipelineRunTaskId = props[it.pipelineRunTaskId]
+                DatabaseConnection.database.useTransaction {
+                    val taskRecord = PipelineRunTasks.reserveRecord(pipelineRunTaskId)
+                    taskRecord.taskMessage = "ERROR: ${t.message}"
+                    taskRecord.taskStatus = TaskStatus.Failed
+                    taskRecord.taskCompleted = null
+                    taskRecord.flushChanges()
                 }
             }
         }
