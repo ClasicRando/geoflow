@@ -167,6 +167,19 @@ fun Route.api() {
         }
         call.respond(response)
     }
+    post("/api/reset-task") {
+        val user = call.sessions.get<UserSession>()!!
+        val runId = call.request.queryParameters["runId"]?.toLong() ?: 0
+        val pipelineRunTaskId = call.request.queryParameters["prTaskId"]?.toLong() ?: 0
+        val response = runCatching {
+            PipelineRunTasks.resetRecord(user.username, runId, pipelineRunTaskId)
+            mapOf("success" to "Reset $pipelineRunTaskId")
+        }.getOrElse { t ->
+            call.application.environment.log.info("/api/run-task", t)
+            mapOf("error" to t.message)
+        }
+        call.respond(response)
+    }
     get("/api/task-status") {
         val pipelineRunTaskId = call.request.queryParameters["prTaskId"]?.toLong() ?: 0
         val status = PipelineRunTasks.getStatus(pipelineRunTaskId)
