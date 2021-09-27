@@ -3,6 +3,7 @@ import it.justwrote.kjob.job.JobExecutionType
 import it.justwrote.kjob.kjob
 import jobs.SystemJob
 import mu.KotlinLogging
+import orm.enums.TaskRunType
 import orm.tables.PipelineRunTasks
 import tasks.SystemTask
 
@@ -30,16 +31,23 @@ fun main() {
         executionType = JobExecutionType.NON_BLOCKING
         maxRetries = 0
         execute {
-            val className = PipelineRunTasks.getTaskClassName(props[it.pipelineRunTaskId])
+            val runId = props[it.runId]
             val task = ClassLoader
                 .getSystemClassLoader()
-                .loadClass("tasks.$className")
-                .getConstructor(Long::class.java)
+                .loadClass("tasks.${props[it.taskClassName]}")
+                .getConstructor(Long::class.java, Long::class.java)
                 .newInstance(props[it.pipelineRunTaskId]) as SystemTask
             val taskResult = task.runTask()
-            if (taskResult && task.nextTaskId != null) {
-                kjob.schedule(SystemJob) {
-                    props[it.pipelineRunTaskId] = task.nextTaskId
+            if (taskResult && props[it.runNext]) {
+                PipelineRunTasks.getNextTask(props[it.runId])?.let { nextTask ->
+                    if (nextTask.taskRunType == TaskRunType.System) {
+                        kjob.schedule(SystemJob) {
+                            props[it.runId] = runId
+                            props[it.pipelineRunTaskId] = nextTask.taskId
+                            props[it.taskClassName] = nextTask.taskClassName
+                            props[it.runNext] = true
+                        }
+                    }
                 }
             }
         }

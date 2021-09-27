@@ -5,10 +5,7 @@ import orm.enums.TaskStatus
 import orm.tables.PipelineRunTasks
 import java.time.Instant
 
-abstract class SystemTask(
-    pipelineRunTaskId: Long,
-    val nextTaskId: Long? = null
-): PipelineTask(pipelineRunTaskId) {
+abstract class SystemTask(pipelineRunTaskId: Long): PipelineTask(pipelineRunTaskId) {
 
     abstract suspend fun run()
 
