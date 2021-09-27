@@ -2,6 +2,7 @@ package orm.tables
 
 import database.DatabaseConnection
 import database.functions.GetTasksOrdered
+import database.procedures.DeleteRunTaskChildren
 import formatInstantDateTime
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
@@ -106,6 +107,28 @@ object PipelineRunTasks: Table<PipelineRunTask>("pipeline_run_tasks") {
                 if (nextTask.pipelineRunTaskId != record.pipelineRunTaskId)
                     throw IllegalArgumentException("Selected task to run is not next")
                 record
+            }
+        }
+    }
+
+    @Throws(IllegalArgumentException::class)
+    fun resetRecord(username: String, runId: Long, pipelineRunTaskId: Long) {
+        if (!PipelineRuns.checkUserRun(runId, username)) {
+            throw IllegalArgumentException("User provided cannot run tasks for this pipeline run")
+        }
+        val record = getRecord(pipelineRunTaskId)
+        when {
+            record.runId != runId ->
+                throw IllegalArgumentException("Specified retry task is not part of the run referenced")
+            record.taskStatus == TaskStatus.Waiting ->
+                throw IllegalArgumentException("You cannot reset a waiting task")
+            else -> {
+                record.taskStatus = TaskStatus.Waiting
+                record.taskCompleted = null
+                record.taskStart = null
+                record.taskMessage = null
+                record.flushChanges()
+                DeleteRunTaskChildren.call(record.pipelineRunTaskId)
             }
         }
     }
