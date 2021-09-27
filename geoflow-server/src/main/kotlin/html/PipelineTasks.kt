@@ -13,7 +13,7 @@ class PipelineTasks(runId: Long): BasePage() {
                 taskTableId,
                 "/api/pipeline-run-tasks?taskId=$runId",
                 PipelineRunTasks.tableDisplayFields,
-                buttons = listOf("btnRun")
+                buttons = listOf("btnRun", "btnRunAll")
             )
             dataDisplayModal(
                 taskDataModalId,
