@@ -134,11 +134,11 @@ object PipelineRunTasks: Table<PipelineRunTask>("pipeline_run_tasks") {
     }
 
     fun addTask(pipelineRunTask: PipelineRunTask, taskId: Long): Long? {
-        val nextOrder = DatabaseConnection
+        val lastOrder = DatabaseConnection
             .database
             .from(this)
             .select(max(parentTaskOrder))
-            .where(parentTaskId eq pipelineRunTask.task.taskId)
+            .where(parentTaskId eq pipelineRunTask.pipelineRunTaskId)
             .map { row -> row.getInt(1) }
             .firstOrNull() ?: 1
         return DatabaseConnection
@@ -150,7 +150,7 @@ object PipelineRunTasks: Table<PipelineRunTask>("pipeline_run_tasks") {
                 set(taskCompleted, null)
                 set(PipelineRunTasks.taskId, taskId)
                 set(parentTaskId, pipelineRunTask.pipelineRunTaskId)
-                set(parentTaskOrder, nextOrder)
+                set(parentTaskOrder, lastOrder + 1)
             }
     }
 
