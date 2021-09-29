@@ -11,7 +11,7 @@ class PipelineTasks(runId: Long): BasePage() {
         setContent {
             autoRefreshTable(
                 taskTableId,
-                "/api/pipeline-run-tasks?taskId=$runId",
+                "/api/pipeline-run-tasks?runId=$runId",
                 PipelineRunTasks.tableDisplayFields,
                 buttons = listOf("btnRun", "btnRunAll")
             )
