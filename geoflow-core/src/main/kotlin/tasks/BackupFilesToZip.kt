@@ -6,11 +6,11 @@ import java.io.File
 import java.util.zip.ZipEntry
 import java.util.zip.ZipOutputStream
 
-@Suppress("BlockingMethodInNonBlockingContext")
 class BackupFilesToZip(pipelineRunTaskId: Long): SystemTask(pipelineRunTaskId) {
 
     override val taskId: Long = 7
 
+    @Suppress("BlockingMethodInNonBlockingContext")
     override suspend fun run() {
         val pipelineRun = PipelineRuns.getRun(task.runId) ?: throw Exception("Run cannot be null")
         val path = "${pipelineRun.dataSource.filesLocation}/${formatLocalDateDefault(pipelineRun.recordDate)}/files"
