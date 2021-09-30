@@ -9,7 +9,7 @@ import io.ktor.client.engine.cio.*
 import io.ktor.client.request.*
 import io.ktor.client.statement.*
 import io.ktor.http.*
-import kotlinx.coroutines.delay
+import kotlinx.coroutines.*
 import kotlinx.coroutines.flow.asFlow
 import kotlinx.coroutines.flow.collect
 import kotlinx.coroutines.flow.map
@@ -19,7 +19,6 @@ import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.*
 import java.io.File
 import java.io.IOException
-import kotlin.jvm.Throws
 
 class ArcGisScraper private constructor(
     private val metadata: ArcGisServiceMetadata,
@@ -35,9 +34,11 @@ class ArcGisScraper private constructor(
 
     @Throws(IOException::class)
     @Suppress("BlockingMethodInNonBlockingContext")
-    suspend fun scrape() {
+    suspend fun scrape() = coroutineScope {
         val file = File(outputPath, "${metadata.name}.csv")
-        file.createNewFile()
+        withContext(Dispatchers.Default) {
+            file.createNewFile()
+        }
         with(CsvWriter(file, csvSettings)) {
             writeHeaders()
             metadata.queries.asFlow().map { url ->
@@ -73,9 +74,8 @@ class ArcGisScraper private constructor(
     }
 
     @OptIn(ExperimentalSerializationApi::class)
-    @Suppress("BlockingMethodInNonBlockingContext")
     @Throws(IllegalStateException::class)
-    private suspend fun fetchQuery(url: String): File {
+    private suspend fun fetchQuery(url: String) = coroutineScope {
         var tryNumber = 1
         var invalidResponse = true
         var jsonResponse = JsonObject(mapOf())
@@ -104,18 +104,20 @@ class ArcGisScraper private constructor(
                 }
             }
         }
-        return File.createTempFile("temp", ".csv").also { file ->
-            val headerMapping = metadata.fields.associateWith { it }
-            val writer = CsvWriter(file.bufferedWriter(), csvSettings)
-            writer.writeHeaders()
-            jsonResponse["features"]?.jsonArray?.let { array ->
-                val records = array.map { handleRecord(it.jsonObject) }
-                val rowData = metadata.fields.associateWith { field -> records.map { it[field] }.toTypedArray() }
-                writer.writeObjectRows(headerMapping, rowData)
+        async(Dispatchers.IO) {
+            File.createTempFile("temp", ".csv").also { file ->
+                val headerMapping = metadata.fields.associateWith { it }
+                val writer = CsvWriter(file.bufferedWriter(), csvSettings)
+                writer.writeHeaders()
+                jsonResponse["features"]?.jsonArray?.let { array ->
+                    val records = array.map { handleRecord(it.jsonObject) }
+                    val rowData = metadata.fields.associateWith { field -> records.map { it[field] }.toTypedArray() }
+                    writer.writeObjectRows(headerMapping, rowData)
+                }
+                writer.close()
             }
-            writer.close()
         }
-    }
+    }.await()
 
     companion object {
         suspend fun fromUrl(url: String, outputPath: String) = ArcGisScraper(
