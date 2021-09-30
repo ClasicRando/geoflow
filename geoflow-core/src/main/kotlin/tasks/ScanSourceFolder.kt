@@ -5,6 +5,7 @@ import database.pipelineRunTasks
 import database.sourceTables
 import formatLocalDateDefault
 import org.ktorm.dsl.eq
+import org.ktorm.dsl.notEq
 import org.ktorm.entity.any
 import org.ktorm.entity.filter
 import org.ktorm.entity.first
@@ -25,6 +26,7 @@ class ScanSourceFolder(pipelineTaskId: Long): SystemTask(pipelineTaskId) {
             .pipelineRunTasks
             .filter { it.runId eq task.runId }
             .filter { it.taskId eq taskId }
+            .filter { it.pipelineRunTaskId notEq pipelineRunTaskId }
             .any()
         val pipelineRun = PipelineRuns.getRun(task.runId) ?: throw Exception("Run cannot be null")
         val sourceFiles = DatabaseConnection
@@ -39,6 +41,7 @@ class ScanSourceFolder(pipelineTaskId: Long): SystemTask(pipelineTaskId) {
             throw Exception("Files location specified by data source is not a directory")
         val files = folder
             .walk()
+            .filter { it.isFile }
             .toList()
         val missingFiles = sourceFiles.filter { sourceFile -> !files.any { sourceFile.fileName == it.name } }
         val extraFiles = files.filter { file -> !sourceFiles.any { file.name == it.fileName } }
@@ -48,6 +51,8 @@ class ScanSourceFolder(pipelineTaskId: Long): SystemTask(pipelineTaskId) {
                 throw Exception("Attempted to rescan after download but still missing files")
             val downloadTaskId = missingFiles
                 .filter { it.collectType in downloadTypes }
+                .map { it.fileName }
+                .distinct()
                 .let { downloadFiles ->
                     if (downloadFiles.isNotEmpty()) {
                         PipelineRunTasks.addTask(task, DownloadMissingFiles.taskId)?.also { downloadTaskId ->
@@ -61,9 +66,8 @@ class ScanSourceFolder(pipelineTaskId: Long): SystemTask(pipelineTaskId) {
                                         separator = "','",
                                         prefix = "['",
                                         postfix = "']"
-                                    ) {
-                                        it.fileName
-                                    }
+                                    )
+                                    flushChanges()
                                 }
                         }
                     } else {
@@ -72,6 +76,8 @@ class ScanSourceFolder(pipelineTaskId: Long): SystemTask(pipelineTaskId) {
                 }
             val collectFilesTaskId = missingFiles
                 .filter { it.collectType !in downloadTypes }
+                .map { it.fileName }
+                .distinct()
                 .let { collectFiles ->
                     if (collectFiles.isNotEmpty()) {
                         PipelineRunTasks.addTask(task, CollectMissingFiles.taskId)?.also { downloadTaskId ->
@@ -85,9 +91,8 @@ class ScanSourceFolder(pipelineTaskId: Long): SystemTask(pipelineTaskId) {
                                         separator = "','",
                                         prefix = "['",
                                         postfix = "']"
-                                    ) {
-                                        it.fileName
-                                    }
+                                    )
+                                    flushChanges()
                                 }
                         }
                     } else {
