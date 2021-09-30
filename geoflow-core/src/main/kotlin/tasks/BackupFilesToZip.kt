@@ -25,11 +25,14 @@ class BackupFilesToZip(pipelineRunTaskId: Long): SystemTask(pipelineRunTaskId) {
                 createNewFile()
             }
             ZipOutputStream(this.outputStream()).use { zip ->
-                File(path).walk().forEach { sourceFile ->
-                    zip.putNextEntry(ZipEntry(sourceFile.name))
-                    sourceFile.bufferedReader().copyTo(zip.bufferedWriter())
-                    zip.closeEntry()
-                }
+                File(path)
+                    .walk()
+                    .filter { it.isFile }
+                    .forEach { sourceFile ->
+                        zip.putNextEntry(ZipEntry(sourceFile.name))
+                        sourceFile.bufferedReader().copyTo(zip.bufferedWriter())
+                        zip.closeEntry()
+                    }
             }
         }
     }
