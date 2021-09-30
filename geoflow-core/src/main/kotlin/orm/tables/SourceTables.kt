@@ -38,8 +38,8 @@ object SourceTables: Table<SourceTable>("source_tables") {
             run_id bigint NOT NULL,
             table_name text COLLATE pg_catalog."default" NOT NULL,
             file_name text COLLATE pg_catalog."default" NOT NULL,
-            "analyze" boolean NOT NULL,
-            load boolean NOT NULL,
+            "analyze" boolean NOT NULL DEFAULT true,
+            load boolean NOT NULL DEFAULT true,
             qualified boolean NOT NULL,
             encoding text COLLATE pg_catalog."default" NOT NULL,
             sub_table text COLLATE pg_catalog."default",
@@ -50,8 +50,11 @@ object SourceTables: Table<SourceTable>("source_tables") {
             st_oid bigint NOT NULL DEFAULT nextval('source_tables_st_oid_seq'::regclass),
             collect_type file_collect_type NOT NULL,
             loader_type loader_type NOT NULL,
-            delimiter character(1) COLLATE pg_catalog."default",
-            CONSTRAINT source_tables_pkey PRIMARY KEY (st_oid)
+            delimiter character varying(1) COLLATE pg_catalog."default",
+            CONSTRAINT source_tables_pkey PRIMARY KEY (st_oid),
+            CONSTRAINT file_id_run_id_unique UNIQUE (run_id, file_id),
+            CONSTRAINT table_name_run_id_unique UNIQUE (run_id, table_name),
+            CONSTRAINT table_name_correct CHECK (table_name ~ '^[0-9A-Z_]+${'$'}'::text) NOT VALID
         )
         WITH (
             OIDS = FALSE
