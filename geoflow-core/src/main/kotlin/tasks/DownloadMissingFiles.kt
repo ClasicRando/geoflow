@@ -1,9 +1,7 @@
 package tasks
 
 import database.DatabaseConnection
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.coroutineScope
-import kotlinx.coroutines.launch
+import kotlinx.coroutines.*
 import org.ktorm.dsl.*
 import orm.entities.runFilesLocation
 import orm.enums.FileCollectType
@@ -41,7 +39,7 @@ class DownloadMissingFiles(pipelineRunTaskId: Long): SystemTask(pipelineRunTaskI
                 it += SourceTables.url.isNotNull()
             }
             .mapNotNull { row -> row[SourceTables.url] }
-            .forEach { url ->
+            .map { url ->
                 launch(Dispatchers.IO) {
                     when {
                         url.contains("/arcgis/rest/", ignoreCase = true) -> {
@@ -64,6 +62,6 @@ class DownloadMissingFiles(pipelineRunTaskId: Long): SystemTask(pipelineRunTaskI
                         }
                     }
                 }
-            }
+            }.joinAll()
     }
 }
