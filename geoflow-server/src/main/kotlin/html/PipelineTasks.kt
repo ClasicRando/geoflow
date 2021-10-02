@@ -1,19 +1,108 @@
 package html
 
-import kotlinx.html.script
-import kotlinx.html.unsafe
+import kotlinx.html.*
 import orm.tables.PipelineRunTasks
 
 class PipelineTasks(runId: Long): BasePage() {
     private val taskDataModalId = "taskData"
+    private val sourceTableModalId = "sourceTableData"
     private val taskTableId = "tasks"
+    private val sourceTablesTableId = "source-tables"
+    private val tableButtons = listOf(
+        TableButton(
+            "btnRun",
+            "Run Next Task",
+            "fa-play",
+            """
+            let ${'$'}table = ${'$'}('#$taskTableId');
+            let options = ${'$'}table.bootstrapTable('getOptions');
+            if (options.autoRefreshStatus === false) {
+                showMessageBox('Error', 'Please turn on auto refresh to run tasks');
+                return;
+            }
+            let data = ${'$'}table.bootstrapTable('getData');
+            if (data.find(row => row.task_status === 'Running' || row.task_status === 'Scheduled') !== undefined) {
+                showMessageBox('Error', 'Task already running');
+                return;
+            }
+            let row = data.find(row => row.task_status === 'Waiting');
+            if (row == undefined) {
+                showMessageBox('Error', 'No task to run');
+                return;
+            }
+            const params = new URLSearchParams(window.location.href.replace(/^[^?]+/g, ''));
+            postValue(`/api/run-task?runId=${'$'}{params.get('runId')}&prTaskId=${'$'}{row.pipeline_run_task_id}`);
+            """.trimIndent(),
+            "Run the next available task if there is no other tasks running",
+        ),
+        TableButton(
+            "btnRunAll",
+            "Run All Tasks",
+            "fa-fast-forward",
+            """
+            let ${'$'}table = ${'$'}('#$taskTableId');
+            let options =  ${'$'}table.bootstrapTable('getOptions');
+            if (options.autoRefreshStatus === false) {
+                showMessageBox('Error', 'Please turn on auto refresh to run tasks');
+                return;
+            }
+            let data = ${'$'}table.bootstrapTable('getData');
+            if (data.find(row => row.task_status === 'Running' || row.task_status === 'Scheduled') !== undefined) {
+                showMessageBox('Error', 'Task already running');
+                return;
+            }
+            let row = data.find(row => row.task_status === 'Waiting');
+            if (row == undefined) {
+                showMessageBox('Error', 'No task to run');
+                return;
+            }
+            const params = new URLSearchParams(window.location.href.replace(/^[^?]+/g, ''));
+            postValue(`/api/run-all?runId=${'$'}{params.get('runId')}&prTaskId=${'$'}{row.pipeline_run_task_id}`);
+            """.trimIndent(),
+            "Run the next available tasks if there is no other tasks running. Stops upon task failure or User Task",
+        ),
+    )
+    private val headerButtons = listOf(
+        HeaderButton(
+            "btnSourceTables",
+            """
+                function sourceTables() {
+                    $('#$sourceTablesTableId').bootstrapTable('refresh');
+                    $('#$sourceTableModalId').modal('show');
+                }
+            """.trimIndent(),
+        ) {
+            li(classes = "header-button") {
+                button(classes = "btn btn-secondary") {
+                    onClick = "sourceTables()"
+                    +"Source Tables"
+                }
+            }
+        }
+    )
     init {
+        setStyles {
+            unsafe {
+                raw("""
+                    .header-button-list {
+                        margin 0;
+                        padding 0;
+                    }
+                    .header-button {
+                        margin-right 10px;
+                        padding: 0 10px;
+                        display: inline-block;
+                    }
+                """.trimIndent())
+            }
+        }
         setContent {
             autoRefreshTable(
                 taskTableId,
                 "/api/pipeline-run-tasks?runId=$runId",
                 PipelineRunTasks.tableDisplayFields,
-                buttons = listOf("btnRun", "btnRunAll")
+                tableButtons = tableButtons,
+                headerButtons = headerButtons,
             )
             dataDisplayModal(
                 taskDataModalId,
@@ -40,7 +129,7 @@ class PipelineTasks(runId: Long): BasePage() {
                                 case 'Complete':
                                     return '<i class="fa fa-check"></i>';
                                 case 'Failed':
-                                    return '<t class="fa fa-exclamation"></i>';
+                                    return '<i class="fa fa-exclamation"></i>';
                             }
                         }
                         function titleCase(title) {
