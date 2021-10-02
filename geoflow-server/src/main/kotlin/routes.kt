@@ -11,10 +11,7 @@ import io.ktor.util.*
 import jobs.SystemJob
 import orm.enums.TaskRunType
 import orm.enums.TaskStatus
-import orm.tables.Actions
-import orm.tables.PipelineRunTasks
-import orm.tables.PipelineRuns
-import orm.tables.WorkflowOperations
+import orm.tables.*
 
 fun Route.index() {
     get("/") {
@@ -212,5 +209,16 @@ fun Route.api() {
         val pipelineRunTaskId = call.request.queryParameters["prTaskId"]?.toLong() ?: 0
         val status = PipelineRunTasks.getStatus(pipelineRunTaskId)
         call.respond(mapOf("status" to status))
+    }
+    get("/api/source-tables") {
+        val user = call.sessions.get<UserSession>()!!
+        val runId = call.request.queryParameters["runId"]?.toLong() ?: 0
+        val response = runCatching {
+            SourceTables.getRunSourceTables(runId)
+        }.getOrElse { t ->
+            call.application.environment.log.info("/api/source-tables", t)
+            listOf()
+        }
+        call.respond(response)
     }
 }

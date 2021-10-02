@@ -108,6 +108,12 @@ class PipelineTasks(runId: Long): BasePage() {
                 taskDataModalId,
                 "Task Details",
             )
+            sourceTablesModal(
+                sourceTableModalId,
+                sourceTablesTableId,
+                "Source Tables",
+                "/api/source-tables?runId=$runId",
+            )
             messageBoxModal()
         }
         setScript {
@@ -131,6 +137,9 @@ class PipelineTasks(runId: Long): BasePage() {
                                 case 'Failed':
                                     return '<i class="fa fa-exclamation"></i>';
                             }
+                        }
+                        function boolFormatter(value, row) {
+                            return value ? '<i class="fa fa-check"></i>' : '';
                         }
                         function titleCase(title) {
                             return title.replace(
