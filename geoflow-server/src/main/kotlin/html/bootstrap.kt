@@ -60,7 +60,7 @@ fun FlowContent.dataDisplayModal(modalId: String, headerText: String) {
                     }
                 }
                 div(classes = "modal-body") {
-                    id = "modalBody"
+                    id = "${modalId}Body"
                 }
                 div(classes = "modal-footer") {
                     button(classes = "btn btn-secondary") {
@@ -135,7 +135,7 @@ fun FlowContent.sourceTablesModal(modalId: String, tableId: String, headerText: 
                     }
                 }
                 div(classes = "modal-body") {
-                    id = "modalBody"
+                    id = "${modalId}Body"
                     basicTable(
                         tableId,
                         url,

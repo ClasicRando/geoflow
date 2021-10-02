@@ -158,7 +158,7 @@ class PipelineTasks(runId: Long): BasePage() {
                                 showMessageBox('Error', 'Please turn on auto refresh to select tasks');
                                 return;
                             }
-                            let ${'$'}modalBody = ${'$'}('#modalBody');
+                            let ${'$'}modalBody = ${'$'}('#${taskDataModalId}Body');
                             ${'$'}modalBody.empty();
                             const div = document.createElement('div');
                             switch(action) {
