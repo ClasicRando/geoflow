@@ -9,7 +9,6 @@ open class PlPgSqlTableFunction(
     val parameterTypes: List<KClass<out Any>>
 ) {
     @Throws(IllegalArgumentException::class)
-    @Suppress("UNCHECKED_CAST")
     fun call(vararg params: Any): List<Map<String, Any?>> {
         if (params.size != parameterTypes.size) {
             throw IllegalArgumentException("Expected ${parameterTypes.size} params, got ${params.size}")

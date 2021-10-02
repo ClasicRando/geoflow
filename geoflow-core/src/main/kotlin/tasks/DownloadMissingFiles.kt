@@ -1,7 +1,9 @@
 package tasks
 
 import database.DatabaseConnection
+import kotlinx.coroutines.*
 import org.ktorm.dsl.*
+import orm.entities.runFilesLocation
 import orm.enums.FileCollectType
 import orm.tables.PipelineRuns
 import orm.tables.SourceTables
@@ -21,7 +23,7 @@ class DownloadMissingFiles(pipelineRunTaskId: Long): SystemTask(pipelineRunTaskI
         if (task.taskMessage == null)
             throw IllegalArgumentException("Task message must contain missing filenames")
         val pipelineRun = PipelineRuns.getRun(task.runId) ?: throw Exception("Run cannot be null")
-        val outputFolder = pipelineRun.dataSource.filesLocation
+        val outputFolder = pipelineRun.runFilesLocation
         val filenames = task.taskMessage!!
             .trim('[', ']')
             .split("','")
@@ -49,13 +51,13 @@ class DownloadMissingFiles(pipelineRunTaskId: Long): SystemTask(pipelineRunTaskI
                         ZipDownloader(
                             url = url,
                             outputPath = outputFolder
-                        )
+                        ).request()
                     }
                     else -> {
                         FileDownloader(
                             url = url,
                             outputPath = outputFolder
-                        )
+                        ).request()
                     }
                 }
             }

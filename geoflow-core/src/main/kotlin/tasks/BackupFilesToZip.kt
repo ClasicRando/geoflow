@@ -6,11 +6,11 @@ import java.io.File
 import java.util.zip.ZipEntry
 import java.util.zip.ZipOutputStream
 
-@Suppress("BlockingMethodInNonBlockingContext")
 class BackupFilesToZip(pipelineRunTaskId: Long): SystemTask(pipelineRunTaskId) {
 
     override val taskId: Long = 7
 
+    @Suppress("BlockingMethodInNonBlockingContext")
     override suspend fun run() {
         val pipelineRun = PipelineRuns.getRun(task.runId) ?: throw Exception("Run cannot be null")
         val path = "${pipelineRun.dataSource.filesLocation}/${formatLocalDateDefault(pipelineRun.recordDate)}/files"
@@ -25,11 +25,14 @@ class BackupFilesToZip(pipelineRunTaskId: Long): SystemTask(pipelineRunTaskId) {
                 createNewFile()
             }
             ZipOutputStream(this.outputStream()).use { zip ->
-                File(path).walk().forEach { sourceFile ->
-                    zip.putNextEntry(ZipEntry(sourceFile.name))
-                    sourceFile.bufferedReader().copyTo(zip.bufferedWriter())
-                    zip.closeEntry()
-                }
+                File(path)
+                    .walk()
+                    .filter { it.isFile }
+                    .forEach { sourceFile ->
+                        zip.putNextEntry(ZipEntry(sourceFile.name))
+                        sourceFile.bufferedReader().copyTo(zip.bufferedWriter())
+                        zip.closeEntry()
+                    }
             }
         }
     }
