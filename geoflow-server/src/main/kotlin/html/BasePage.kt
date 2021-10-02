@@ -5,8 +5,15 @@ import kotlinx.html.*
 
 open class BasePage: Template<HTML> {
 
+    val styles = Placeholder<STYLE>()
     val content = Placeholder<FlowContent>()
     val script = Placeholder<FlowContent>()
+
+    fun setStyles(addStyles: STYLE.() -> Unit) {
+        styles {
+            this.addStyles()
+        }
+    }
 
     fun setContent(addContent: FlowContent.() -> Unit) {
         content {
@@ -50,6 +57,9 @@ open class BasePage: Template<HTML> {
                 unsafe {
                     raw("td { cursor: pointer; }")
                 }
+            }
+            style {
+                insert(styles)
             }
         }
         body {
