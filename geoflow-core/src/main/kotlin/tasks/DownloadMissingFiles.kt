@@ -19,7 +19,7 @@ class DownloadMissingFiles(pipelineRunTaskId: Long): SystemTask(pipelineRunTaskI
     }
     override val taskId: Long = 4
 
-    override suspend fun run() = coroutineScope {
+    override suspend fun run() {
         if (task.taskMessage == null)
             throw IllegalArgumentException("Task message must contain missing filenames")
         val pipelineRun = PipelineRuns.getRun(task.runId) ?: throw Exception("Run cannot be null")
@@ -39,29 +39,27 @@ class DownloadMissingFiles(pipelineRunTaskId: Long): SystemTask(pipelineRunTaskI
                 it += SourceTables.url.isNotNull()
             }
             .mapNotNull { row -> row[SourceTables.url] }
-            .map { url ->
-                launch(Dispatchers.IO) {
-                    when {
-                        url.contains("/arcgis/rest/", ignoreCase = true) -> {
-                            ArcGisScraper.fromUrl(
-                                url = url,
-                                outputPath = outputFolder
-                            ).scrape()
-                        }
-                        url.endsWith(".zip") -> {
-                            ZipDownloader(
-                                url = url,
-                                outputPath = outputFolder
-                            ).request()
-                        }
-                        else -> {
-                            FileDownloader(
-                                url = url,
-                                outputPath = outputFolder
-                            ).request()
-                        }
+            .forEach { url ->
+                when {
+                    url.contains("/arcgis/rest/", ignoreCase = true) -> {
+                        ArcGisScraper.fromUrl(
+                            url = url,
+                            outputPath = outputFolder
+                        ).scrape()
+                    }
+                    url.endsWith(".zip") -> {
+                        ZipDownloader(
+                            url = url,
+                            outputPath = outputFolder
+                        ).request()
+                    }
+                    else -> {
+                        FileDownloader(
+                            url = url,
+                            outputPath = outputFolder
+                        ).request()
                     }
                 }
-            }.joinAll()
+            }
     }
 }
