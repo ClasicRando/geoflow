@@ -1,9 +1,17 @@
 package orm.tables
 
+import database.DatabaseConnection
+import database.sourceTables
+import kotlinx.serialization.SerialName
+import kotlinx.serialization.Serializable
+import org.ktorm.dsl.eq
+import org.ktorm.entity.filter
+import org.ktorm.entity.map
 import org.ktorm.schema.*
 import orm.entities.SourceTable
 import orm.enums.FileCollectType
 import orm.enums.LoaderType
+import kotlin.jvm.Throws
 
 object SourceTables: Table<SourceTable>("source_tables") {
 
@@ -23,6 +31,22 @@ object SourceTables: Table<SourceTable>("source_tables") {
     val comments = text("comments").bindTo { it.comments }
     val collectType = enum<FileCollectType>("collect_type").bindTo { it.collectType }
     val delimiter = varchar("delimiter").bindTo { it.delimiter }
+    val tableDisplayFields = mapOf(
+        "table_name" to mapOf("editable" to "true"),
+        "file_id" to mapOf("name" to "File ID", "editable" to "true"),
+        "file_name" to mapOf("editable" to "true"),
+        "sub_table" to mapOf("editable" to "true"),
+        "loader_type" to mapOf("editable" to "false"),
+        "delimiter" to mapOf("editable" to "true"),
+        "qualified" to mapOf("editable" to "true", "formatter" to "boolFormatter"),
+        "encoding" to mapOf("editable" to "false"),
+        "url" to mapOf("editable" to "true"),
+        "comments" to mapOf("editable" to "true"),
+        "record_count" to mapOf("editable" to "false"),
+        "collect_type" to mapOf("editable" to "true"),
+        "analyze" to mapOf("editable" to "true", "formatter" to "boolFormatter"),
+        "load" to mapOf("editable" to "true", "formatter" to "boolFormatter"),
+    )
 
     val createSequence = """
         CREATE SEQUENCE public.source_tables_st_oid_seq
@@ -60,4 +84,62 @@ object SourceTables: Table<SourceTable>("source_tables") {
             OIDS = FALSE
         );
     """.trimIndent()
+
+    @Serializable
+    data class Record(
+        @SerialName("table_name")
+        val tableName: String,
+        @SerialName("file_id")
+        val fileId: String,
+        @SerialName("file_name")
+        val fileName: String,
+        @SerialName("sub_table")
+        val subTable: String,
+        @SerialName("loader_type")
+        val loaderType: String,
+        @SerialName("delimiter")
+        val delimiter: String,
+        @SerialName("qualified")
+        val qualified: Boolean,
+        @SerialName("encoding")
+        val encoding: String,
+        @SerialName("url")
+        val url: String,
+        @SerialName("comments")
+        val comments: String,
+        @SerialName("record_count")
+        val recordCount: Int,
+        @SerialName("collect_type")
+        val collectType: String,
+        @SerialName("analyze")
+        val analyze: Boolean,
+        @SerialName("load")
+        val load: Boolean,
+    )
+
+    @Throws(IllegalArgumentException::class)
+    fun getRunSourceTables(runId: Long): List<Record> {
+        return DatabaseConnection
+            .database
+            .sourceTables
+            .filter { it.runId eq runId }
+            .map { table ->
+                Record(
+                    table.tableName,
+                    table.fileId,
+                    table.fileName,
+                    table.subTable ?: "",
+                    table.loaderType.name,
+                    table.delimiter ?: "",
+                    table.qualified,
+                    table.encoding,
+                    table.url ?: "",
+                    table.comments ?: "",
+                    table.recordCount,
+                    table.collectType.name,
+                    table.analyze,
+                    table.load,
+                )
+            }
+    }
 }
