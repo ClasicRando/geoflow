@@ -106,14 +106,11 @@ fun FlowContent.messageBoxModal() {
     }
     script {
         unsafe {
-            raw("""
-                function showMessageBox(title, message) {
-                    ${'$'}('#msgBoxHeader').text(title);
-                    ${'$'}('#msgBoxBody').text(message);
-                    $('#$messageBoxId').modal('toggle');
-                }
-            """.trimIndent())
+            raw("var messageBoxId = '$messageBoxId';")
         }
+    }
+    script {
+        src = "assets/messagebox.js"
     }
 }
 
