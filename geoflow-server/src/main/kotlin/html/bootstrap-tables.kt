@@ -14,7 +14,7 @@ data class TableButton(val name: String, val text: String, val icon: String, val
         $name: {
             text: '$text',
             icon: '$icon',
-            event: () => { $event },
+            event: () => { $event; },
             attributes: {
                 title: '$title',
             },
@@ -22,7 +22,7 @@ data class TableButton(val name: String, val text: String, val icon: String, val
     """.trimIndent()
 }
 
-data class HeaderButton(val name: String, val onClick: String, val html: UL.() -> Unit)
+data class HeaderButton(val name: String, val html: UL.() -> Unit)
 
 fun FlowContent.basicTable(
     tableId: String,
@@ -64,11 +64,6 @@ fun FlowContent.autoRefreshTable(
         ul(classes = "header-button-list") {
             id = "toolbar"
             for (headerButton in headerButtons) {
-                this@autoRefreshTable.script {
-                    unsafe {
-                        raw(headerButton.onClick)
-                    }
-                }
                 headerButton.html.invoke(this)
             }
         }

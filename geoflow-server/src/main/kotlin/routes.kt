@@ -3,6 +3,7 @@ import html.*
 import io.ktor.application.*
 import io.ktor.html.*
 import io.ktor.http.*
+import io.ktor.http.content.*
 import io.ktor.request.*
 import io.ktor.response.*
 import io.ktor.routing.*
@@ -220,5 +221,11 @@ fun Route.api() {
             listOf()
         }
         call.respond(response)
+    }
+}
+
+fun Route.js() {
+    static("assets") {
+        resources("javascript")
     }
 }

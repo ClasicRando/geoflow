@@ -85,6 +85,7 @@ fun Application.module() {
         json()
     }
     routing {
+        js()
         authenticate("auth-session") {
             index()
             api()
