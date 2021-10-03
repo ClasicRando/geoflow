@@ -117,7 +117,7 @@ fun FlowContent.messageBoxModal() {
     }
 }
 
-fun FlowContent.sourceTablesModal(modalId: String, tableId: String, headerText: String, url: String) {
+fun FlowContent.sourceTablesModal(modalId: String, tableId: String, url: String) {
     div(classes = "modal fade") {
         id = modalId
         attributes["data-backdrop"] = "static"
@@ -126,12 +126,12 @@ fun FlowContent.sourceTablesModal(modalId: String, tableId: String, headerText: 
         attributes["aria-labelledby"] = "staticBackdropLabel"
         attributes["aria-hidden"] = "true"
         div(classes = "modal-dialog modal-dialog-centered modal-dialog-scrollable modal-xl") {
-            style = "max-width: 100%"
+            style = "max-width: 90%"
             div(classes = "modal-content") {
                 div(classes = "modal-header") {
                     h5(classes = "modal-title") {
                         id = "staticBackdropLabel"
-                        +headerText
+                        +"Source Tables"
                     }
                 }
                 div(classes = "modal-body") {
@@ -141,6 +141,37 @@ fun FlowContent.sourceTablesModal(modalId: String, tableId: String, headerText: 
                         url,
                         SourceTables.tableDisplayFields,
                     )
+                }
+                div(classes = "modal-footer") {
+                    button(classes = "btn btn-secondary") {
+                        type = ButtonType.button
+                        attributes["data-dismiss"] = "modal"
+                        +"Close"
+                    }
+                }
+            }
+        }
+    }
+    div(classes = "modal fade") {
+        id = "${modalId}EditRow"
+        attributes["data-backdrop"] = "static"
+        attributes["data-keyboard"] = "false"
+        attributes["tabindex"] = "-1"
+        attributes["aria-labelledby"] = "staticBackdropLabel"
+        attributes["aria-hidden"] = "true"
+        div(classes = "modal-dialog modal-dialog-centered modal-dialog-scrollable modal-xl") {
+            div(classes = "modal-content") {
+                div(classes = "modal-header") {
+                    h5(classes = "modal-title") {
+                        id = "staticBackdropLabel"
+                        +"Edit Row"
+                    }
+                }
+                div(classes = "modal-body") {
+                    form {
+                        action = ""
+                        id = "${modalId}EditRowBody"
+                    }
                 }
                 div(classes = "modal-footer") {
                     button(classes = "btn btn-secondary") {

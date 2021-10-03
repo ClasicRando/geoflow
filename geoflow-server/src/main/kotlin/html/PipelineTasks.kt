@@ -1,6 +1,7 @@
 package html
 
 import kotlinx.html.*
+import orm.enums.FileCollectType
 import orm.tables.PipelineRunTasks
 
 class PipelineTasks(runId: Long): BasePage() {
@@ -111,7 +112,6 @@ class PipelineTasks(runId: Long): BasePage() {
             sourceTablesModal(
                 sourceTableModalId,
                 sourceTablesTableId,
-                "Source Tables",
                 "/api/source-tables?runId=$runId",
             )
             messageBoxModal()
@@ -153,12 +153,12 @@ class PipelineTasks(runId: Long): BasePage() {
                             );
                         }
                         function showDataDisplayModal(action, data) {
-                            let options = ${'$'}('#$taskTableId').bootstrapTable('getOptions');
+                            let options = $('#$taskTableId').bootstrapTable('getOptions');
                             if (options.autoRefreshStatus === false) {
                                 showMessageBox('Error', 'Please turn on auto refresh to select tasks');
                                 return;
                             }
-                            let ${'$'}modalBody = ${'$'}('#${taskDataModalId}Body');
+                            let ${'$'}modalBody = $('#${taskDataModalId}Body');
                             ${'$'}modalBody.empty();
                             const div = document.createElement('div');
                             switch(action) {
@@ -198,8 +198,59 @@ class PipelineTasks(runId: Long): BasePage() {
                                     break;
                             }
                         }
+                        function editSourceTableRow(row) {
+                            let ${'$'}table = $('#$sourceTablesTableId');
+                            let ${'$'}formBody = $('#${sourceTableModalId}EditRowBody');
+                            ${'$'}formBody.empty();
+                            let allColumns = ${'$'}table.bootstrapTable('getOptions')['columns'][0];
+                            let columns = allColumns.filter(column => column.visible && column.editable);
+                            let columnNames = columns.map(column => column.field);
+                            for (const [key, value] of Object.entries(row)) {
+                                if (!columnNames.includes(key)) {
+                                    continue;
+                                }
+                                const div = document.createElement('div');
+                                div.classList.add('form-group');
+                                const label = document.createElement('label');
+                                label['for'] = key;
+                                label.innerHTML = columns.filter(column => column.field === key)[0].title;
+                                let field;
+                                if (typeof(value) === 'boolean') {
+                                    field = document.createElement('input');
+                                    field.type = 'checkbox';
+                                    field.value = value;
+                                    field.classList.add('form-check-input');
+                                    label.classList.add('form-check-label');
+                                } else if (key === 'collect_type') {
+                                    field = document.createElement('select');
+                                    let types = [${FileCollectType.values().joinToString("','", "'", "'")}];
+                                    for (type of types) {
+                                        const option = document.createElement('option');
+                                        option.value = type;
+                                        option.innerHTML = type;
+                                        field.appendChild(option);
+                                    }
+                                    field.value = value;
+                                    field.classList.add('form-control');
+                                } else {
+                                    field = document.createElement('input');
+                                    field.type = 'text';
+                                    field.value = value;
+                                    field.classList.add('form-control');
+                                }
+                                field.id = key;
+                                field.name = key;
+                                div.appendChild(label);
+                                div.appendChild(field);
+                                ${'$'}formBody.append(div);
+                            }
+                            $('#${sourceTableModalId}EditRow').modal('show');
+                        }
                         $('#$taskTableId').on('click-row.bs.table', (e, row, element, field) => {
                             showDataDisplayModal('choice', row);
+                        });
+                        $('#$sourceTablesTableId').on('click-row.bs.table', (e, row, element, field) => {
+                            editSourceTableRow(row);
                         });
                     """.trimIndent())
                 }
