@@ -5,7 +5,7 @@ import orm.tables.SourceTables
 
 const val messageBoxId = "msgBox"
 
-fun FlowContent.basicModal(modalId: String, headerText: String, bodyMessage: String) {
+fun FlowContent.basicModal(modalId: String, headerText: String, bodyMessage: String, okClickFunction: String) {
     div(classes = "modal fade") {
         id = modalId
         attributes["data-backdrop"] = "static"
@@ -34,7 +34,7 @@ fun FlowContent.basicModal(modalId: String, headerText: String, bodyMessage: Str
                     }
                     button(classes = "btn btn-secondary") {
                         type = ButtonType.button
-                        onClick = "pickup()"
+                        onClick = "${okClickFunction}()"
                         +"OK"
                     }
                 }
