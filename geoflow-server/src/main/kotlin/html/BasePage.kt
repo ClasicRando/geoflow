@@ -86,6 +86,9 @@ open class BasePage: Template<HTML> {
                 }
                 insert(content)
                 script {
+                    src = "assets/utils.js"
+                }
+                script {
                     src = "https://cdn.jsdelivr.net/npm/jquery/dist/jquery.min.js"
                 }
                 script {

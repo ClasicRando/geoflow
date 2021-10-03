@@ -74,7 +74,6 @@ class PipelineTasks(runId: Long): BasePage() {
             script {
                 src = "https://unpkg.com/bootstrap-table@1.18.3/dist/extensions/auto-refresh/bootstrap-table-auto-refresh.js"
             }
-            postValue()
             script {
                 unsafe {
                     raw("""

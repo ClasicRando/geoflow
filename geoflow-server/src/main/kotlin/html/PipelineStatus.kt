@@ -20,7 +20,6 @@ class PipelineStatus(workflowCode: String): BasePage() {
             )
         }
         setScript {
-            postObject
             script {
                 unsafe {
                     raw("""
