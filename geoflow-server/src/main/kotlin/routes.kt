@@ -222,6 +222,18 @@ fun Route.api() {
         }
         call.respond(response)
     }
+    post("/api/source-tables") {
+        val user = call.sessions.get<UserSession>()!!
+        val params = call.request.queryParameters.names().associateWith { call.request.queryParameters[it] ?: "" }
+        val response = runCatching {
+            SourceTables.updateSourceTable(user.username, params)
+            mapOf("success" to "updated stOid ${params["stOid"]}")
+        }.getOrElse { t ->
+            call.application.environment.log.info("/api/source-tables", t)
+            mapOf("error" to "Failed to update stOid ${params["stOid"]}. ${t.message}")
+        }
+        call.respond(response)
+    }
 }
 
 fun Route.js() {
