@@ -16,13 +16,9 @@ function post(params) {
     form.submit();
 }
 
-function postValue(url) {
+function postValue(url, func = function(value) {console.log(value)}) {
     const options = {
         method: 'POST',
     };
-    fetch(url, options).then(result => {
-        result.json()
-    }).then(json => {
-        console.log(json);
-    });
+    fetch(url, options).then(func);
 }

@@ -125,8 +125,20 @@ function showDataDisplayModal(action, data) {
 var tableRow = {};
 
 function saveChanges() {
+    const runId = new URLSearchParams(window.location.href.replace(/^[^?]+/g, '')).get('runId');
     const params = $(`#${sourceTableModalId}EditRowBody`).serialize();
-    post(`/api/source-tables?${params}`);
+    postValue(
+        `/api/source-tables?stOid=${tableRow.st_oid}&runId=${runId}&${params}`,
+        function(response) {
+            $(`#${sourceTableModalId}EditRow`).modal('hide');
+            $(`#${sourceTablesTableId}`).bootstrapTable('refresh');
+            response.json().then(body => {
+                if (body.error !== undefined) {
+                    showMessageBox('Error', body.error);
+                }
+            });
+        }
+    );
 }
 
 function editSourceTableRow(row) {
@@ -139,7 +151,11 @@ function editSourceTableRow(row) {
         if (!columnNames.includes(key)) {
             continue;
         }
-        $(`#${key}`).val(value);
+        if (typeof(value) === 'boolean') {
+            $(`#${key}`).prop('checked', value);
+        } else {
+            $(`#${key}`).val(value);
+        }
     }
     $(`#${sourceTableModalId}EditRow`).modal('show');
 }
