@@ -67,6 +67,7 @@ class PipelineTasks(runId: Long): BasePage() {
                 sourceTableModalId,
                 sourceTablesTableId,
                 "/api/source-tables?runId=$runId",
+                "saveChanges",
             )
             messageBoxModal()
         }

@@ -122,10 +122,16 @@ function showDataDisplayModal(action, data) {
     }
 }
 
+var tableRow = {};
+
+function saveChanges() {
+    const params = $(`#${sourceTableModalId}EditRowBody`).serialize();
+    post(`/api/source-tables?${params}`);
+}
+
 function editSourceTableRow(row) {
+    tableRow = row;
     let $table = $(`#${sourceTablesTableId}`);
-    let $formBody = $(`#${sourceTableModalId}EditRowBody`);
-    $formBody.empty();
     let allColumns = $table.bootstrapTable('getOptions')['columns'][0];
     let columns = allColumns.filter(column => column.visible && column.editable);
     let columnNames = columns.map(column => column.field);
@@ -133,39 +139,7 @@ function editSourceTableRow(row) {
         if (!columnNames.includes(key)) {
             continue;
         }
-        const div = document.createElement('div');
-        div.classList.add('form-group');
-        const label = document.createElement('label');
-        label['for'] = key;
-        label.innerHTML = columns.filter(column => column.field === key)[0].title;
-        let field;
-        if (typeof(value) === 'boolean') {
-            field = document.createElement('input');
-            field.type = 'checkbox';
-            field.value = value;
-            field.classList.add('form-check-input');
-            label.classList.add('form-check-label');
-        } else if (key === 'collect_type') {
-            field = document.createElement('select');
-            for (type of types) {
-                const option = document.createElement('option');
-                option.value = type;
-                option.innerHTML = type;
-                field.appendChild(option);
-            }
-            field.value = value;
-            field.classList.add('form-control');
-        } else {
-            field = document.createElement('input');
-            field.type = 'text';
-            field.value = value;
-            field.classList.add('form-control');
-        }
-        field.id = key;
-        field.name = key;
-        div.appendChild(label);
-        div.appendChild(field);
-        $formBody.append(div);
+        $(`#${key}`).val(value);
     }
     $(`#${sourceTableModalId}EditRow`).modal('show');
 }
