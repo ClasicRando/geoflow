@@ -5,6 +5,7 @@ import database.sourceTables
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 import org.ktorm.dsl.eq
+import org.ktorm.dsl.update
 import org.ktorm.entity.filter
 import org.ktorm.entity.map
 import org.ktorm.schema.*
@@ -87,6 +88,8 @@ object SourceTables: Table<SourceTable>("source_tables") {
 
     @Serializable
     data class Record(
+        @SerialName("st_oid")
+        val stOid: Long,
         @SerialName("table_name")
         val tableName: String,
         @SerialName("file_id")
@@ -125,6 +128,7 @@ object SourceTables: Table<SourceTable>("source_tables") {
             .filter { it.runId eq runId }
             .map { table ->
                 Record(
+                    table.stOid,
                     table.tableName,
                     table.fileId,
                     table.fileName,
@@ -140,6 +144,76 @@ object SourceTables: Table<SourceTable>("source_tables") {
                     table.analyze,
                     table.load,
                 )
+            }
+    }
+
+    @Throws(IllegalArgumentException::class, NumberFormatException::class)
+    fun updateSourceTable(username: String, params: Map<String, String>) {
+        val runId = params["runId"]
+            ?.toLong()
+            ?: throw IllegalArgumentException("runId must be a parameter in the url")
+        if (!PipelineRuns.checkUserRun(runId, username)) {
+            throw IllegalArgumentException("Username does not own the runId")
+        }
+        val stOid = params["stOid"]
+            ?.toLong()
+            ?: throw IllegalArgumentException("stOid must be a parameter in the url")
+        DatabaseConnection
+            .database
+            .update(this) {
+                set(
+                    sourceTableName,
+                    params["table_name"]
+                        ?: throw IllegalArgumentException("table name must not be empty or null")
+                )
+                set(
+                    fileId,
+                    params["file_id"]
+                        ?: throw IllegalArgumentException("file ID must not be empty or null")
+                )
+                val fileName =
+                    params["file_name"]
+                        ?: throw IllegalArgumentException("filename must not be empty or null")
+                set(
+                    this@SourceTables.fileName,
+                    fileName
+                )
+                if (fileName.matches("\\.(xlsx?|accdb|mdb)$".toRegex())) {
+                    set(
+                        subTable,
+                        params["sub_table"]
+                            ?: throw IllegalArgumentException("sub table must not be empty or null")
+                    )
+                }
+                set(
+                    delimiter,
+                    params["delimiter"]
+                )
+                set(
+                    url,
+                    params["url"]
+                )
+                set(
+                    comments,
+                    params["comments"]
+                )
+                set(
+                    collectType,
+                    FileCollectType.valueOf(params["collect_type"] ?: "")
+                )
+                set(
+                    qualified,
+                    params["qualified"].equals("on")
+                )
+                set(
+                    analyze,
+                    params["analyze"].equals("on")
+                )
+                set(
+                    load,
+                    params["load"].equals("on")
+                )
+                where { it.stOid eq stOid }
             }
     }
 }
