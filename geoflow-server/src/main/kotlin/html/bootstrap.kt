@@ -178,7 +178,7 @@ fun FlowContent.sourceTablesModal(modalId: String, tableId: String, url: String,
                                     }
                                     textInput(classes = "form-control") {
                                         id = "table_name"
-                                        name = "tableName"
+                                        name = "table_name"
                                     }
                                 }
                                 div(classes = "form-group") {
@@ -198,7 +198,7 @@ fun FlowContent.sourceTablesModal(modalId: String, tableId: String, url: String,
                                     }
                                     textInput(classes = "form-control") {
                                         id = "file_name"
-                                        name = "filename"
+                                        name = "file_name"
                                     }
                                 }
                                 div(classes = "form-group") {
@@ -208,7 +208,7 @@ fun FlowContent.sourceTablesModal(modalId: String, tableId: String, url: String,
                                     }
                                     textInput(classes = "form-control") {
                                         id = "sub_table"
-                                        name = "subTable"
+                                        name = "sub_table"
                                     }
                                 }
                             }
@@ -220,7 +220,7 @@ fun FlowContent.sourceTablesModal(modalId: String, tableId: String, url: String,
                                     }
                                     select(classes = "form-control") {
                                         id = "collect_type"
-                                        name = "collectType"
+                                        name = "collect_type"
                                         FileCollectType.values().forEach { type ->
                                             option {
                                                 value = type.name
