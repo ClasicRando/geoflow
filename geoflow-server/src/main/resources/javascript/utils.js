@@ -30,14 +30,17 @@ var sourceTableModalId = 'sourceTableData';
 function saveSourceTableChanges() {
     const runId = new URLSearchParams(window.location.href.replace(/^[^?]+/g, '')).get('runId');
     const params = $(`#${sourceTableModalId}EditRowBody`).serialize();
+    console.log(params);
+    console.log(runId);
     postValue(
         `/api/source-tables?stOid=${stOid}&runId=${runId}&${params}`,
         function(response) {
-            $(`#${sourceTableModalId}EditRow`).modal('hide');
             $(`#${sourceTablesTableId}`).bootstrapTable('refresh');
             response.json().then(body => {
                 if (body.error !== undefined) {
                     showMessageBox('Error', body.error);
+                } else {
+                    $(`#${sourceTableModalId}EditRow`).modal('hide');
                 }
             });
         }
@@ -71,6 +74,8 @@ function newSourceTableRow() {
         const $formField = $(`#${column.field}`);
         if ($formField.is(':checkbox')) {
             $formField.prop('checked', false);
+        } else if ($formField.is('select')) {
+            $formField.find('option:first-child').prop('selected', true);
         } else {
             $formField.val('');
         }

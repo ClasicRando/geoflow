@@ -225,12 +225,13 @@ fun Route.api() {
     post("/api/source-tables") {
         val user = call.sessions.get<UserSession>()!!
         val params = call.request.queryParameters.names().associateWith { call.request.queryParameters[it] ?: "" }
+        val insert = (params["stOid"]?.toLong() ?: 0) == 0L
         val response = runCatching {
-            SourceTables.updateOrInsertSourceTable(user.username, params)
-            mapOf("success" to "updated stOid ${params["stOid"]}")
+            val stOid = SourceTables.updateOrInsertSourceTable(user.username, params)
+            mapOf("success" to "${if (insert) "inserted" else "updated"} stOid $stOid")
         }.getOrElse { t ->
             call.application.environment.log.info("/api/source-tables", t)
-            mapOf("error" to "Failed to update stOid ${params["stOid"]}. ${t.message}")
+            mapOf("error" to "Failed to ${if (insert) "insert" else "update stOid ${params["stOid"]}"}. ${t.message}")
         }
         call.respond(response)
     }

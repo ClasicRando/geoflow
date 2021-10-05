@@ -5,11 +5,11 @@ import database.sourceTables
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 import org.ktorm.dsl.eq
-import org.ktorm.dsl.insert
 import org.ktorm.dsl.update
 import org.ktorm.entity.filter
 import org.ktorm.entity.map
 import org.ktorm.schema.*
+import org.ktorm.support.postgresql.insertReturning
 import orm.entities.SourceTable
 import orm.enums.FileCollectType
 import orm.enums.LoaderType
@@ -148,8 +148,8 @@ object SourceTables: Table<SourceTable>("source_tables") {
             }
     }
 
-    @Throws(IllegalArgumentException::class, NumberFormatException::class)
-    fun updateOrInsertSourceTable(username: String, params: Map<String, String>) {
+    @Throws(IllegalArgumentException::class, NumberFormatException::class, NoSuchElementException::class)
+    fun updateOrInsertSourceTable(username: String, params: Map<String, String>): Long {
         val runId = params["runId"]
             ?.toLong()
             ?: throw IllegalArgumentException("runId must be a parameter in the url")
@@ -159,26 +159,31 @@ object SourceTables: Table<SourceTable>("source_tables") {
         val stOid = params["stOid"]
             ?.toLong()
             ?: throw IllegalArgumentException("stOid must be a parameter in the url")
-        DatabaseConnection.database.let { database ->
+        return DatabaseConnection.database.let { database ->
             val tableName = params["table_name"]
                 ?: throw IllegalArgumentException("table name must not be empty or null")
             val fileId = params["file_id"] ?: throw IllegalArgumentException("file ID must not be empty or null")
             val fileName = params["file_name"] ?: throw IllegalArgumentException("filename must not be empty or null")
             val collectType = FileCollectType.valueOf(params["collect_type"] ?: "")
             val qualified = params["qualified"].equals("on")
-            val analyze = params["qualified"].equals("on")
+            val analyze = params["analyze"].equals("on")
             val load = params["load"].equals("on")
-            val subTable = if (fileName.matches("\\.(xlsx?|accdb|mdb)$".toRegex())) {
+            val fileExtension = "(?<=\\.)[^.]+\$".toRegex().find(fileName)?.value
+                ?: throw IllegalArgumentException("file extension could not be found")
+            val loaderType = LoaderType.values().first { fileExtension in it.extensions }
+            val subTable = if (loaderType == LoaderType.MDB || loaderType == LoaderType.Excel) {
                 params["sub_table"] ?: throw IllegalArgumentException("sub table must not be empty or null")
             } else {
                 null
             }
             if (stOid == 0L) {
-                database.insert(this) {
+                database.insertReturning(this, this.stOid) {
+                    set(this@SourceTables.runId, runId)
                     set(sourceTableName, tableName)
                     set(this@SourceTables.fileId, fileId)
                     set(this@SourceTables.fileName, fileName)
                     set(this@SourceTables.subTable, subTable)
+                    set(this@SourceTables.loaderType, loaderType)
                     set(delimiter, params["delimiter"])
                     set(url, params["url"])
                     set(comments, params["comments"])
@@ -186,13 +191,15 @@ object SourceTables: Table<SourceTable>("source_tables") {
                     set(this@SourceTables.qualified, qualified)
                     set(this@SourceTables.analyze, analyze)
                     set(this@SourceTables.load, load)
-                }
+                    set(encoding, "utf8")
+                } ?: throw IllegalArgumentException("Failed to insert a new source table record")
             } else {
                 database.update(this) {
                     set(sourceTableName, tableName)
                     set(this@SourceTables.fileId, fileId)
                     set(this@SourceTables.fileName, fileName)
                     set(this@SourceTables.subTable, subTable)
+                    set(this@SourceTables.loaderType, loaderType)
                     set(delimiter, params["delimiter"])
                     set(url, params["url"])
                     set(comments, params["comments"])
@@ -202,6 +209,7 @@ object SourceTables: Table<SourceTable>("source_tables") {
                     set(this@SourceTables.load, load)
                     where { it.stOid eq stOid }
                 }
+                stOid
             }
         }
     }
