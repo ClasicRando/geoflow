@@ -28,6 +28,7 @@ fun FlowContent.basicTable(
     tableId: String,
     dataUrl: String,
     fields: Map<String, Map<String, String>>,
+    tableButtons: List<TableButton> = listOf(),
 ) {
     table {
         id = tableId
@@ -37,6 +38,9 @@ fun FlowContent.basicTable(
         attributes["data-classes"] = "table table-bordered table-hover"
         attributes["data-thead-classes"] = "thead-dark"
         attributes["data-search"] = "true"
+        if (tableButtons.isNotEmpty()) {
+            attributes["data-buttons"] = "buttons"
+        }
         thead {
             tr {
                 fields.forEach { (field, options) ->
@@ -47,6 +51,19 @@ fun FlowContent.basicTable(
                         }
                         text(options["name"] ?: getFieldTable(field))
                     }
+                }
+            }
+        }
+        if (tableButtons.isNotEmpty()) {
+            script {
+                unsafe {
+                    raw("""
+                        function buttons() {
+                            return {
+                                ${tableButtons.joinToString { it.button }}
+                            }
+                        }
+                    """.trimIndent())
                 }
             }
         }
