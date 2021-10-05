@@ -6,9 +6,7 @@ import orm.tables.PipelineRunTasks
 
 class PipelineTasks(runId: Long): BasePage() {
     private val taskDataModalId = "taskData"
-    private val sourceTableModalId = "sourceTableData"
     private val taskTableId = "tasks"
-    private val sourceTablesTableId = "source-tables"
     private val tableButtons = listOf(
         TableButton(
             "btnRun",
@@ -63,12 +61,7 @@ class PipelineTasks(runId: Long): BasePage() {
                 taskDataModalId,
                 "Task Details",
             )
-            sourceTablesModal(
-                sourceTableModalId,
-                sourceTablesTableId,
-                "/api/source-tables?runId=$runId",
-                "saveChanges",
-            )
+            sourceTablesModal(runId)
             messageBoxModal()
         }
         setScript {
@@ -80,8 +73,6 @@ class PipelineTasks(runId: Long): BasePage() {
                     raw("""
                         var taskTableId = '$taskTableId';
                         var taskDataModalId = '$taskDataModalId';
-                        var sourceTablesTableId = '$sourceTablesTableId';
-                        var sourceTableModalId = '$sourceTableModalId';
                         var types = [${FileCollectType.values().joinToString("','", "'", "'")}];
                     """.trimIndent())
                 }

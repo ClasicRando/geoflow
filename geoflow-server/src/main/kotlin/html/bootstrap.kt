@@ -115,9 +115,12 @@ fun FlowContent.messageBoxModal() {
     }
 }
 
-fun FlowContent.sourceTablesModal(modalId: String, tableId: String, url: String, saveChangesFunction: String) {
+private const val sourceTableModalId = "sourceTableData"
+private const val sourceTablesTableId = "source-tables"
+
+fun FlowContent.sourceTablesModal(runId: Long) {
     div(classes = "modal fade") {
-        id = modalId
+        id = sourceTableModalId
         attributes["data-backdrop"] = "static"
         attributes["data-keyboard"] = "false"
         attributes["tabindex"] = "-1"
@@ -133,10 +136,10 @@ fun FlowContent.sourceTablesModal(modalId: String, tableId: String, url: String,
                     }
                 }
                 div(classes = "modal-body") {
-                    id = "${modalId}Body"
+                    id = "${sourceTableModalId}Body"
                     basicTable(
-                        tableId,
-                        url,
+                        sourceTablesTableId,
+                        "/api/source-tables?runId=$runId",
                         SourceTables.tableDisplayFields,
                     )
                 }
@@ -151,7 +154,7 @@ fun FlowContent.sourceTablesModal(modalId: String, tableId: String, url: String,
         }
     }
     div(classes = "modal fade") {
-        id = "${modalId}EditRow"
+        id = "${sourceTableModalId}EditRow"
         attributes["data-backdrop"] = "static"
         attributes["data-keyboard"] = "false"
         attributes["tabindex"] = "-1"
@@ -168,7 +171,7 @@ fun FlowContent.sourceTablesModal(modalId: String, tableId: String, url: String,
                 div(classes = "modal-body") {
                     form {
                         action = ""
-                        id = "${modalId}EditRowBody"
+                        id = "${sourceTableModalId}EditRowBody"
                         div(classes = "form-group row") {
                             div(classes = "col") {
                                 div(classes = "form-group") {
@@ -298,7 +301,7 @@ fun FlowContent.sourceTablesModal(modalId: String, tableId: String, url: String,
                 div(classes = "modal-footer") {
                     button(classes = "btn btn-secondary") {
                         type = ButtonType.button
-                        onClick = "$saveChangesFunction()"
+                        onClick = "saveSourceTableChanges()"
                         +"Save"
                     }
                     button(classes = "btn btn-secondary") {
