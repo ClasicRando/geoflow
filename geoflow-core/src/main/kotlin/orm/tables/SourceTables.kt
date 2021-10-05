@@ -5,6 +5,7 @@ import database.sourceTables
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 import org.ktorm.dsl.eq
+import org.ktorm.dsl.insert
 import org.ktorm.dsl.update
 import org.ktorm.entity.filter
 import org.ktorm.entity.map
@@ -148,7 +149,7 @@ object SourceTables: Table<SourceTable>("source_tables") {
     }
 
     @Throws(IllegalArgumentException::class, NumberFormatException::class)
-    fun updateSourceTable(username: String, params: Map<String, String>) {
+    fun updateOrInsertSourceTable(username: String, params: Map<String, String>) {
         val runId = params["runId"]
             ?.toLong()
             ?: throw IllegalArgumentException("runId must be a parameter in the url")
@@ -158,62 +159,50 @@ object SourceTables: Table<SourceTable>("source_tables") {
         val stOid = params["stOid"]
             ?.toLong()
             ?: throw IllegalArgumentException("stOid must be a parameter in the url")
-        DatabaseConnection
-            .database
-            .update(this) {
-                set(
-                    sourceTableName,
-                    params["table_name"]
-                        ?: throw IllegalArgumentException("table name must not be empty or null")
-                )
-                set(
-                    fileId,
-                    params["file_id"]
-                        ?: throw IllegalArgumentException("file ID must not be empty or null")
-                )
-                val fileName =
-                    params["file_name"]
-                        ?: throw IllegalArgumentException("filename must not be empty or null")
-                set(
-                    this@SourceTables.fileName,
-                    fileName
-                )
-                if (fileName.matches("\\.(xlsx?|accdb|mdb)$".toRegex())) {
-                    set(
-                        subTable,
-                        params["sub_table"]
-                            ?: throw IllegalArgumentException("sub table must not be empty or null")
-                    )
-                }
-                set(
-                    delimiter,
-                    params["delimiter"]
-                )
-                set(
-                    url,
-                    params["url"]
-                )
-                set(
-                    comments,
-                    params["comments"]
-                )
-                set(
-                    collectType,
-                    FileCollectType.valueOf(params["collect_type"] ?: "")
-                )
-                set(
-                    qualified,
-                    params["qualified"].equals("on")
-                )
-                set(
-                    analyze,
-                    params["analyze"].equals("on")
-                )
-                set(
-                    load,
-                    params["load"].equals("on")
-                )
-                where { it.stOid eq stOid }
+        DatabaseConnection.database.let { database ->
+            val tableName = params["table_name"]
+                ?: throw IllegalArgumentException("table name must not be empty or null")
+            val fileId = params["file_id"] ?: throw IllegalArgumentException("file ID must not be empty or null")
+            val fileName = params["file_name"] ?: throw IllegalArgumentException("filename must not be empty or null")
+            val collectType = FileCollectType.valueOf(params["collect_type"] ?: "")
+            val qualified = params["qualified"].equals("on")
+            val analyze = params["qualified"].equals("on")
+            val load = params["load"].equals("on")
+            val subTable = if (fileName.matches("\\.(xlsx?|accdb|mdb)$".toRegex())) {
+                params["sub_table"] ?: throw IllegalArgumentException("sub table must not be empty or null")
+            } else {
+                null
             }
+            if (stOid == 0L) {
+                database.insert(this) {
+                    set(sourceTableName, tableName)
+                    set(this@SourceTables.fileId, fileId)
+                    set(this@SourceTables.fileName, fileName)
+                    set(this@SourceTables.subTable, subTable)
+                    set(delimiter, params["delimiter"])
+                    set(url, params["url"])
+                    set(comments, params["comments"])
+                    set(this@SourceTables.collectType, collectType)
+                    set(this@SourceTables.qualified, qualified)
+                    set(this@SourceTables.analyze, analyze)
+                    set(this@SourceTables.load, load)
+                }
+            } else {
+                database.update(this) {
+                    set(sourceTableName, tableName)
+                    set(this@SourceTables.fileId, fileId)
+                    set(this@SourceTables.fileName, fileName)
+                    set(this@SourceTables.subTable, subTable)
+                    set(delimiter, params["delimiter"])
+                    set(url, params["url"])
+                    set(comments, params["comments"])
+                    set(this@SourceTables.collectType, collectType)
+                    set(this@SourceTables.qualified, qualified)
+                    set(this@SourceTables.analyze, analyze)
+                    set(this@SourceTables.load, load)
+                    where { it.stOid eq stOid }
+                }
+            }
+        }
     }
 }

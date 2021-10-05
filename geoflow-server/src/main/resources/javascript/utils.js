@@ -23,7 +23,7 @@ function postValue(url, func = function(value) {console.log(value)}) {
     fetch(url, options).then(func);
 }
 
-var tableRow = {};
+var stOid = 0;
 var sourceTablesTableId = 'source-tables';
 var sourceTableModalId = 'sourceTableData';
 
@@ -31,7 +31,7 @@ function saveSourceTableChanges() {
     const runId = new URLSearchParams(window.location.href.replace(/^[^?]+/g, '')).get('runId');
     const params = $(`#${sourceTableModalId}EditRowBody`).serialize();
     postValue(
-        `/api/source-tables?stOid=${tableRow.st_oid}&runId=${runId}&${params}`,
+        `/api/source-tables?stOid=${stOid}&runId=${runId}&${params}`,
         function(response) {
             $(`#${sourceTableModalId}EditRow`).modal('hide');
             $(`#${sourceTablesTableId}`).bootstrapTable('refresh');
@@ -42,10 +42,11 @@ function saveSourceTableChanges() {
             });
         }
     );
+    stOid = 0;
 }
 
 function editSourceTableRow(row) {
-    tableRow = row;
+    stOid = row.st_oid;
     let $table = $(`#${sourceTablesTableId}`);
     let allColumns = $table.bootstrapTable('getOptions')['columns'][0];
     let columns = allColumns.filter(column => column.visible && column.editable);
@@ -61,4 +62,17 @@ function editSourceTableRow(row) {
         }
     }
     $(`#${sourceTableModalId}EditRow`).modal('show');
+}
+
+function newSourceTableRow() {
+    $(`#${sourceTableModalId}EditRow`).modal('show');
+    const columns = $(`#${sourceTablesTableId}`).bootstrapTable('getOptions').columns[0];
+    for (const column of columns) {
+        const $formField = $(`#${column.field}`);
+        if ($formField.is(':checkbox')) {
+            $formField.prop('checked', false);
+        } else {
+            $formField.val('');
+        }
+    }
 }
