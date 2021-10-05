@@ -141,6 +141,15 @@ fun FlowContent.sourceTablesModal(runId: Long) {
                         sourceTablesTableId,
                         "/api/source-tables?runId=$runId",
                         SourceTables.tableDisplayFields,
+                        tableButtons = listOf(
+                            TableButton(
+                                "btnAddTable",
+                                "Add Source Table",
+                                "fa-plus",
+                                "newSourceTableRow()",
+                                "Add new source table to the current run",
+                            ),
+                        )
                     )
                 }
                 div(classes = "modal-footer") {
