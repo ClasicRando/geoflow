@@ -5,9 +5,9 @@ package orm.enums
  * CREATE TYPE public.loader_type AS ENUM
  * ('Excel', 'Flat', 'DBF', 'MDB');
  */
-enum class LoaderType {
-    Excel,
-    Flat,
-    DBF,
-    MDB,
+enum class LoaderType(val extensions: List<String>) {
+    Excel(listOf("xlsx", "xls")),
+    Flat(listOf("csv", "tsv", "txt")),
+    DBF(listOf("dbf")),
+    MDB(listOf("mdb", "accdb")),
 }

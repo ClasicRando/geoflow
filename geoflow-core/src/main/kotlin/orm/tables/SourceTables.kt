@@ -1,9 +1,20 @@
 package orm.tables
 
+import database.DatabaseConnection
+import database.sourceTables
+import kotlinx.serialization.SerialName
+import kotlinx.serialization.Serializable
+import org.ktorm.dsl.delete
+import org.ktorm.dsl.eq
+import org.ktorm.dsl.update
+import org.ktorm.entity.filter
+import org.ktorm.entity.map
 import org.ktorm.schema.*
+import org.ktorm.support.postgresql.insertReturning
 import orm.entities.SourceTable
 import orm.enums.FileCollectType
 import orm.enums.LoaderType
+import kotlin.jvm.Throws
 
 object SourceTables: Table<SourceTable>("source_tables") {
 
@@ -23,6 +34,22 @@ object SourceTables: Table<SourceTable>("source_tables") {
     val comments = text("comments").bindTo { it.comments }
     val collectType = enum<FileCollectType>("collect_type").bindTo { it.collectType }
     val delimiter = varchar("delimiter").bindTo { it.delimiter }
+    val tableDisplayFields = mapOf(
+        "table_name" to mapOf("editable" to "true", "sortable" to "true"),
+        "file_id" to mapOf("name" to "File ID", "editable" to "true", "sortable" to "true"),
+        "file_name" to mapOf("editable" to "true", "sortable" to "true"),
+        "sub_table" to mapOf("editable" to "true"),
+        "loader_type" to mapOf("editable" to "false"),
+        "delimiter" to mapOf("editable" to "true"),
+        "qualified" to mapOf("editable" to "true", "formatter" to "boolFormatter"),
+        "encoding" to mapOf("editable" to "false"),
+        "url" to mapOf("editable" to "true"),
+        "comments" to mapOf("editable" to "true"),
+        "record_count" to mapOf("editable" to "false"),
+        "collect_type" to mapOf("editable" to "true"),
+        "analyze" to mapOf("editable" to "true", "formatter" to "boolFormatter"),
+        "load" to mapOf("editable" to "true", "formatter" to "boolFormatter"),
+    )
 
     val createSequence = """
         CREATE SEQUENCE public.source_tables_st_oid_seq
@@ -60,4 +87,143 @@ object SourceTables: Table<SourceTable>("source_tables") {
             OIDS = FALSE
         );
     """.trimIndent()
+
+    @Serializable
+    data class Record(
+        @SerialName("st_oid")
+        val stOid: Long,
+        @SerialName("table_name")
+        val tableName: String,
+        @SerialName("file_id")
+        val fileId: String,
+        @SerialName("file_name")
+        val fileName: String,
+        @SerialName("sub_table")
+        val subTable: String,
+        @SerialName("loader_type")
+        val loaderType: String,
+        @SerialName("delimiter")
+        val delimiter: String,
+        @SerialName("qualified")
+        val qualified: Boolean,
+        @SerialName("encoding")
+        val encoding: String,
+        @SerialName("url")
+        val url: String,
+        @SerialName("comments")
+        val comments: String,
+        @SerialName("record_count")
+        val recordCount: Int,
+        @SerialName("collect_type")
+        val collectType: String,
+        @SerialName("analyze")
+        val analyze: Boolean,
+        @SerialName("load")
+        val load: Boolean,
+    )
+
+    @Throws(IllegalArgumentException::class)
+    fun getRunSourceTables(runId: Long): List<Record> {
+        return DatabaseConnection
+            .database
+            .sourceTables
+            .filter { it.runId eq runId }
+            .map { table ->
+                Record(
+                    table.stOid,
+                    table.tableName,
+                    table.fileId,
+                    table.fileName,
+                    table.subTable ?: "",
+                    table.loaderType.name,
+                    table.delimiter ?: "",
+                    table.qualified,
+                    table.encoding,
+                    table.url ?: "",
+                    table.comments ?: "",
+                    table.recordCount,
+                    table.collectType.name,
+                    table.analyze,
+                    table.load,
+                )
+            }
+    }
+
+    @Throws(IllegalArgumentException::class, NumberFormatException::class, NoSuchElementException::class)
+    fun alterSourceTableRecord(username: String, params: Map<String, String>): Long {
+        val method = params["method"]
+            ?: throw IllegalArgumentException("Method of operation on SourceTables record is not specified")
+        val runId = params["runId"]
+            ?.toLong()
+            ?: throw IllegalArgumentException("runId must be a parameter in the url")
+        if (!PipelineRuns.checkUserRun(runId, username)) {
+            throw IllegalArgumentException("Username does not own the runId")
+        }
+        val stOid = params["stOid"]
+            ?.toLong()
+            ?: 0
+        return DatabaseConnection.database.let { database ->
+            val tableName = params["table_name"]
+                ?: throw IllegalArgumentException("table name must not be empty or null")
+            val fileId = params["file_id"] ?: throw IllegalArgumentException("file ID must not be empty or null")
+            val fileName = params["file_name"] ?: throw IllegalArgumentException("filename must not be empty or null")
+            val collectType = FileCollectType.valueOf(params["collect_type"] ?: "")
+            val qualified = params["qualified"].equals("on")
+            val analyze = params["analyze"].equals("on")
+            val load = params["load"].equals("on")
+            val fileExtension = "(?<=\\.)[^.]+\$".toRegex().find(fileName)?.value
+                ?: throw IllegalArgumentException("file extension could not be found")
+            val loaderType = LoaderType.values().first { fileExtension in it.extensions }
+            val subTable = if (loaderType == LoaderType.MDB || loaderType == LoaderType.Excel) {
+                params["sub_table"] ?: throw IllegalArgumentException("sub table must not be empty or null")
+            } else {
+                null
+            }
+            when (method) {
+                "insert" -> {
+                    database.insertReturning(this, this.stOid) {
+                        set(this@SourceTables.runId, runId)
+                        set(sourceTableName, tableName)
+                        set(this@SourceTables.fileId, fileId)
+                        set(this@SourceTables.fileName, fileName)
+                        set(this@SourceTables.subTable, subTable)
+                        set(this@SourceTables.loaderType, loaderType)
+                        set(delimiter, params["delimiter"])
+                        set(url, params["url"])
+                        set(comments, params["comments"])
+                        set(this@SourceTables.collectType, collectType)
+                        set(this@SourceTables.qualified, qualified)
+                        set(this@SourceTables.analyze, analyze)
+                        set(this@SourceTables.load, load)
+                        set(encoding, "utf8")
+                    } ?: throw IllegalArgumentException("Failed to insert a new source table record")
+                }
+                "update" -> {
+                    database.update(this) {
+                        set(sourceTableName, tableName)
+                        set(this@SourceTables.fileId, fileId)
+                        set(this@SourceTables.fileName, fileName)
+                        set(this@SourceTables.subTable, subTable)
+                        set(this@SourceTables.loaderType, loaderType)
+                        set(delimiter, params["delimiter"])
+                        set(url, params["url"])
+                        set(comments, params["comments"])
+                        set(this@SourceTables.collectType, collectType)
+                        set(this@SourceTables.qualified, qualified)
+                        set(this@SourceTables.analyze, analyze)
+                        set(this@SourceTables.load, load)
+                        where { it.stOid eq stOid }
+                    }
+                    stOid
+                }
+                "delete" -> {
+                    database.delete(this) {
+                        it.stOid eq stOid
+                    }
+                    stOid
+                }
+                else -> throw IllegalArgumentException("Parameter 'method' must be insert, update or delete")
+            }
+        }
+    }
 }

@@ -29,7 +29,6 @@ class Index: BasePage() {
             }
         }
         setScript {
-            postObject
             script {
                 unsafe {
                     raw("""

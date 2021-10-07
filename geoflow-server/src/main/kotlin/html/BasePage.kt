@@ -5,8 +5,15 @@ import kotlinx.html.*
 
 open class BasePage: Template<HTML> {
 
+    val styles = Placeholder<STYLE>()
     val content = Placeholder<FlowContent>()
     val script = Placeholder<FlowContent>()
+
+    fun setStyles(addStyles: STYLE.() -> Unit) {
+        styles {
+            this.addStyles()
+        }
+    }
 
     fun setContent(addContent: FlowContent.() -> Unit) {
         content {
@@ -51,6 +58,9 @@ open class BasePage: Template<HTML> {
                     raw("td { cursor: pointer; }")
                 }
             }
+            style {
+                insert(styles)
+            }
         }
         body {
             div("container-fluid") {
@@ -75,6 +85,9 @@ open class BasePage: Template<HTML> {
                     }
                 }
                 insert(content)
+                script {
+                    src = "assets/utils.js"
+                }
                 script {
                     src = "https://cdn.jsdelivr.net/npm/jquery/dist/jquery.min.js"
                 }

@@ -3,6 +3,7 @@ import html.*
 import io.ktor.application.*
 import io.ktor.html.*
 import io.ktor.http.*
+import io.ktor.http.content.*
 import io.ktor.request.*
 import io.ktor.response.*
 import io.ktor.routing.*
@@ -11,10 +12,7 @@ import io.ktor.util.*
 import jobs.SystemJob
 import orm.enums.TaskRunType
 import orm.enums.TaskStatus
-import orm.tables.Actions
-import orm.tables.PipelineRunTasks
-import orm.tables.PipelineRuns
-import orm.tables.WorkflowOperations
+import orm.tables.*
 
 fun Route.index() {
     get("/") {
@@ -212,5 +210,40 @@ fun Route.api() {
         val pipelineRunTaskId = call.request.queryParameters["prTaskId"]?.toLong() ?: 0
         val status = PipelineRunTasks.getStatus(pipelineRunTaskId)
         call.respond(mapOf("status" to status))
+    }
+    get("/api/source-tables") {
+        val user = call.sessions.get<UserSession>()!!
+        val runId = call.request.queryParameters["runId"]?.toLong() ?: 0
+        val response = runCatching {
+            SourceTables.getRunSourceTables(runId)
+        }.getOrElse { t ->
+            call.application.environment.log.info("/api/source-tables", t)
+            listOf()
+        }
+        call.respond(response)
+    }
+    post("/api/source-tables") {
+        val user = call.sessions.get<UserSession>()!!
+        val params = call.request.queryParameters.names().associateWith { call.request.queryParameters[it] ?: "" }
+        val method = params["method"]
+        if (method == null) {
+            call.respond(mapOf("error" to "Method was not specified as a parameter"))
+            return@post
+        }
+        val response = runCatching {
+            val stOid = SourceTables.alterSourceTableRecord(user.username, params)
+            mapOf("success" to "${method}ed stOid $stOid")
+        }.getOrElse { t ->
+            call.application.environment.log.info("/api/source-tables", t)
+            val message = "Failed to $method${if (method != "insert") " stOid ${params["stOid"]}" else ""}"
+            mapOf("error" to "$message. ${t.message}")
+        }
+        call.respond(response)
+    }
+}
+
+fun Route.js() {
+    static("assets") {
+        resources("javascript")
     }
 }

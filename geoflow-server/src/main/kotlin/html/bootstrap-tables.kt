@@ -9,72 +9,27 @@ fun getFieldTable(field: String): String = field
     }
     .toString()
 
-val availableButtons = mapOf(
-    "btnRun" to """
-        btnRun: {
-            text: 'Run Next Task',
-            icon: 'fa-play',
-            event: () => {
-                let ${'$'}table = $('#tasks');
-                let options = ${'$'}table.bootstrapTable('getOptions');
-                if (options.autoRefreshStatus === false) {
-                    showMessageBox('Error', 'Please turn on auto refresh to run tasks');
-                    return;
-                }
-                let data = ${'$'}table.bootstrapTable('getData');
-                if (data.find(row => row.task_status === 'Running' || row.task_status === 'Scheduled') !== undefined) {
-                    showMessageBox('Error', 'Task already running');
-                    return;
-                }
-                let row = data.find(row => row.task_status === 'Waiting');
-                if (row == undefined) {
-                    showMessageBox('Error', 'No task to run');
-                    return;
-                }
-                const params = new URLSearchParams(window.location.href.replace(/^[^?]+/g, ''));
-                postValue(`/api/run-task?runId=${'$'}{params.get('runId')}&prTaskId=${'$'}{row.pipeline_run_task_id}`);
-            },
+data class TableButton(val name: String, val text: String, val icon: String, val event: String, val title: String) {
+    val button = """
+        $name: {
+            text: '$text',
+            icon: '$icon',
+            event: () => { $event; },
             attributes: {
-                title: 'Run the next available task if there is no other tasks running'
-            }
-        }
-    """.trimIndent(),
-    "btnRunAll" to """
-        btnRunAll: {
-            text: 'Run All Tasks',
-            icon: 'fa-fast-forward',
-            event: () => {
-                let ${'$'}table = ${'$'}('#tasks');
-                let options =  ${'$'}table.bootstrapTable('getOptions');
-                if (options.autoRefreshStatus === false) {
-                    showMessageBox('Error', 'Please turn on auto refresh to run tasks');
-                    return;
-                }
-                let data = ${'$'}table.bootstrapTable('getData');
-                if (data.find(row => row.task_status === 'Running' || row.task_status === 'Scheduled') !== undefined) {
-                    showMessageBox('Error', 'Task already running');
-                    return;
-                }
-                let row = data.find(row => row.task_status === 'Waiting');
-                if (row == undefined) {
-                    showMessageBox('Error', 'No task to run');
-                    return;
-                }
-                const params = new URLSearchParams(window.location.href.replace(/^[^?]+/g, ''));
-                postValue(`/api/run-all?runId=${'$'}{params.get('runId')}&prTaskId=${'$'}{row.pipeline_run_task_id}`);
+                title: '$title',
             },
-            attributes: {
-                title: 'Run the next available tasks if there is no other tasks running. Stops upon task failure or User Task'
-            }
         }
     """.trimIndent()
-)
+}
+
+data class HeaderButton(val name: String, val html: UL.() -> Unit)
 
 fun FlowContent.basicTable(
     tableId: String,
     dataUrl: String,
     fields: Map<String, Map<String, String>>,
-    buttons: List<String> = listOf(),
+    tableButtons: List<TableButton> = listOf(),
+    customSortFunction: String = "",
 ) {
     table {
         id = tableId
@@ -84,7 +39,10 @@ fun FlowContent.basicTable(
         attributes["data-classes"] = "table table-bordered table-hover"
         attributes["data-thead-classes"] = "thead-dark"
         attributes["data-search"] = "true"
-        if (buttons.isNotEmpty()) {
+        if (customSortFunction.isNotBlank()) {
+            attributes["data-custom-sort"] = customSortFunction.trim()
+        }
+        if (tableButtons.isNotEmpty()) {
             attributes["data-buttons"] = "buttons"
         }
         thead {
@@ -100,17 +58,13 @@ fun FlowContent.basicTable(
                 }
             }
         }
-        if (buttons.isNotEmpty()) {
+        if (tableButtons.isNotEmpty()) {
             script {
                 unsafe {
                     raw("""
                         function buttons() {
                             return {
-                                ${
-                                    buttons
-                                        .filter { name -> name in availableButtons }
-                                        .joinToString { name -> availableButtons[name]!! }
-                                }
+                                ${tableButtons.joinToString { it.button }}
                             }
                         }
                     """.trimIndent())
@@ -124,11 +78,23 @@ fun FlowContent.autoRefreshTable(
     tableId: String,
     dataUrl: String,
     fields: Map<String, Map<String, String>>,
-    buttons: List<String> = listOf(),
+    tableButtons: List<TableButton> = listOf(),
+    headerButtons: List<HeaderButton> = listOf(),
 ) {
+    if (headerButtons.isNotEmpty()) {
+        ul(classes = "header-button-list") {
+            id = "toolbar"
+            for (headerButton in headerButtons) {
+                headerButton.html.invoke(this)
+            }
+        }
+    }
     table {
         id = tableId
         attributes["data-toggle"] = "table"
+        if (headerButtons.isNotEmpty()) {
+            attributes["data-toolbar"] = "#toolbar"
+        }
         attributes["data-url"] = dataUrl
         attributes["data-auto-refresh"] = "true"
         attributes["data-auto-refresh-interval"] = "1"
@@ -136,7 +102,7 @@ fun FlowContent.autoRefreshTable(
         attributes["data-classes"] = "table table-bordered table-hover"
         attributes["data-thead-classes"] = "thead-dark"
         attributes["data-search"] = "true"
-        if (buttons.isNotEmpty()) {
+        if (tableButtons.isNotEmpty()) {
             attributes["data-buttons"] = "buttons"
         }
         thead {
@@ -152,17 +118,13 @@ fun FlowContent.autoRefreshTable(
                 }
             }
         }
-        if (buttons.isNotEmpty()) {
+        if (tableButtons.isNotEmpty()) {
             script {
                 unsafe {
                     raw("""
                         function buttons() {
                             return {
-                                ${
-                                    buttons
-                                        .filter { name -> name in availableButtons }
-                                        .joinToString { name -> availableButtons[name]!! }
-                                }
+                                ${tableButtons.joinToString { it.button }}
                             }
                         }
                     """.trimIndent())
