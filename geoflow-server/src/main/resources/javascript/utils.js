@@ -95,3 +95,24 @@ function newSourceTableRow() {
         }
     }
 }
+
+function sourceTableRecordSorting(sortName, sortOrder, data) {
+    let order = sortOrder === 'desc' ? -1 : 1;
+    if (sortName === 'file_id') {
+        data.sort((a,b) => {
+            const aNum = +((a[sortName] + '').replace(/[^\d]/g, ''));
+            const bNum = +((b[sortName] + '').replace(/[^\d]/g, ''));
+            if (aNum < bNum) {
+              return order * -1
+            }
+            if (aNum > bNum) {
+              return order
+            }
+            return 0
+        });
+    } else if (order === 1) {
+        data.sort();
+    } else {
+        data.sort().reverse();
+    }
+}
