@@ -225,13 +225,18 @@ fun Route.api() {
     post("/api/source-tables") {
         val user = call.sessions.get<UserSession>()!!
         val params = call.request.queryParameters.names().associateWith { call.request.queryParameters[it] ?: "" }
-        val insert = (params["stOid"]?.toLong() ?: 0) == 0L
+        val method = params["method"]
+        if (method == null) {
+            call.respond(mapOf("error" to "Method was not specified as a parameter"))
+            return@post
+        }
         val response = runCatching {
-            val stOid = SourceTables.updateOrInsertSourceTable(user.username, params)
-            mapOf("success" to "${if (insert) "inserted" else "updated"} stOid $stOid")
+            val stOid = SourceTables.alterSourceTableRecord(user.username, params)
+            mapOf("success" to "${method}ed stOid $stOid")
         }.getOrElse { t ->
             call.application.environment.log.info("/api/source-tables", t)
-            mapOf("error" to "Failed to ${if (insert) "insert" else "update stOid ${params["stOid"]}"}. ${t.message}")
+            val message = "Failed to $method${if (method != "insert") " stOid ${params["stOid"]}" else ""}"
+            mapOf("error" to "$message. ${t.message}")
         }
         call.respond(response)
     }

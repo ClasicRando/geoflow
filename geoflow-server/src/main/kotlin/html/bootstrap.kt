@@ -124,14 +124,14 @@ fun FlowContent.sourceTablesModal(runId: Long) {
         attributes["data-backdrop"] = "static"
         attributes["data-keyboard"] = "false"
         attributes["tabindex"] = "-1"
-        attributes["aria-labelledby"] = "staticBackdropLabel"
+        attributes["aria-labelledby"] = "sourceTableModalLabel"
         attributes["aria-hidden"] = "true"
         div(classes = "modal-dialog modal-dialog-centered modal-dialog-scrollable modal-xl") {
             style = "max-width: 90%"
             div(classes = "modal-content") {
                 div(classes = "modal-header") {
                     h5(classes = "modal-title") {
-                        id = "staticBackdropLabel"
+                        id = "sourceTableModalLabel"
                         +"Source Tables"
                     }
                 }
@@ -167,13 +167,13 @@ fun FlowContent.sourceTablesModal(runId: Long) {
         attributes["data-backdrop"] = "static"
         attributes["data-keyboard"] = "false"
         attributes["tabindex"] = "-1"
-        attributes["aria-labelledby"] = "staticBackdropLabel"
+        attributes["aria-labelledby"] = "sourceTableRecordLabel"
         attributes["aria-hidden"] = "true"
         div(classes = "modal-dialog modal-dialog-centered modal-dialog-scrollable modal-xl") {
             div(classes = "modal-content") {
                 div(classes = "modal-header") {
                     h5(classes = "modal-title") {
-                        id = "staticBackdropLabel"
+                        id = "sourceTableRecordLabel"
                         +"Edit Row"
                     }
                 }
@@ -309,9 +309,16 @@ fun FlowContent.sourceTablesModal(runId: Long) {
                 }
                 div(classes = "modal-footer") {
                     button(classes = "btn btn-secondary") {
+                        id = "saveChanges"
                         type = ButtonType.button
                         onClick = "saveSourceTableChanges()"
                         +"Save"
+                    }
+                    button(classes = "btn btn-secondary") {
+                        id = "deleteRecord"
+                        type = ButtonType.button
+                        onClick = "deleteSourceTable()"
+                        +"Delete"
                     }
                     button(classes = "btn btn-secondary") {
                         type = ButtonType.button

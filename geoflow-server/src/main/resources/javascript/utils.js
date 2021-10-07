@@ -26,14 +26,15 @@ function postValue(url, func = function(value) {console.log(value)}) {
 var stOid = 0;
 var sourceTablesTableId = 'source-tables';
 var sourceTableModalId = 'sourceTableData';
+var saveChnagesId = 'saveChanges';
+var deleteRecordId = 'deleteRecord';
+var sourceTableRecordLabelId = 'sourceTableRecordLabel';
 
-function saveSourceTableChanges() {
+function postSourceTableChanges(method) {
     const runId = new URLSearchParams(window.location.href.replace(/^[^?]+/g, '')).get('runId');
     const params = $(`#${sourceTableModalId}EditRowBody`).serialize();
-    console.log(params);
-    console.log(runId);
     postValue(
-        `/api/source-tables?stOid=${stOid}&runId=${runId}&${params}`,
+        `/api/source-tables?method=${method}&stOid=${stOid}&runId=${runId}&${params}`,
         function(response) {
             $(`#${sourceTablesTableId}`).bootstrapTable('refresh');
             response.json().then(body => {
@@ -48,8 +49,18 @@ function saveSourceTableChanges() {
     stOid = 0;
 }
 
+function saveSourceTableChanges() {
+    postSourceTableChanges(stOid !== 0 ? 'update' : 'insert');
+}
+
+function deleteSourceTable() {
+    postSourceTableChanges('delete');
+}
+
 function editSourceTableRow(row) {
     stOid = row.st_oid;
+    $(`#${deleteRecordId}`).prop('hidden', false)
+    $(`#${sourceTableRecordLabelId}`).html('Edit Row');
     let $table = $(`#${sourceTablesTableId}`);
     let allColumns = $table.bootstrapTable('getOptions')['columns'][0];
     let columns = allColumns.filter(column => column.visible && column.editable);
@@ -68,6 +79,9 @@ function editSourceTableRow(row) {
 }
 
 function newSourceTableRow() {
+    stOid = 0;
+    $(`#${deleteRecordId}`).prop('hidden', true)
+    $(`#${sourceTableRecordLabelId}`).html('New Source Table');
     $(`#${sourceTableModalId}EditRow`).modal('show');
     const columns = $(`#${sourceTablesTableId}`).bootstrapTable('getOptions').columns[0];
     for (const column of columns) {

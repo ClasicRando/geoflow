@@ -4,6 +4,7 @@ import database.DatabaseConnection
 import database.sourceTables
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
+import org.ktorm.dsl.delete
 import org.ktorm.dsl.eq
 import org.ktorm.dsl.update
 import org.ktorm.entity.filter
@@ -149,7 +150,9 @@ object SourceTables: Table<SourceTable>("source_tables") {
     }
 
     @Throws(IllegalArgumentException::class, NumberFormatException::class, NoSuchElementException::class)
-    fun updateOrInsertSourceTable(username: String, params: Map<String, String>): Long {
+    fun alterSourceTableRecord(username: String, params: Map<String, String>): Long {
+        val method = params["method"]
+            ?: throw IllegalArgumentException("Method of operation on SourceTables record is not specified")
         val runId = params["runId"]
             ?.toLong()
             ?: throw IllegalArgumentException("runId must be a parameter in the url")
@@ -158,7 +161,7 @@ object SourceTables: Table<SourceTable>("source_tables") {
         }
         val stOid = params["stOid"]
             ?.toLong()
-            ?: throw IllegalArgumentException("stOid must be a parameter in the url")
+            ?: 0
         return DatabaseConnection.database.let { database ->
             val tableName = params["table_name"]
                 ?: throw IllegalArgumentException("table name must not be empty or null")
@@ -176,40 +179,50 @@ object SourceTables: Table<SourceTable>("source_tables") {
             } else {
                 null
             }
-            if (stOid == 0L) {
-                database.insertReturning(this, this.stOid) {
-                    set(this@SourceTables.runId, runId)
-                    set(sourceTableName, tableName)
-                    set(this@SourceTables.fileId, fileId)
-                    set(this@SourceTables.fileName, fileName)
-                    set(this@SourceTables.subTable, subTable)
-                    set(this@SourceTables.loaderType, loaderType)
-                    set(delimiter, params["delimiter"])
-                    set(url, params["url"])
-                    set(comments, params["comments"])
-                    set(this@SourceTables.collectType, collectType)
-                    set(this@SourceTables.qualified, qualified)
-                    set(this@SourceTables.analyze, analyze)
-                    set(this@SourceTables.load, load)
-                    set(encoding, "utf8")
-                } ?: throw IllegalArgumentException("Failed to insert a new source table record")
-            } else {
-                database.update(this) {
-                    set(sourceTableName, tableName)
-                    set(this@SourceTables.fileId, fileId)
-                    set(this@SourceTables.fileName, fileName)
-                    set(this@SourceTables.subTable, subTable)
-                    set(this@SourceTables.loaderType, loaderType)
-                    set(delimiter, params["delimiter"])
-                    set(url, params["url"])
-                    set(comments, params["comments"])
-                    set(this@SourceTables.collectType, collectType)
-                    set(this@SourceTables.qualified, qualified)
-                    set(this@SourceTables.analyze, analyze)
-                    set(this@SourceTables.load, load)
-                    where { it.stOid eq stOid }
+            when (method) {
+                "insert" -> {
+                    database.insertReturning(this, this.stOid) {
+                        set(this@SourceTables.runId, runId)
+                        set(sourceTableName, tableName)
+                        set(this@SourceTables.fileId, fileId)
+                        set(this@SourceTables.fileName, fileName)
+                        set(this@SourceTables.subTable, subTable)
+                        set(this@SourceTables.loaderType, loaderType)
+                        set(delimiter, params["delimiter"])
+                        set(url, params["url"])
+                        set(comments, params["comments"])
+                        set(this@SourceTables.collectType, collectType)
+                        set(this@SourceTables.qualified, qualified)
+                        set(this@SourceTables.analyze, analyze)
+                        set(this@SourceTables.load, load)
+                        set(encoding, "utf8")
+                    } ?: throw IllegalArgumentException("Failed to insert a new source table record")
                 }
-                stOid
+                "update" -> {
+                    database.update(this) {
+                        set(sourceTableName, tableName)
+                        set(this@SourceTables.fileId, fileId)
+                        set(this@SourceTables.fileName, fileName)
+                        set(this@SourceTables.subTable, subTable)
+                        set(this@SourceTables.loaderType, loaderType)
+                        set(delimiter, params["delimiter"])
+                        set(url, params["url"])
+                        set(comments, params["comments"])
+                        set(this@SourceTables.collectType, collectType)
+                        set(this@SourceTables.qualified, qualified)
+                        set(this@SourceTables.analyze, analyze)
+                        set(this@SourceTables.load, load)
+                        where { it.stOid eq stOid }
+                    }
+                    stOid
+                }
+                "delete" -> {
+                    database.delete(this) {
+                        it.stOid eq stOid
+                    }
+                    stOid
+                }
+                else -> throw IllegalArgumentException("Parameter 'method' must be insert, update or delete")
             }
         }
     }
