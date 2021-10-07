@@ -35,9 +35,9 @@ object SourceTables: Table<SourceTable>("source_tables") {
     val collectType = enum<FileCollectType>("collect_type").bindTo { it.collectType }
     val delimiter = varchar("delimiter").bindTo { it.delimiter }
     val tableDisplayFields = mapOf(
-        "table_name" to mapOf("editable" to "true"),
-        "file_id" to mapOf("name" to "File ID", "editable" to "true"),
-        "file_name" to mapOf("editable" to "true"),
+        "table_name" to mapOf("editable" to "true", "sortable" to "true"),
+        "file_id" to mapOf("name" to "File ID", "editable" to "true", "sortable" to "true"),
+        "file_name" to mapOf("editable" to "true", "sortable" to "true"),
         "sub_table" to mapOf("editable" to "true"),
         "loader_type" to mapOf("editable" to "false"),
         "delimiter" to mapOf("editable" to "true"),
