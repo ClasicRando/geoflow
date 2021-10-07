@@ -149,7 +149,8 @@ fun FlowContent.sourceTablesModal(runId: Long) {
                                 "newSourceTableRow()",
                                 "Add new source table to the current run",
                             ),
-                        )
+                        ),
+                        customSortFunction = "sourceTableRecordSorting",
                     )
                 }
                 div(classes = "modal-footer") {
