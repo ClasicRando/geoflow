@@ -3,7 +3,6 @@ package tasks
 import database.DatabaseConnection
 import database.pipelineRunTasks
 import database.sourceTables
-import formatLocalDateDefault
 import org.ktorm.dsl.eq
 import org.ktorm.dsl.notEq
 import org.ktorm.entity.any
