@@ -29,6 +29,7 @@ fun FlowContent.basicTable(
     dataUrl: String,
     fields: Map<String, Map<String, String>>,
     tableButtons: List<TableButton> = listOf(),
+    customSortFunction: String = "",
 ) {
     table {
         id = tableId
@@ -38,6 +39,9 @@ fun FlowContent.basicTable(
         attributes["data-classes"] = "table table-bordered table-hover"
         attributes["data-thead-classes"] = "thead-dark"
         attributes["data-search"] = "true"
+        if (customSortFunction.isNotBlank()) {
+            attributes["data-custom-sort"] = customSortFunction.trim()
+        }
         if (tableButtons.isNotEmpty()) {
             attributes["data-buttons"] = "buttons"
         }
