@@ -23,18 +23,38 @@ function postValue(url, func = function(value) {console.log(value)}) {
     fetch(url, options).then(func);
 }
 
+function patchValue(url, func = function(value) {console.log(value)}) {
+    const options = {
+        method: 'PATCH',
+    };
+    fetch(url, options).then(func);
+}
+
+function deleteValue(url, func = function(value) {console.log(value)}) {
+    const options = {
+        method: 'DELETE',
+    };
+    fetch(url, options).then(func);
+}
+
+var requestMethods = {
+    insert: postValue,
+    update: patchValue,
+    delete: deleteValue,
+}
+
 var stOid = 0;
 var sourceTablesTableId = 'source-tables';
 var sourceTableModalId = 'sourceTableData';
-var saveChnagesId = 'saveChanges';
+var saveChangesId = 'saveChanges';
 var deleteRecordId = 'deleteRecord';
 var sourceTableRecordLabelId = 'sourceTableRecordLabel';
 
 function postSourceTableChanges(method) {
     const runId = new URLSearchParams(window.location.href.replace(/^[^?]+/g, '')).get('runId');
     const params = $(`#${sourceTableModalId}EditRowBody`).serialize();
-    postValue(
-        `/api/source-tables?method=${method}&stOid=${stOid}&runId=${runId}&${params}`,
+    requestMethods[method](
+        `/api/source-tables?stOid=${stOid}&runId=${runId}&${params}`,
         function(response) {
             $(`#${sourceTablesTableId}`).bootstrapTable('refresh');
             response.json().then(body => {

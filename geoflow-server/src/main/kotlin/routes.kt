@@ -222,20 +222,41 @@ fun Route.api() {
         }
         call.respond(response)
     }
-    post("/api/source-tables") {
+    patch("/api/source-tables") {
         val user = call.sessions.get<UserSession>()!!
-        val params = call.request.queryParameters.names().associateWith { call.request.queryParameters[it] ?: "" }
-        val method = params["method"]
-        if (method == null) {
-            call.respond(mapOf("error" to "Method was not specified as a parameter"))
-            return@post
-        }
+        val params = call.request.queryParameters.names().associateWith { call.request.queryParameters[it] }
         val response = runCatching {
-            val stOid = SourceTables.alterSourceTableRecord(user.username, params)
-            mapOf("success" to "${method}ed stOid $stOid")
+            val stOid = SourceTables.updateSourceTable(user.username, params)
+            mapOf("success" to "updated stOid $stOid")
         }.getOrElse { t ->
             call.application.environment.log.info("/api/source-tables", t)
-            val message = "Failed to $method${if (method != "insert") " stOid ${params["stOid"]}" else ""}"
+            val message = "Failed to update stOid ${params["stOid"]}"
+            mapOf("error" to "$message. ${t.message}")
+        }
+        call.respond(response)
+    }
+    post("/api/source-tables") {
+        val user = call.sessions.get<UserSession>()!!
+        val params = call.request.queryParameters.names().associateWith { call.request.queryParameters[it] }
+        val response = runCatching {
+            val stOid = SourceTables.insertSourceTable(user.username, params)
+            mapOf("success" to "inserted stOid $stOid")
+        }.getOrElse { t ->
+            call.application.environment.log.info("/api/source-tables", t)
+            val message = "Failed to insert new source table"
+            mapOf("error" to "$message. ${t.message}")
+        }
+        call.respond(response)
+    }
+    delete("/api/source-tables") {
+        val user = call.sessions.get<UserSession>()!!
+        val params = call.request.queryParameters.names().associateWith { call.request.queryParameters[it] }
+        val response = runCatching {
+            val stOid = SourceTables.deleteSourceTable(user.username, params)
+            mapOf("success" to "deleted stOid $stOid")
+        }.getOrElse { t ->
+            call.application.environment.log.info("/api/source-tables", t)
+            val message = "Failed to delete stOid ${params["stOid"]}"
             mapOf("error" to "$message. ${t.message}")
         }
         call.respond(response)
