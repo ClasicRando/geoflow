@@ -149,7 +149,8 @@ fun FlowContent.sourceTablesModal(runId: Long) {
                                 "newSourceTableRow()",
                                 "Add new source table to the current run",
                             ),
-                        )
+                        ),
+                        clickableRows = false,
                     )
                 }
                 div(classes = "modal-footer") {

@@ -55,7 +55,19 @@ open class BasePage: Template<HTML> {
             }
             style {
                 unsafe {
-                    raw("td { cursor: pointer; }")
+                    raw("""
+                        .clickCell {
+                            cursor: pointer;
+                        }
+                        .inTableButton {
+                            display: inline;
+                            border: none;
+                            background: none;
+                        }
+                        .inTableButton:hover {
+                            border: 1px solid;
+                        }
+                    """.trimIndent())
                 }
             }
             style {

@@ -50,6 +50,7 @@ object SourceTables: Table<SourceTable>("source_tables") {
         "collect_type" to mapOf("editable" to "true"),
         "analyze" to mapOf("editable" to "true", "formatter" to "boolFormatter"),
         "load" to mapOf("editable" to "true", "formatter" to "boolFormatter"),
+        "action" to mapOf("formatter" to "actionFormatter"),
     )
 
     val createSequence = """
