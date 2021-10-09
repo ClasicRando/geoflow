@@ -60,10 +60,6 @@ function statusFormatter(value, row) {
     }
 }
 
-function boolFormatter(value, row) {
-    return value ? '<i class="fa fa-check"></i>' : '';
-}
-
 function titleCase(title) {
     return title.replace(
         /\w\S*/g,
@@ -125,6 +121,6 @@ function showDataDisplayModal(action, data) {
 $(`#${taskTableId}`).on('click-row.bs.table', (e, row, element, field) => {
     showDataDisplayModal('choice', row);
 });
-$(`#${sourceTablesTableId}`).on('click-row.bs.table', (e, row, element, field) => {
-    editSourceTableRow(row);
-});
+// $(`#${sourceTablesTableId}`).on('click-row.bs.table', (e, row, element, field) => {
+//     editSourceTableRow(row);
+// });

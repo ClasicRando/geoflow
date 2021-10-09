@@ -44,11 +44,12 @@ var requestMethods = {
 }
 
 var stOid = 0;
-var sourceTablesTableId = 'source-tables';
+var sourceTablesTableId = 'sourceTables';
 var sourceTableModalId = 'sourceTableData';
 var saveChangesId = 'saveChanges';
 var deleteRecordId = 'deleteRecord';
 var sourceTableRecordLabelId = 'sourceTableRecordLabel';
+var deleteSourceTableConfirmId = 'deleteSourceTable';
 
 function postSourceTableChanges(method) {
     const runId = new URLSearchParams(window.location.href.replace(/^[^?]+/g, '')).get('runId');
@@ -74,14 +75,20 @@ function saveSourceTableChanges() {
 }
 
 function deleteSourceTable() {
+    $(`#${deleteSourceTableConfirmId}`).modal('hide');
     postSourceTableChanges('delete');
 }
 
-function editSourceTableRow(row) {
-    stOid = row.st_oid;
-    $(`#${deleteRecordId}`).prop('hidden', false)
+function confirmSourceTableDelete(id) {
+    stOid = id;
+    $(`#${deleteSourceTableConfirmId}`).modal('show');
+}
+
+function editSourceTableRow(id) {
+    stOid = id;
     $(`#${sourceTableRecordLabelId}`).html('Edit Row');
     let $table = $(`#${sourceTablesTableId}`);
+    let row = $table.bootstrapTable('getData').find(row => row.st_oid === id);
     let allColumns = $table.bootstrapTable('getOptions')['columns'][0];
     let columns = allColumns.filter(column => column.visible && column.editable);
     let columnNames = columns.map(column => column.field);
@@ -100,7 +107,6 @@ function editSourceTableRow(row) {
 
 function newSourceTableRow() {
     stOid = 0;
-    $(`#${deleteRecordId}`).prop('hidden', true)
     $(`#${sourceTableRecordLabelId}`).html('New Source Table');
     $(`#${sourceTableModalId}EditRow`).modal('show');
     const columns = $(`#${sourceTablesTableId}`).bootstrapTable('getOptions').columns[0];
@@ -135,4 +141,16 @@ function sourceTableRecordSorting(sortName, sortOrder, data) {
     } else {
         data.sort().reverse();
     }
+}
+
+function boolFormatter(value, row) {
+    return value ? '<i class="fa fa-check"></i>' : '';
+}
+
+function actionFormatter(value, row) {
+    return `<span style="display: inline;"><i class="fa fa-edit p-1 inTableButton" onclick="editSourceTableRow(${row.st_oid})"></i><i class="fa fa-trash p-1 inTableButton" onclick="confirmSourceTableDelete(${row.st_oid})"></i></span>`;
+}
+
+function clickableTd(value, row, index) {
+    return {classes: 'clickCell'};
 }

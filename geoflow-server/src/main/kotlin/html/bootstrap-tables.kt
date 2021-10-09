@@ -30,13 +30,14 @@ fun FlowContent.basicTable(
     fields: Map<String, Map<String, String>>,
     tableButtons: List<TableButton> = listOf(),
     customSortFunction: String = "",
+    clickableRows: Boolean = true,
 ) {
     table {
         id = tableId
         attributes["data-toggle"] = "table"
         attributes["data-url"] = dataUrl
         attributes["data-show-refresh"] = "true"
-        attributes["data-classes"] = "table table-bordered table-hover"
+        attributes["data-classes"] = "table table-bordered${if (clickableRows) " table-hover" else ""}"
         attributes["data-thead-classes"] = "thead-dark"
         attributes["data-search"] = "true"
         if (customSortFunction.isNotBlank()) {
@@ -50,6 +51,9 @@ fun FlowContent.basicTable(
                 fields.forEach { (field, options) ->
                     th {
                         attributes["data-field"] = field
+                        if (clickableRows) {
+                            attributes["data-cell-style"] = "clickableTd"
+                        }
                         options.filter { it.key != "name" }.forEach { (key, value) ->
                             attributes["data-$key"] = value
                         }

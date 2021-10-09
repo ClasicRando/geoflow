@@ -115,8 +115,48 @@ fun FlowContent.messageBoxModal() {
     }
 }
 
+fun FlowContent.confirmModal(confirmModalId: String, confirmMessage: String, resultFunction: String) {
+    div(classes = "modal fade") {
+        id = confirmModalId
+        attributes["data-backdrop"] = "static"
+        attributes["data-keyboard"] = "false"
+        attributes["tabindex"] = "-1"
+        attributes["aria-labelledby"] = "${confirmModalId}Header"
+        attributes["aria-hidden"] = "true"
+        div(classes = "modal-dialog modal-dialog-centered modal-dialog-scrollable") {
+            div(classes = "modal-content") {
+                div(classes = "modal-header") {
+                    h5(classes = "modal-title") {
+                        id = "${confirmModalId}Header"
+                        +"Confirm Action"
+                    }
+                }
+                div(classes = "modal-body") {
+                    p {
+                        +confirmMessage
+                    }
+                }
+                div(classes = "modal-footer") {
+                    button(classes = "btn btn-secondary") {
+                        id = "${confirmModalId}Confirm"
+                        type = ButtonType.button
+                        onClick = "$resultFunction()"
+                        +"OK"
+                    }
+                    button(classes = "btn btn-secondary") {
+                        type = ButtonType.button
+                        attributes["data-dismiss"] = "modal"
+                        +"Close"
+                    }
+                }
+            }
+        }
+    }
+}
+
 private const val sourceTableModalId = "sourceTableData"
-private const val sourceTablesTableId = "source-tables"
+private const val sourceTablesTableId = "sourceTables"
+private const val deleteSourceTableConfirmId = "deleteSourceTable"
 
 fun FlowContent.sourceTablesModal(runId: Long) {
     div(classes = "modal fade") {
@@ -149,7 +189,9 @@ fun FlowContent.sourceTablesModal(runId: Long) {
                                 "newSourceTableRow()",
                                 "Add new source table to the current run",
                             ),
-                        )
+                        ),
+                        customSortFunction = "sourceTableRecordSorting",
+                        clickableRows = false,
                     )
                 }
                 div(classes = "modal-footer") {
@@ -315,12 +357,6 @@ fun FlowContent.sourceTablesModal(runId: Long) {
                         +"Save"
                     }
                     button(classes = "btn btn-secondary") {
-                        id = "deleteRecord"
-                        type = ButtonType.button
-                        onClick = "deleteSourceTable()"
-                        +"Delete"
-                    }
-                    button(classes = "btn btn-secondary") {
                         type = ButtonType.button
                         attributes["data-dismiss"] = "modal"
                         +"Close"
@@ -329,4 +365,9 @@ fun FlowContent.sourceTablesModal(runId: Long) {
             }
         }
     }
+    confirmModal(
+        deleteSourceTableConfirmId,
+        "Are you sure you want to delete this record?",
+        "deleteSourceTable",
+    )
 }
