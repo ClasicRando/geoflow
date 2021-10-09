@@ -116,7 +116,7 @@ fun FlowContent.messageBoxModal() {
 }
 
 private const val sourceTableModalId = "sourceTableData"
-private const val sourceTablesTableId = "source-tables"
+private const val sourceTablesTableId = "sourceTables"
 
 fun FlowContent.sourceTablesModal(runId: Long) {
     div(classes = "modal fade") {
