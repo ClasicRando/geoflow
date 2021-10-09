@@ -115,6 +115,45 @@ fun FlowContent.messageBoxModal() {
     }
 }
 
+fun FlowContent.confirmModal(confirmModalId: String, confirmMessage: String, resultFunction: String) {
+    div(classes = "modal fade") {
+        id = confirmModalId
+        attributes["data-backdrop"] = "static"
+        attributes["data-keyboard"] = "false"
+        attributes["tabindex"] = "-1"
+        attributes["aria-labelledby"] = "${confirmModalId}Header"
+        attributes["aria-hidden"] = "true"
+        div(classes = "modal-dialog modal-dialog-centered modal-dialog-scrollable") {
+            div(classes = "modal-content") {
+                div(classes = "modal-header") {
+                    h5(classes = "modal-title") {
+                        id = "${confirmModalId}Header"
+                        +"Confirm Action"
+                    }
+                }
+                div(classes = "modal-body") {
+                    p {
+                        +confirmMessage
+                    }
+                }
+                div(classes = "modal-footer") {
+                    button(classes = "btn btn-secondary") {
+                        id = "${confirmModalId}Confirm"
+                        type = ButtonType.button
+                        onClick = "$resultFunction()"
+                        +"OK"
+                    }
+                    button(classes = "btn btn-secondary") {
+                        type = ButtonType.button
+                        attributes["data-dismiss"] = "modal"
+                        +"Close"
+                    }
+                }
+            }
+        }
+    }
+}
+
 private const val sourceTableModalId = "sourceTableData"
 private const val sourceTablesTableId = "sourceTables"
 
