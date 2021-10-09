@@ -190,6 +190,7 @@ fun FlowContent.sourceTablesModal(runId: Long) {
                                 "Add new source table to the current run",
                             ),
                         ),
+                        customSortFunction = "sourceTableRecordSorting",
                         clickableRows = false,
                     )
                 }
