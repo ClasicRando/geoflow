@@ -17,6 +17,7 @@ val kotlinxJsonVersion: String by project
 val ktorVersion: String by project
 val junitVersion: String by project
 val kotlinLoggingVersion: String by project
+val reflectionsVersion: String by project
 
 dependencies {
     testImplementation(kotlin("test", "1.5.30"))
@@ -52,6 +53,7 @@ dependencies {
     implementation("io.ktor:ktor-client-cio:$ktorVersion")
     implementation("io.ktor:ktor-client-serialization:$ktorVersion")
     implementation("io.github.microutils:kotlin-logging-jvm:$kotlinLoggingVersion")
+    implementation("org.reflections:reflections:$reflectionsVersion")
 }
 
 tasks.test {
