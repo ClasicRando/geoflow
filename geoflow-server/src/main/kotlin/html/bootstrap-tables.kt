@@ -43,7 +43,7 @@ fun FlowContent.basicTable(
             attributes["data-custom-sort"] = customSortFunction.trim()
         }
         if (tableButtons.isNotEmpty()) {
-            attributes["data-buttons"] = "buttons"
+            attributes["data-buttons"] = "${tableId}buttons"
         }
         thead {
             tr {
@@ -62,7 +62,7 @@ fun FlowContent.basicTable(
             script {
                 unsafe {
                     raw("""
-                        function buttons() {
+                        function ${tableId}buttons() {
                             return {
                                 ${tableButtons.joinToString { it.button }}
                             }
@@ -103,7 +103,7 @@ fun FlowContent.autoRefreshTable(
         attributes["data-thead-classes"] = "thead-dark"
         attributes["data-search"] = "true"
         if (tableButtons.isNotEmpty()) {
-            attributes["data-buttons"] = "buttons"
+            attributes["data-buttons"] = "${tableId}buttons"
         }
         thead {
             tr {
@@ -122,7 +122,7 @@ fun FlowContent.autoRefreshTable(
             script {
                 unsafe {
                     raw("""
-                        function buttons() {
+                        function ${tableId}buttons() {
                             return {
                                 ${tableButtons.joinToString { it.button }}
                             }

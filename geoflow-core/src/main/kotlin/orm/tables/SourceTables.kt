@@ -4,6 +4,7 @@ import database.DatabaseConnection
 import database.sourceTables
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
+import org.ktorm.dsl.AssignmentsBuilder
 import org.ktorm.dsl.delete
 import org.ktorm.dsl.eq
 import org.ktorm.dsl.update
@@ -67,8 +68,8 @@ object SourceTables: Table<SourceTable>("source_tables") {
             file_name text COLLATE pg_catalog."default" NOT NULL,
             "analyze" boolean NOT NULL DEFAULT true,
             load boolean NOT NULL DEFAULT true,
-            qualified boolean NOT NULL,
-            encoding text COLLATE pg_catalog."default" NOT NULL,
+            qualified boolean NOT NULL DEFAULT false,
+            encoding text COLLATE pg_catalog."default" NOT NULL DEFAULT 'utf8'::text,
             sub_table text COLLATE pg_catalog."default",
             record_count integer NOT NULL DEFAULT 0,
             file_id text COLLATE pg_catalog."default" NOT NULL,
@@ -147,6 +148,101 @@ object SourceTables: Table<SourceTable>("source_tables") {
                     table.load,
                 )
             }
+    }
+
+    private fun AssignmentsBuilder.buildAssignmentFromParams(params: Map<String, String?>) {
+        if ("table_name" in params) {
+            set(
+                sourceTableName,
+                params["table_name"] ?: throw IllegalArgumentException("Table name cannot be null")
+            )
+        }
+        if ("file_id" in params) {
+            set(fileId, params["file_id"] ?: throw IllegalArgumentException("File ID cannot be null"))
+        }
+        if ("file_name" in params) {
+            val fileName = params["file_name"] ?: throw IllegalArgumentException("Filename cannot be null")
+            val fileExtension = "(?<=\\.)[^.]+\$".toRegex().find(fileName)?.value
+                ?: throw IllegalArgumentException("file extension could not be found")
+            val loaderType = LoaderType.values().first { fileExtension in it.extensions }
+            if (loaderType == LoaderType.MDB || loaderType == LoaderType.Excel) {
+                val subTable = params["sub_table"]
+                    ?: throw IllegalArgumentException("Sub Table must be not null for the provided filename")
+                set(SourceTables.subTable, subTable)
+            }
+            set(SourceTables.fileName, fileName)
+            set(SourceTables.loaderType, loaderType)
+        }
+        if ("delimiter" in params) {
+            set(delimiter, params["delimiter"])
+        }
+        if ("url" in params) {
+            set(url, params["url"])
+        }
+        if ("comments" in params) {
+            set(comments, params["comments"])
+        }
+        if ("collect_type" in params) {
+            set(collectType, FileCollectType.valueOf(params["collect_type"] ?: ""))
+        }
+        if ("qualified" in params) {
+            set(qualified, params["qualified"].equals("on"))
+        }
+        if ("analyze" in params) {
+            set(analyze, params["analyze"].equals("on"))
+        }
+        if ("load" in params) {
+            set(load, params["load"].equals("on"))
+        }
+    }
+
+    @Throws(IllegalArgumentException::class, NumberFormatException::class, NoSuchElementException::class)
+    fun updateSourceTable(username: String, params: Map<String, String?>): Long {
+        val runId = params["runId"]
+            ?.toLong()
+            ?: throw IllegalArgumentException("runId must be a non-null parameter in the url")
+        val stOid = params["stOid"]
+            ?.toLong()
+            ?: throw IllegalArgumentException("stOid must be a non-null parameter in the url")
+        if (!PipelineRuns.checkUserRun(runId, username)) {
+            throw IllegalArgumentException("Username does not own the runId")
+        }
+        DatabaseConnection.database.update(this) {
+            buildAssignmentFromParams(params)
+            where { it.stOid eq stOid }
+        }
+        return stOid
+    }
+
+    @Throws(IllegalArgumentException::class, NumberFormatException::class, NoSuchElementException::class)
+    fun insertSourceTable(username: String, params: Map<String, String?>): Long {
+        val runId = params["runId"]
+            ?.toLong()
+            ?: throw IllegalArgumentException("runId must be a non-null parameter in the url")
+        if (!PipelineRuns.checkUserRun(runId, username)) {
+            throw IllegalArgumentException("Username does not own the runId")
+        }
+        return DatabaseConnection.database.insertReturning(this, stOid) {
+            buildAssignmentFromParams(params)
+            set(SourceTables.runId, runId)
+        } ?: throw IllegalArgumentException("Error while trying to insert record. Null returned")
+    }
+
+    @Throws(IllegalArgumentException::class, NumberFormatException::class, NoSuchElementException::class)
+    fun deleteSourceTable(username: String, params: Map<String, String?>): Long {
+        val runId = params["runId"]
+            ?.toLong()
+            ?: throw IllegalArgumentException("runId must be a non-null parameter in the url")
+        val stOid = params["stOid"]
+            ?.toLong()
+            ?: throw IllegalArgumentException("stOid must be a non-null parameter in the url")
+        if (!PipelineRuns.checkUserRun(runId, username)) {
+            throw IllegalArgumentException("Username does not own the runId")
+        }
+        DatabaseConnection.database.delete(this) {
+            it.stOid eq stOid
+        }
+        return stOid
     }
 
     @Throws(IllegalArgumentException::class, NumberFormatException::class, NoSuchElementException::class)
