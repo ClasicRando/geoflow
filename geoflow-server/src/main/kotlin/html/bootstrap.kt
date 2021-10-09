@@ -316,12 +316,6 @@ fun FlowContent.sourceTablesModal(runId: Long) {
                         +"Save"
                     }
                     button(classes = "btn btn-secondary") {
-                        id = "deleteRecord"
-                        type = ButtonType.button
-                        onClick = "deleteSourceTable()"
-                        +"Delete"
-                    }
-                    button(classes = "btn btn-secondary") {
                         type = ButtonType.button
                         attributes["data-dismiss"] = "modal"
                         +"Close"

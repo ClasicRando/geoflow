@@ -80,7 +80,6 @@ function deleteSourceTable(id) {
 
 function editSourceTableRow(id) {
     stOid = id;
-    $(`#${deleteRecordId}`).prop('hidden', false)
     $(`#${sourceTableRecordLabelId}`).html('Edit Row');
     let $table = $(`#${sourceTablesTableId}`);
     let row = $table.bootstrapTable('getData').find(row => row.st_oid === id);
@@ -102,7 +101,6 @@ function editSourceTableRow(id) {
 
 function newSourceTableRow() {
     stOid = 0;
-    $(`#${deleteRecordId}`).prop('hidden', true)
     $(`#${sourceTableRecordLabelId}`).html('New Source Table');
     $(`#${sourceTableModalId}EditRow`).modal('show');
     const columns = $(`#${sourceTablesTableId}`).bootstrapTable('getOptions').columns[0];
