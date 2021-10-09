@@ -156,6 +156,7 @@ fun FlowContent.confirmModal(confirmModalId: String, confirmMessage: String, res
 
 private const val sourceTableModalId = "sourceTableData"
 private const val sourceTablesTableId = "sourceTables"
+private const val deleteSourceTableConfirmId = "deleteSourceTable"
 
 fun FlowContent.sourceTablesModal(runId: Long) {
     div(classes = "modal fade") {
@@ -363,4 +364,9 @@ fun FlowContent.sourceTablesModal(runId: Long) {
             }
         }
     }
+    confirmModal(
+        deleteSourceTableConfirmId,
+        "Are you sure you want to delete this record?",
+        "deleteSourceTable",
+    )
 }

@@ -49,6 +49,7 @@ var sourceTableModalId = 'sourceTableData';
 var saveChangesId = 'saveChanges';
 var deleteRecordId = 'deleteRecord';
 var sourceTableRecordLabelId = 'sourceTableRecordLabel';
+var deleteSourceTableConfirmId = 'deleteSourceTable';
 
 function postSourceTableChanges(method) {
     const runId = new URLSearchParams(window.location.href.replace(/^[^?]+/g, '')).get('runId');
@@ -73,9 +74,14 @@ function saveSourceTableChanges() {
     postSourceTableChanges(stOid !== 0 ? 'update' : 'insert');
 }
 
-function deleteSourceTable(id) {
-    stOid = id;
+function deleteSourceTable() {
+    $(`#${deleteSourceTableConfirmId}`).modal('hide');
     postSourceTableChanges('delete');
+}
+
+function confirmSourceTableDelete(id) {
+    stOid = id;
+    $(`#${deleteSourceTableConfirmId}`).modal('show');
 }
 
 function editSourceTableRow(id) {
@@ -142,7 +148,7 @@ function boolFormatter(value, row) {
 }
 
 function actionFormatter(value, row) {
-    return `<span style="display: inline;"><i class="fa fa-edit p-1 inTableButton" onclick="editSourceTableRow(${row.st_oid})"></i><i class="fa fa-trash p-1 inTableButton" onclick="deleteSourceTable(${row.st_oid})"></i></span>`;
+    return `<span style="display: inline;"><i class="fa fa-edit p-1 inTableButton" onclick="editSourceTableRow(${row.st_oid})"></i><i class="fa fa-trash p-1 inTableButton" onclick="confirmSourceTableDelete(${row.st_oid})"></i></span>`;
 }
 
 function clickableTd(value, row, index) {
