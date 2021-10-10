@@ -1,6 +1,8 @@
 package tasks
 
 import formatLocalDateDefault
+import orm.entities.runFilesLocation
+import orm.entities.runZipLocation
 import orm.tables.PipelineRuns
 import java.io.File
 import java.util.zip.ZipEntry
@@ -13,19 +15,17 @@ class BackupFilesToZip(pipelineRunTaskId: Long): SystemTask(pipelineRunTaskId) {
     @Suppress("BlockingMethodInNonBlockingContext")
     override suspend fun run() {
         val pipelineRun = PipelineRuns.getRun(task.runId) ?: throw Exception("Run cannot be null")
-        val path = "${pipelineRun.dataSource.filesLocation}/${formatLocalDateDefault(pipelineRun.recordDate)}/files"
-        val backupDirectory = File(
-            "${pipelineRun.dataSource.filesLocation}/${formatLocalDateDefault(pipelineRun.recordDate)}/zip"
-        )
+        val backupDirectory = File(pipelineRun.runZipLocation)
         if (!backupDirectory.exists()) {
             backupDirectory.mkdir()
         }
-        with(File(backupDirectory.absolutePath, "backup.zip")) {
+        val zipName = "${pipelineRun.dataSource.code}_${formatLocalDateDefault(pipelineRun.recordDate)}.zip"
+        with(File(backupDirectory.absolutePath, zipName)) {
             if (!exists()) {
                 createNewFile()
             }
             ZipOutputStream(this.outputStream()).use { zip ->
-                File(path)
+                File(pipelineRun.runFilesLocation)
                     .walk()
                     .filter { it.isFile }
                     .forEach { sourceFile ->
