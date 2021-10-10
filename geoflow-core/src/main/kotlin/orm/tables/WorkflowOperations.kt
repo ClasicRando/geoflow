@@ -46,6 +46,7 @@ object WorkflowOperations: Table<WorkflowOperation>("workflow_operations") {
                 if (!roles.contains("admin"))
                     it += role.inList(roles)
             }
+            .orderBy(workflowOrder.asc())
             .map { row ->
                 Record(
                     row[name] ?: throw IllegalArgumentException("name cannot be null"),
