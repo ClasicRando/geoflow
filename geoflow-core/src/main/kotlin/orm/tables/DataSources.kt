@@ -3,7 +3,7 @@ package orm.tables
 import org.ktorm.schema.*
 import orm.entities.DataSource
 
-object DataSources: Table<DataSource>("data_sources") {
+object DataSources: DbTable<DataSource>("data_sources") {
     val dsId = long("ds_id").primaryKey().bindTo { it.dsId }
     val code = text("code").bindTo { it.code }
     val country = text("country").bindTo { it.country }
@@ -33,7 +33,7 @@ object DataSources: Table<DataSource>("data_sources") {
             MAXVALUE 9223372036854775807
             CACHE 1;
     """.trimIndent()
-    val createStatement = """
+    override val createStatement = """
         CREATE TABLE IF NOT EXISTS public.data_sources
         (
             ds_id bigint NOT NULL DEFAULT nextval('data_sources_ds_id_seq'::regclass),

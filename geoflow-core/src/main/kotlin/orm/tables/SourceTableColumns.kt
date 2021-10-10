@@ -1,12 +1,11 @@
 package orm.tables
 
-import org.ktorm.schema.Table
 import org.ktorm.schema.int
 import org.ktorm.schema.long
 import org.ktorm.schema.text
 import orm.entities.SourceTableColumn
 
-object SourceTableColumns: Table<SourceTableColumn>("source_table_columns") {
+object SourceTableColumns: DbTable<SourceTableColumn>("source_table_columns") {
     val stcOid = long("stc_oid").primaryKey().bindTo { it.stcOid }
     val name = text("name").bindTo { it.name }
     val type = text("type").bindTo { it.type }
@@ -23,7 +22,7 @@ object SourceTableColumns: Table<SourceTableColumn>("source_table_columns") {
             MAXVALUE 9223372036854775807
             CACHE 1;
     """.trimIndent()
-    val createStatement = """
+    override val createStatement = """
         CREATE TABLE IF NOT EXISTS public.source_table_columns
         (
             st_oid bigint NOT NULL,

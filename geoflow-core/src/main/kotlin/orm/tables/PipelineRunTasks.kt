@@ -16,7 +16,7 @@ import orm.enums.TaskRunType
 import orm.enums.TaskStatus
 import java.sql.Timestamp
 
-object PipelineRunTasks: Table<PipelineRunTask>("pipeline_run_tasks") {
+object PipelineRunTasks: DbTable<PipelineRunTask>("pipeline_run_tasks") {
 
     val pipelineRunTaskId = long("pr_task_id").primaryKey().bindTo { it.pipelineRunTaskId }
     val runId = long("run_id").bindTo { it.runId }
@@ -36,7 +36,7 @@ object PipelineRunTasks: Table<PipelineRunTask>("pipeline_run_tasks") {
         "task_completed" to mapOf("name" to "Completed"),
     )
 
-    val createStatement = """
+    override val createStatement = """
         CREATE TABLE IF NOT EXISTS public.pipeline_run_tasks
         (
             pr_task_id bigint NOT NULL DEFAULT nextval('pipeline_run_tasks_pr_task_id_seq'::regclass),
