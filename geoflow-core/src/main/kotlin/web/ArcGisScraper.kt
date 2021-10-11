@@ -11,6 +11,7 @@ import io.ktor.client.statement.*
 import io.ktor.http.*
 import kotlinx.coroutines.*
 import kotlinx.coroutines.flow.asFlow
+import kotlinx.coroutines.flow.buffer
 import kotlinx.coroutines.flow.collect
 import kotlinx.coroutines.flow.map
 import kotlinx.serialization.ExperimentalSerializationApi
@@ -43,7 +44,7 @@ class ArcGisScraper private constructor(
             writeHeaders()
             metadata.queries.asFlow().map { url ->
                 fetchQuery(url)
-            }.collect { tempFile ->
+            }.buffer().collect { tempFile ->
                 val reader = CsvParser(csvParserSettings)
                 reader.iterate(tempFile.bufferedReader()).forEach { record ->
                     writeRow(record)
