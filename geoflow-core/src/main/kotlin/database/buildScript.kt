@@ -3,6 +3,10 @@ package database
 import mu.KotlinLogging
 import org.reflections.Reflections
 import org.reflections.scanners.Scanners.*
+import orm.tables.DbTable
+import java.sql.Connection
+import kotlin.reflect.full.memberProperties
+import kotlin.reflect.jvm.jvmErasure
 
 data class PostgresEnumType(val name: String, val constantValues: List<String>) {
     val postgresName = name.replace("[A-Z]".toRegex()) { "_" + it.value.lowercase() }.trimStart('_')
@@ -19,60 +23,104 @@ data class PostgresEnumType(val name: String, val constantValues: List<String>) 
 
 val logger = KotlinLogging.logger {}
 
+fun Connection.createTable(table: DbTable<*>) {
+    logger.info("Starting ${table.tableName}")
+    val fields = table::class.memberProperties
+        .filter { it.returnType.jvmErasure == String::class }
+        .associate { property ->
+            val value = property
+                .getter
+                .call(table)
+                ?.toString()
+                ?: ""
+            Pair(property.name, value)
+        }
+    fields["createSequence"]?.let { createSequence ->
+        val sequenceName = "CREATE SEQUENCE public\\.(\\S+)"
+            .toRegex()
+            .find(createSequence)
+            ?.groupValues
+            ?.get(1)
+            ?: ""
+        logger.info("Creating ${table.tableName}'s sequence, $sequenceName")
+        this.prepareStatement(createSequence).execute()
+    }
+    this
+        .prepareStatement("SELECT * FROM information_schema.tables WHERE table_name = ?")
+        .apply {
+            setString(1, table.tableName)
+        }
+        .executeQuery()
+        .use { rs ->
+            if (rs.next())
+                throw IllegalStateException("${table.tableName} already exists")
+        }
+    logger.info("Creating ${table.tableName}")
+    this.prepareStatement(table.createStatement).execute()
+    fields
+        .filterValues { it.startsWith("CREATE TRIGGER", ignoreCase = true) }
+        .forEach { (_, statement) ->
+            val functionName = "EXECUTE FUNCTION (public\\.)?(.+)\\(\\)"
+                .toRegex()
+                .find(statement)
+                ?.groupValues
+                ?.get(2) ?: throw IllegalStateException("Cannot find trigger function name")
+            val functionStatement = fields
+                .filterValues { it.contains(functionName) }
+                .firstNotNullOfOrNull { it.value }
+                ?: throw IllegalStateException("No property to match the trigger function name")
+            logger.info("Creating ${table.tableName}'s trigger function, $functionName")
+            this.prepareStatement(functionStatement).execute()
+            val triggerName = "CREATE TRIGGER (\\S+)"
+                .toRegex()
+                .find(statement)
+                ?.groupValues
+                ?.get(1) ?: throw IllegalStateException("Cannot find trigger name")
+            logger.info("Creating ${table.tableName}'s trigger, $triggerName")
+            this.prepareStatement(statement)
+        }
+}
+
+fun Connection.createTables(tables: List<DbTable<*>>, createdTables: Set<String> = setOf()) {
+    if (tables.isEmpty()) {
+        return
+    }
+    val tablesToCreate = if (createdTables.isEmpty()) {
+        tables.filter { !it.hasForeignKey }
+    } else {
+        tables.filter { table -> table.hasForeignKey && table.referencedTables.any { it in createdTables } }
+    }
+    for (table in tablesToCreate) {
+        this.createTable(table)
+    }
+    this.createTables(tables.minus(tablesToCreate), createdTables.union(tablesToCreate.map { it.tableName }))
+}
+
 fun buildDatabase() {
     try {
         DatabaseConnection.database.useConnection { connection ->
-            val enums = Reflections("orm.enums")
+            Reflections("orm.enums")
                 .get(SubTypes.of(Enum::class.java).asClass<Enum<*>>())
+                .asSequence()
                 .map { enum ->
                     PostgresEnumType(enum.simpleName, enum.enumConstants.map { it.toString() })
                 }
-            val dbEnums = connection
-                .prepareStatement(
-                    """
-                    SELECT t1.typname, array_agg(t2.enumlabel)
-                    FROM   pg_catalog.pg_type t1
-                    LEFT JOIN pg_catalog.pg_enum t2
-                    ON     t1.oid = t2.enumtypid
-                    WHERE  typname in (${Array(enums.size) { "?" }.joinToString()})
-                    AND    typtype = 'e'
-                    GROUP BY t1.typname
-                    """.trimIndent()
-                )
-                .apply {
-                    enums.forEachIndexed { index, enum ->
-                        setString(index + 1, enum.postgresName)
-                    }
+                .forEach { enum ->
+                    logger.info("Creating ${enum.postgresName}")
+                    connection.prepareStatement(enum.create).execute()
                 }
-                .executeQuery()
-                .use { rs ->
-                    generateSequence {
-                        if (rs.next()) Pair(rs.getString(1), rs.getArray(2).array) else null
-                    }.toList()
-                }
-            if (dbEnums.isEmpty()) {
-                logger.info("No conflicting Enum types found")
-            } else {
-                logger.info("Conflicting Enum types found: ${dbEnums.joinToString { it.first }}")
-                for (enum in dbEnums) {
-                    val requiredValues = enums
-                        .first { it.postgresName == enum.first }
-                        .constantValues
-                    val currentValues = (enum.second as Array<*>)
-                        .map { it as String }
-                    val missingValues = requiredValues.minus(currentValues)
-                    val extraValues = currentValues.minus(requiredValues)
-                    when {
-                        missingValues.isNotEmpty() ->
-                            throw IllegalStateException("${enum.first}: missing values, ${missingValues.joinToString()}")
-                        extraValues.isNotEmpty() ->
-                            throw IllegalStateException("${enum.first}: extra values, ${extraValues.joinToString()}")
-                        else -> logger.info("${enum.first}: values match definitions")
-                    }
-                }
-            }
+            val tables = Reflections("orm.tables")
+                .get(SubTypes.of(DbTable::class.java).asClass<DbTable<*>>())
+                .asSequence()
+                .map { table -> table.getDeclaredField("INSTANCE").get(null)::class }
+                .filter { !it.isAbstract }
+                .map { kClass -> kClass.objectInstance!! as DbTable<*> }
+                .toList()
+            connection.createTables(tables)
         }
     } catch (ex: Exception) {
         logger.error("Error trying to construct database schema", ex)
+    } finally {
+        logger.info("Exiting DB build")
     }
 }
