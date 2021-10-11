@@ -15,7 +15,7 @@ import orm.entities.PipelineRunTask
 import orm.enums.MergeType
 import kotlin.jvm.Throws
 
-object PipelineRuns: Table<PipelineRun>("pipeline_runs") {
+object PipelineRuns: DbTable<PipelineRun>("pipeline_runs") {
     val runId = long("run_id").primaryKey().bindTo { it.runId }
     val dsId = long("ds_id").references(DataSources) { it.dataSource }
     val recordDate = date("record_date").bindTo { it.recordDate }
@@ -53,7 +53,7 @@ object PipelineRuns: Table<PipelineRun>("pipeline_runs") {
             CACHE 1;
     """.trimIndent()
 
-    val createStatement = """
+    override val createStatement = """
         CREATE TABLE IF NOT EXISTS public.pipeline_runs
         (
             ds_id bigint NOT NULL,

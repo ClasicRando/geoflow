@@ -1,12 +1,11 @@
 package orm.tables
 
-import org.ktorm.schema.Table
 import org.ktorm.schema.long
 import org.ktorm.schema.text
 import org.ktorm.support.postgresql.textArray
 import orm.entities.PlottingField
 
-object PlottingFields: Table<PlottingField>("plotting_fields") {
+object PlottingFields: DbTable<PlottingField>("plotting_fields") {
     val name = text("name").bindTo { it.name }
     val addressLine1 = text("address_line1").bindTo { it.addressLine1 }
     val addressLine2 = text("address_line2").bindTo { it.addressLine2 }
@@ -21,7 +20,7 @@ object PlottingFields: Table<PlottingField>("plotting_fields") {
     val cleanAddress = text("clean_address").bindTo { it.cleanAddress }
     val cleanCity = text("clean_city").bindTo { it.cleanCity }
 
-    val createStatement = """
+    override val createStatement = """
         CREATE TABLE IF NOT EXISTS public.plotting_fields
         (
             name text COLLATE pg_catalog."default",

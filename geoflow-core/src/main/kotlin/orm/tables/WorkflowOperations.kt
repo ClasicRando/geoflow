@@ -3,13 +3,12 @@ package orm.tables
 import database.DatabaseConnection
 import kotlinx.serialization.Serializable
 import org.ktorm.dsl.*
-import org.ktorm.schema.Table
 import org.ktorm.schema.int
 import org.ktorm.schema.text
 import orm.entities.WorkflowOperation
 import kotlin.jvm.Throws
 
-object WorkflowOperations: Table<WorkflowOperation>("workflow_operations") {
+object WorkflowOperations: DbTable<WorkflowOperation>("workflow_operations"), DefaultData {
     val code = text("code").primaryKey().bindTo { it.code }
     val href = text("href").bindTo { it.href }
     val role = text("role").bindTo { it.role }
@@ -18,7 +17,9 @@ object WorkflowOperations: Table<WorkflowOperation>("workflow_operations") {
 
     val tableDisplayFields = mapOf("name" to mapOf("name" to "Operation"))
 
-    val createStatement = """
+    override val defaultRecordsFileName: String = "workflow_operations.csv"
+
+    override val createStatement = """
         CREATE TABLE IF NOT EXISTS public.workflow_operations
         (
             code text COLLATE pg_catalog."default" NOT NULL,
@@ -46,6 +47,7 @@ object WorkflowOperations: Table<WorkflowOperation>("workflow_operations") {
                 if (!roles.contains("admin"))
                     it += role.inList(roles)
             }
+            .orderBy(workflowOrder.asc())
             .map { row ->
                 Record(
                     row[name] ?: throw IllegalArgumentException("name cannot be null"),

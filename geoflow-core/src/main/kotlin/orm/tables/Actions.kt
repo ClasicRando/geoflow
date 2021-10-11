@@ -3,13 +3,12 @@ package orm.tables
 import database.DatabaseConnection
 import kotlinx.serialization.Serializable
 import org.ktorm.dsl.*
-import org.ktorm.schema.Table
 import org.ktorm.schema.long
 import org.ktorm.schema.text
 import orm.entities.Action
 import kotlin.jvm.Throws
 
-object Actions: Table<Action>("actions") {
+object Actions: DbTable<Action>("actions") {
     val actionOid = long("action_oid").primaryKey().bindTo { it.actionOid }
     val state = text("state").bindTo { it.state }
     val role = text("role").bindTo { it.role }
@@ -30,7 +29,7 @@ object Actions: Table<Action>("actions") {
             MAXVALUE 9223372036854775807
             CACHE 1;
     """.trimIndent()
-    val createStatement = """
+    override val createStatement = """
         CREATE TABLE IF NOT EXISTS public.actions
         (
             state text COLLATE pg_catalog."default" NOT NULL,

@@ -17,7 +17,7 @@ import orm.enums.FileCollectType
 import orm.enums.LoaderType
 import kotlin.jvm.Throws
 
-object SourceTables: Table<SourceTable>("source_tables") {
+object SourceTables: DbTable<SourceTable>("source_tables") {
 
     val stOid = long("st_oid").primaryKey().bindTo { it.stOid }
     val runId = long("run_id").bindTo { it.runId }
@@ -61,7 +61,7 @@ object SourceTables: Table<SourceTable>("source_tables") {
             MAXVALUE 9223372036854775807
             CACHE 1;
     """.trimIndent()
-    val createStatement = """
+    override val createStatement = """
         CREATE TABLE IF NOT EXISTS public.source_tables
         (
             run_id bigint NOT NULL,

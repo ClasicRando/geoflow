@@ -4,12 +4,11 @@ import at.favre.lib.crypto.bcrypt.BCrypt
 import database.DatabaseConnection
 import org.ktorm.dsl.*
 import org.ktorm.schema.long
-import org.ktorm.schema.Table
 import org.ktorm.schema.text
 import org.ktorm.support.postgresql.textArray
 import orm.entities.InternalUser
 
-object InternalUsers: Table<InternalUser>("internal_users") {
+object InternalUsers: DbTable<InternalUser>("internal_users") {
     val userOid = long("user_oid").primaryKey().bindTo { it.userOid }
     val name = text("name").bindTo { it.name }
     val username = text("username").bindTo { it.username }
@@ -25,7 +24,7 @@ object InternalUsers: Table<InternalUser>("internal_users") {
             CACHE 1;
     """.trimIndent()
 
-    val createStatement = """
+    override val createStatement = """
         CREATE TABLE IF NOT EXISTS public.internal_users
         (
             user_oid bigint NOT NULL DEFAULT nextval('internal_users_user_oid_seq'::regclass),

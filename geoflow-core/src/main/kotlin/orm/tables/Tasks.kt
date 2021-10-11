@@ -4,7 +4,7 @@ import org.ktorm.schema.*
 import orm.entities.Task
 import orm.enums.TaskRunType
 
-object Tasks: Table<Task>("tasks") {
+object Tasks: DbTable<Task>("tasks") {
     val taskId = long("task_id").primaryKey().bindTo { it.taskId }
     val name = text("name").bindTo { it.name }
     val description = text("description").bindTo { it.description }
@@ -12,7 +12,7 @@ object Tasks: Table<Task>("tasks") {
     val taskRunType = enum<TaskRunType>("task_run_type").bindTo { it.taskRunType }
     val taskClassName = text("task_class_name").bindTo { it.taskClassName }
 
-    val createStatement = """
+    override val createStatement = """
         CREATE TABLE IF NOT EXISTS public.tasks
         (
             name text COLLATE pg_catalog."default" NOT NULL,

@@ -1,17 +1,17 @@
 package orm.tables
 
-import org.ktorm.schema.Table
 import org.ktorm.schema.text
 import orm.entities.Prov
+import java.io.InputStream
 
-object Provs: Table<Prov>("provs") {
+object Provs: DbTable<Prov>("provs"), DefaultData {
 
     val provCode = text("prov_code").primaryKey().bindTo { it.provCode }
     val name = text("name").bindTo { it.name }
     val countryCode = text("country_code").bindTo { it.countryCode }
     val countryName = text("country_name").bindTo { it.countryName }
 
-    val createStatement = """
+    override val createStatement = """
         CREATE TABLE IF NOT EXISTS public.provs
         (
             country_code text COLLATE pg_catalog."default" NOT NULL,
@@ -24,4 +24,6 @@ object Provs: Table<Prov>("provs") {
             OIDS = FALSE
         );
     """.trimIndent()
+
+    override val defaultRecordsFileName = "provs.csv"
 }

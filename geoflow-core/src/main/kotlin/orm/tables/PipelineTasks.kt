@@ -1,18 +1,17 @@
 package orm.tables
 
-import org.ktorm.schema.Table
 import org.ktorm.schema.int
 import org.ktorm.schema.long
 import orm.entities.PipelineTask
 
-object PipelineTasks: Table<PipelineTask>("pipeline_tasks") {
+object PipelineTasks: DbTable<PipelineTask>("pipeline_tasks") {
     val pipelineTaskId = long("pipeline_task_id").primaryKey().bindTo { it.pipelineTaskId }
     val pipelineId = long("pipeline_id").bindTo { it.pipelineId }
     val taskId = long("task_id").bindTo { it.taskId }
     val parentTask = long("parent_task").bindTo { it.parentTask }
     val parentTaskOrder = int("parent_task_order").bindTo { it.parentTaskOrder }
 
-    val createStatement = """
+    override val createStatement = """
         CREATE TABLE IF NOT EXISTS public.pipeline_tasks
         (
             pipeline_id bigint NOT NULL,
@@ -31,5 +30,14 @@ object PipelineTasks: Table<PipelineTask>("pipeline_tasks") {
         WITH (
             OIDS = FALSE
         );
+    """.trimIndent()
+
+    val createSequence = """
+        CREATE SEQUENCE IF NOT EXISTS public.pipeline_tasks_pipeline_task_id_seq
+            INCREMENT 1
+            START 1
+            MINVALUE 1
+            MAXVALUE 9223372036854775807
+            CACHE 1;
     """.trimIndent()
 }

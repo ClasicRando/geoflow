@@ -1,11 +1,10 @@
 package orm.tables
 
-import org.ktorm.schema.Table
 import org.ktorm.schema.long
 import org.ktorm.schema.text
 import orm.entities.DataSourceContact
 
-object DataSourceContacts: Table<DataSourceContact>("data_source_contacts") {
+object DataSourceContacts: DbTable<DataSourceContact>("data_source_contacts") {
     val contactId = long("contact_id").primaryKey().bindTo { it.contactId }
     val dsId = long("ds_id").bindTo { it.dsId }
     val name = text("name").bindTo { it.name }
@@ -14,7 +13,7 @@ object DataSourceContacts: Table<DataSourceContact>("data_source_contacts") {
     val type = text("type").bindTo { it.type }
     val notes = text("notes").bindTo { it.notes }
 
-    val createStatement = """
+    override val createStatement = """
         CREATE TABLE IF NOT EXISTS public.data_source_contacts
         (
             contact_id bigint NOT NULL DEFAULT nextval('data_source_contacts_contact_id_seq'::regclass),
