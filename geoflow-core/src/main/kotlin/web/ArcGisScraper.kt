@@ -107,6 +107,7 @@ class ArcGisScraper private constructor(
         }
         async(Dispatchers.IO) {
             File.createTempFile("temp", ".csv").also { file ->
+                file.deleteOnExit()
                 val headerMapping = metadata.fields.associateWith { it }
                 val writer = CsvWriter(file.bufferedWriter(), csvSettings)
                 writer.writeHeaders()
