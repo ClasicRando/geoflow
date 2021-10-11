@@ -103,7 +103,7 @@ fun FlowContent.autoRefreshTable(
         attributes["data-auto-refresh"] = "true"
         attributes["data-auto-refresh-interval"] = "1"
         attributes["data-auto-refresh-status"] = "true"
-        attributes["data-classes"] = "table table-bordered table-hover"
+        attributes["data-classes"] = "table table-bordered"
         attributes["data-thead-classes"] = "thead-dark"
         attributes["data-search"] = "true"
         if (tableButtons.isNotEmpty()) {

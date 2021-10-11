@@ -50,13 +50,13 @@ function statusFormatter(value, row) {
         case 'Waiting':
             return '';
         case 'Scheduled':
-            return '<i class="fa fa-arrow-circle-right"></i>';
+            return '<i class="fas fa-arrow-circle-right"></i>';
         case 'Running':
-            return '<i class="fa fa-cog fa-spin"></i>';
+            return '<i class="fas fa-cogs fa-spin"></i>';
         case 'Complete':
-            return '<i class="fa fa-check"></i>';
+            return '<i class="fas fa-check"></i>';
         case 'Failed':
-            return '<i class="fa fa-exclamation"></i>';
+            return '<i class="fas fa-exclamation"></i>';
     }
 }
 
@@ -72,55 +72,38 @@ function titleCase(title) {
     );
 }
 
-function showDataDisplayModal(action, data) {
+function showTaskInfo(prTaskId) {
     let options = $(`#${taskTableId}`).bootstrapTable('getOptions');
     if (options.autoRefreshStatus === false) {
         showMessageBox('Error', 'Please turn on auto refresh to select tasks');
         return;
     }
+    let data = $(`#${taskTableId}`).bootstrapTable('getData').find(row => row.pipeline_run_task_id === prTaskId);
     let $modalBody = $(`#${taskDataModalId}Body`);
     $modalBody.empty();
     const div = document.createElement('div');
-    switch(action) {
-        case 'choice':
-            const btnInfo = document.createElement('button');
-            const btnReset = document.createElement('button');
-            btnInfo.innerHTML = 'Task Info';
-            btnReset.innerHTML = 'Rest Task';
-            btnInfo.classList.add('btn','btn-secondary', 'mx-2');
-            btnReset.classList.add('btn','btn-secondary', 'mx-2');
-            btnInfo.onclick = () => {showDataDisplayModal('info', data);};
-            btnReset.onclick = () => {showDataDisplayModal('reset', data);};
-            div.appendChild(btnInfo);
-            div.appendChild(btnReset);
-            $modalBody.append(div);
-            $(`#${taskDataModalId}`).modal('show');
-            break;
-        case 'reset':
-            const params = new URLSearchParams(window.location.href.replace(/^[^?]+/g, ''));
-            postValue(`/api/reset-task?runId=${params.get('runId')}&prTaskId=${data.pipeline_run_task_id}`);
-            $(`#${taskDataModalId}`).modal('hide');
-            break;
-        case 'info':
-            for (const [key, value] of Object.entries(data)) {
-                const label = document.createElement('label');
-                label['for'] = key.replace(/\s+/g, '_');
-                label.innerHTML = titleCase(key.replace(/_+/g, ' '));
-                div.appendChild(label);
-                const textValue = document.createElement('p');
-                textValue.id = key.replace(/\s+/g, '_');
-                textValue.innerHTML = value === '' ? ' ' : value;
-                textValue.classList.add('border', 'rounded', 'p-3');
-                div.appendChild(textValue);
-            }
-            $modalBody.append(div);
-            break;
+    for (const [key, value] of Object.entries(data)) {
+        const label = document.createElement('label');
+        label['for'] = key.replace(/\s+/g, '_');
+        label.innerHTML = titleCase(key.replace(/_+/g, ' '));
+        div.appendChild(label);
+        const textValue = document.createElement('p');
+        textValue.id = key.replace(/\s+/g, '_');
+        textValue.innerHTML = value === '' ? ' ' : value;
+        textValue.classList.add('border', 'rounded', 'p-3');
+        div.appendChild(textValue);
     }
+    $modalBody.append(div);
+    $(`#${taskDataModalId}`).modal('show');
 }
 
-$(`#${taskTableId}`).on('click-row.bs.table', (e, row, element, field) => {
-    showDataDisplayModal('choice', row);
-});
-// $(`#${sourceTablesTableId}`).on('click-row.bs.table', (e, row, element, field) => {
-//     editSourceTableRow(row);
-// });
+function reworkTask(prTaskId) {
+    const params = new URLSearchParams(window.location.href.replace(/^[^?]+/g, ''));
+    postValue(`/api/reset-task?runId=${params.get('runId')}&prTaskId=${prTaskId}`);
+}
+
+function taskActionFormatter(value, row) {
+    const prTaskId = row.pipeline_run_task_id;
+    const redoButton = row.task_status === 'Complete' ? `<i class="fas fa-redo p-1 inTableButton" onClick="reworkTask(${prTaskId})"></i>` : '';
+    return `<span style="display: inline;"><i class="fas fa-info-circle  p-1 inTableButton" onClick="showTaskInfo(${prTaskId})"></i>${redoButton}</span>`;
+}
