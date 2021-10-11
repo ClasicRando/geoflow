@@ -8,7 +8,7 @@ import org.ktorm.schema.text
 import orm.entities.WorkflowOperation
 import kotlin.jvm.Throws
 
-object WorkflowOperations: DbTable<WorkflowOperation>("workflow_operations") {
+object WorkflowOperations: DbTable<WorkflowOperation>("workflow_operations"), DefaultData {
     val code = text("code").primaryKey().bindTo { it.code }
     val href = text("href").bindTo { it.href }
     val role = text("role").bindTo { it.role }
@@ -16,6 +16,8 @@ object WorkflowOperations: DbTable<WorkflowOperation>("workflow_operations") {
     val workflowOrder = int("workflow_order").bindTo { it.workflowOrder }
 
     val tableDisplayFields = mapOf("name" to mapOf("name" to "Operation"))
+
+    override val defaultRecordsFileName: String = "workflow_operations.csv"
 
     override val createStatement = """
         CREATE TABLE IF NOT EXISTS public.workflow_operations

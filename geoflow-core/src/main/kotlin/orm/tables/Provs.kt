@@ -2,8 +2,9 @@ package orm.tables
 
 import org.ktorm.schema.text
 import orm.entities.Prov
+import java.io.InputStream
 
-object Provs: DbTable<Prov>("provs") {
+object Provs: DbTable<Prov>("provs"), DefaultData {
 
     val provCode = text("prov_code").primaryKey().bindTo { it.provCode }
     val name = text("name").bindTo { it.name }
@@ -23,4 +24,6 @@ object Provs: DbTable<Prov>("provs") {
             OIDS = FALSE
         );
     """.trimIndent()
+
+    override val defaultRecordsFileName = "provs.csv"
 }
