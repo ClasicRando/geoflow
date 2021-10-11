@@ -98,6 +98,11 @@ function showTaskInfo(prTaskId) {
 }
 
 function reworkTask(prTaskId) {
+    let options = $(`#${taskTableId}`).bootstrapTable('getOptions');
+    if (options.autoRefreshStatus === false) {
+        showMessageBox('Error', 'Please turn on auto refresh to rework tasks');
+        return;
+    }
     const params = new URLSearchParams(window.location.href.replace(/^[^?]+/g, ''));
     postValue(`/api/reset-task?runId=${params.get('runId')}&prTaskId=${prTaskId}`);
 }
