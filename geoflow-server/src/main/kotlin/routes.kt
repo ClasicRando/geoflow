@@ -18,20 +18,22 @@ fun Route.index() {
     get("/") {
         call.respondRedirect("/index")
     }
-    get("/index") {
-        call.respondHtml {
-            index()
+    route("/index") {
+        get {
+            call.respondHtml {
+                index()
+            }
         }
-    }
-    post("/index") {
-        val params = call.receiveParameters()
-        val href = params["href"] ?: "/index"
-        call.respondRedirect(href)
+        post {
+            val params = call.receiveParameters()
+            val href = params["href"] ?: "/index"
+            call.respondRedirect(href)
+        }
     }
 }
 
-fun Route.pipelineStatus() {
-    get("/pipeline-status") {
+fun Route.pipelineStatus() = route("/pipeline-status") {
+    get {
         val code = call.request.queryParameters["code"] ?: ""
         call.respondHtml {
             if (call.sessions.get<UserSession>()!!.hasRole(code)) {
@@ -41,7 +43,7 @@ fun Route.pipelineStatus() {
             }
         }
     }
-    post("/pipeline-status") {
+    post {
         val params = call.receiveParameters()
         val pickup = params["pickup"] ?: ""
         val runId = params["run_id"] ?: ""
@@ -66,8 +68,8 @@ fun Route.pipelineStatus() {
     }
 }
 
-fun Route.pipelineTasks() {
-    get("/tasks") {
+fun Route.pipelineTasks() = route("/tasks") {
+    get {
         val user = call.sessions.get<UserSession>()!!
         val runId = call.request.queryParameters["runId"]?.toLong() ?: 0
         val run = PipelineRuns.getRun(runId)
@@ -101,8 +103,8 @@ fun Route.invalidParameter() {
     }
 }
 
-fun Route.api() {
-    get("/api/operations") {
+fun Route.api() = route("/api") {
+    get("/operations") {
         val operations = runCatching {
             WorkflowOperations.userOperations(call.sessions.get<UserSession>()?.roles!!)
         }.getOrElse { t ->
@@ -111,7 +113,7 @@ fun Route.api() {
         }
         call.respond(operations)
     }
-    get("/api/actions") {
+    get("/actions") {
         val actions = runCatching {
             Actions.userActions(call.sessions.get<UserSession>()?.roles!!)
         }.getOrElse { t ->
@@ -120,7 +122,7 @@ fun Route.api() {
         }
         call.respond(actions)
     }
-    get("/api/pipeline-runs") {
+    get("/pipeline-runs") {
         val runs = runCatching {
             PipelineRuns.userRuns(
                 call.sessions.get<UserSession>()?.userId!!,
@@ -132,7 +134,7 @@ fun Route.api() {
         }
         call.respond(runs)
     }
-    get("/api/pipeline-run-tasks") {
+    get("/pipeline-run-tasks") {
         val tasks = runCatching {
             PipelineRunTasks.getOrderedTasks(call.request.queryParameters["runId"]?.toLong() ?: 0)
         }.getOrElse { t ->
@@ -141,7 +143,7 @@ fun Route.api() {
         }
         call.respond(tasks)
     }
-    post("/api/run-task") {
+    post("/run-task") {
         val user = call.sessions.get<UserSession>()!!
         val runId = call.request.queryParameters["runId"]?.toLong() ?: 0
         val pipelineRunTaskId = call.request.queryParameters["prTaskId"]?.toLong() ?: 0
@@ -167,7 +169,7 @@ fun Route.api() {
         }
         call.respond(response)
     }
-    post("/api/run-all") {
+    post("/run-all") {
         val user = call.sessions.get<UserSession>()!!
         val runId = call.request.queryParameters["runId"]?.toLong() ?: 0
         val pipelineRunTaskId = call.request.queryParameters["prTaskId"]?.toLong() ?: 0
@@ -193,7 +195,7 @@ fun Route.api() {
         }
         call.respond(response)
     }
-    post("/api/reset-task") {
+    post("/reset-task") {
         val user = call.sessions.get<UserSession>()!!
         val runId = call.request.queryParameters["runId"]?.toLong() ?: 0
         val pipelineRunTaskId = call.request.queryParameters["prTaskId"]?.toLong() ?: 0
@@ -206,60 +208,61 @@ fun Route.api() {
         }
         call.respond(response)
     }
-    get("/api/task-status") {
+    get("/task-status") {
         val pipelineRunTaskId = call.request.queryParameters["prTaskId"]?.toLong() ?: 0
         val status = PipelineRunTasks.getStatus(pipelineRunTaskId)
         call.respond(mapOf("status" to status))
     }
-    get("/api/source-tables") {
-        val user = call.sessions.get<UserSession>()!!
-        val runId = call.request.queryParameters["runId"]?.toLong() ?: 0
-        val response = runCatching {
-            SourceTables.getRunSourceTables(runId)
-        }.getOrElse { t ->
-            call.application.environment.log.info("/api/source-tables", t)
-            listOf()
+    route("/source-tables") {
+        get {
+            val runId = call.request.queryParameters["runId"]?.toLong() ?: 0
+            val response = runCatching {
+                SourceTables.getRunSourceTables(runId)
+            }.getOrElse { t ->
+                call.application.environment.log.info("/api/source-tables", t)
+                listOf()
+            }
+            call.respond(response)
         }
-        call.respond(response)
-    }
-    patch("/api/source-tables") {
-        val user = call.sessions.get<UserSession>()!!
-        val params = call.request.queryParameters.names().associateWith { call.request.queryParameters[it] }
-        val response = runCatching {
-            val stOid = SourceTables.updateSourceTable(user.username, params)
-            mapOf("success" to "updated stOid $stOid")
-        }.getOrElse { t ->
-            call.application.environment.log.info("/api/source-tables", t)
-            val message = "Failed to update stOid ${params["stOid"]}"
-            mapOf("error" to "$message. ${t.message}")
+        patch {
+            val user = call.sessions.get<UserSession>()!!
+            val params = call.request.queryParameters.names().associateWith { call.request.queryParameters[it] }
+            val response = runCatching {
+                val stOid = SourceTables.updateSourceTable(user.username, params)
+                mapOf("success" to "updated stOid $stOid")
+            }.getOrElse { t ->
+                call.application.environment.log.info("/api/source-tables", t)
+                val message = "Failed to update stOid ${params["stOid"]}"
+                mapOf("error" to "$message. ${t.message}")
+            }
+            call.respond(response)
         }
-        call.respond(response)
-    }
-    post("/api/source-tables") {
-        val user = call.sessions.get<UserSession>()!!
-        val params = call.request.queryParameters.names().associateWith { call.request.queryParameters[it] }
-        val response = runCatching {
-            val stOid = SourceTables.insertSourceTable(user.username, params)
-            mapOf("success" to "inserted stOid $stOid")
-        }.getOrElse { t ->
-            call.application.environment.log.info("/api/source-tables", t)
-            val message = "Failed to insert new source table"
-            mapOf("error" to "$message. ${t.message}")
+        post {
+            val user = call.sessions.get<UserSession>()!!
+            val params = call.request.queryParameters.names().associateWith { call.request.queryParameters[it] }
+            val response = runCatching {
+                val stOid = SourceTables.insertSourceTable(user.username, params)
+                mapOf("success" to "inserted stOid $stOid")
+            }.getOrElse { t ->
+                call.application.environment.log.info("/api/source-tables", t)
+                val message = "Failed to insert new source table"
+                mapOf("error" to "$message. ${t.message}")
+            }
+            call.respond(response)
         }
-        call.respond(response)
-    }
-    delete("/api/source-tables") {
-        val user = call.sessions.get<UserSession>()!!
-        val params = call.request.queryParameters.names().associateWith { call.request.queryParameters[it] }
-        val response = runCatching {
-            val stOid = SourceTables.deleteSourceTable(user.username, params)
-            mapOf("success" to "deleted stOid $stOid")
-        }.getOrElse { t ->
-            call.application.environment.log.info("/api/source-tables", t)
-            val message = "Failed to delete stOid ${params["stOid"]}"
-            mapOf("error" to "$message. ${t.message}")
+        delete {
+            val user = call.sessions.get<UserSession>()!!
+            val params = call.request.queryParameters.names().associateWith { call.request.queryParameters[it] }
+            val response = runCatching {
+                val stOid = SourceTables.deleteSourceTable(user.username, params)
+                mapOf("success" to "deleted stOid $stOid")
+            }.getOrElse { t ->
+                call.application.environment.log.info("/api/source-tables", t)
+                val message = "Failed to delete stOid ${params["stOid"]}"
+                mapOf("error" to "$message. ${t.message}")
+            }
+            call.respond(response)
         }
-        call.respond(response)
     }
 }
 
