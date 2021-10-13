@@ -16,6 +16,7 @@ val bcryptVersion: String by project
 val kotlinxJsonVersion: String by project
 val ktorVersion: String by project
 val junitVersion: String by project
+val slf4Version: String by project
 val kotlinLoggingVersion: String by project
 val reflectionsVersion: String by project
 
@@ -46,12 +47,18 @@ dependencies {
     implementation("com.univocity:univocity-parsers:$univocityVersion")
     // https://mvnrepository.com/artifact/org.apache.poi/poi
     implementation("org.apache.poi:poi:$poiVersion")
+    // https://mvnrepository.com/artifact/org.apache.poi/poi-ooxml
+    implementation("org.apache.poi:poi-ooxml:$poiVersion")
     implementation("com.beust:klaxon:$klaxonVersion")
     // https://mvnrepository.com/artifact/at.favre.lib/bcrypt
     implementation("at.favre.lib:bcrypt:$bcryptVersion")
     implementation("io.ktor:ktor-client-core:$ktorVersion")
     implementation("io.ktor:ktor-client-cio:$ktorVersion")
     implementation("io.ktor:ktor-client-serialization:$ktorVersion")
+    // https://mvnrepository.com/artifact/org.slf4j/slf4j-api
+    implementation("org.slf4j:slf4j-api:$slf4Version")
+    // https://mvnrepository.com/artifact/org.slf4j/slf4j-simple
+    implementation("org.slf4j:slf4j-simple:$slf4Version")
     implementation("io.github.microutils:kotlin-logging-jvm:$kotlinLoggingVersion")
     implementation("org.reflections:reflections:$reflectionsVersion")
 }
