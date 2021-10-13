@@ -4,3 +4,4 @@
 /test-files/
 /geoflow-core/test-files
 /geoflow-server/test-files
+/geoflow-core/src/main/kotlin/MiniTests.kt
