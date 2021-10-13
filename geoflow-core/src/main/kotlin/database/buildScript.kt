@@ -21,9 +21,9 @@ data class PostgresEnumType(val name: String, val constantValues: List<String>) 
     """.trimIndent()
 }
 
-val logger = KotlinLogging.logger {}
+private val logger = KotlinLogging.logger {}
 
-fun Connection.createTable(table: DbTable<*>) {
+private fun Connection.createTable(table: DbTable<*>) {
     logger.info("Starting ${table.tableName}")
     val fields = table::class.memberProperties
         .filter { it.returnType.jvmErasure == String::class }
@@ -81,7 +81,7 @@ fun Connection.createTable(table: DbTable<*>) {
         }
 }
 
-fun Connection.createTables(tables: List<DbTable<*>>, createdTables: Set<String> = setOf()) {
+private fun Connection.createTables(tables: List<DbTable<*>>, createdTables: Set<String> = setOf()) {
     if (tables.isEmpty()) {
         return
     }
