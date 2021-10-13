@@ -9,6 +9,7 @@ import org.postgresql.copy.CopyManager
 import org.postgresql.jdbc.PgConnection
 import orm.enums.LoaderType
 import java.io.File
+import java.io.IOException
 import java.sql.Connection
 import java.sql.DriverManager
 import kotlin.math.floor
@@ -183,6 +184,7 @@ private suspend fun CopyManager.loadExcelFile(
 ) {
     excelFile.inputStream().use { inputStream ->
         withContext(Dispatchers.IO) {
+            @Suppress("BlockingMethodInNonBlockingContext")
             WorkbookFactory.create(inputStream)
         }.use { workbook ->
             val formulaEvaluator = workbook.creationHelper.createFormulaEvaluator()
