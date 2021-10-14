@@ -32,7 +32,8 @@ object SourceTableColumns: DbTable<SourceTableColumn>("source_table_columns") {
             min_length integer NOT NULL,
             label text COLLATE pg_catalog."default" NOT NULL,
             stc_oid bigint NOT NULL DEFAULT nextval('source_table_columns_stc_oid_seq'::regclass),
-            CONSTRAINT source_table_columns_pkey PRIMARY KEY (stc_oid)
+            CONSTRAINT source_table_columns_pkey PRIMARY KEY (stc_oid),
+            CONSTRAINT column_name_in_table UNIQUE (st_oid, name)
         )
         WITH (
             OIDS = FALSE
