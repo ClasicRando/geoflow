@@ -87,9 +87,15 @@ private fun recordToCsvBytes(record: Array<String>): ByteArray {
 }
 
 private fun formatColumnName(name: String): String {
-    return name.replace("\\s+".toRegex(), "_")
+    return name.trim()
+        .replace("\\s+".toRegex(), "_")
         .uppercase()
         .replace("#", "_NUM")
+        .replace("\\W".toRegex(), "")
+        .replace("^\\d".toRegex()) {
+            "_${it.value}"
+        }
+        .take(60)
 }
 
 private suspend fun <T> CsvParser.use(file: File, func: suspend CsvParser.(CsvParser) -> T): T {
