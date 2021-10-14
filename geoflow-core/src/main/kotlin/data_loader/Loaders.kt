@@ -16,6 +16,7 @@ import java.sql.Connection
 import java.sql.DriverManager
 import kotlin.math.floor
 import java.sql.ResultSet
+import java.sql.Types
 import java.time.*
 import java.time.format.DateTimeFormatter
 import java.util.*
@@ -25,6 +26,7 @@ import kotlin.text.toByteArray
 
 private const val defaultDelimiter = ','
 private val logger = KotlinLogging.logger {}
+private val jdbcTypeNames = Types::class.java.fields.associate { (it.get(null) as Int) to it.name  }
 
 data class ColumnStats(val name: String, val minLength: Int, val maxLength: Int, val type: String = "")
 
@@ -101,13 +103,14 @@ private suspend fun <T> CsvParser.use(file: File, func: suspend CsvParser.(CsvPa
     }
 }
 
+@JvmName("analyzeStringRecords")
 private fun analyzeRecords(
     tableName: String,
-    header: Iterable<String>,
+    header: List<String>,
     records: Iterable<Array<String>>,
 ): AnalyzeResult {
     var recordCount = 0
-    val stats = header.mapIndexed { index, name ->
+    val stats = header.mapIndexed { index, name, ->
         val lengths = records.map { record ->
             record[index].length
         }
@@ -118,7 +121,30 @@ private fun analyzeRecords(
             name = name,
             maxLength = lengths.maxOf { it },
             minLength = lengths.minOf { it },
-            type = ""
+            type = "VARCHAR"
+        )
+    }
+    return AnalyzeResult(tableName, recordCount, stats)
+}
+
+private fun analyzeRecords(
+    tableName: String,
+    header: List<Pair<String, String>>,
+    records: Iterable<Array<String>>,
+): AnalyzeResult {
+    var recordCount = 0
+    val stats = header.mapIndexed { index, (name, type) ->
+        val lengths = records.map { record ->
+            record[index].length
+        }
+        if (recordCount == 0) {
+            recordCount = lengths.size
+        }
+        ColumnStats(
+            name = name,
+            maxLength = lengths.maxOf { it },
+            minLength = lengths.minOf { it },
+            type = type
         )
     }
     return AnalyzeResult(tableName, recordCount, stats)
@@ -403,7 +429,9 @@ private fun analyzeMdbFile(
                     .prepareStatement("SELECT * FROM $mdbTableName")
                     .executeQuery()
                     .use { rs ->
-                        val headers = (1..rs.metaData.columnCount).map { rs.metaData.getColumnName(it) }
+                        val headers = (1..rs.metaData.columnCount).map {
+                            rs.metaData.getColumnName(it) to (jdbcTypeNames[rs.metaData.getColumnType(it)] ?: "")
+                        }
                         val analyzeResult = rs.resultRecords()
                             .chunked(10000)
                             .asFlow()
@@ -447,11 +475,12 @@ private suspend fun CopyManager.loadMdbFile(
         }
 }
 
-private fun getDbfHeader(dbfFile: File): List<String> {
+private fun getDbfHeader(dbfFile: File): List<Pair<String, String>> {
     return dbfFile.inputStream().use { inputStream ->
         DBFReader(inputStream).use { reader ->
             0.until(reader.fieldCount).map {
-                reader.getField(it).name
+                val field = reader.getField(it)
+                field.name to field.type.name
             }
         }
     }
