@@ -1,6 +1,8 @@
 package data_loader
 
 import com.linuxense.javadbf.DBFReader
+import com.univocity.parsers.csv.CsvParser
+import com.univocity.parsers.csv.CsvParserSettings
 import kotlinx.coroutines.*
 import kotlinx.coroutines.flow.*
 import mu.KotlinLogging
@@ -9,7 +11,7 @@ import org.postgresql.copy.CopyManager
 import org.postgresql.jdbc.PgConnection
 import orm.enums.LoaderType
 import java.io.File
-import java.io.IOException
+import java.lang.Integer.min
 import java.sql.Connection
 import java.sql.DriverManager
 import kotlin.math.floor
@@ -18,12 +20,35 @@ import java.time.*
 import java.time.format.DateTimeFormatter
 import java.util.*
 import kotlin.io.use
+import kotlin.math.max
 import kotlin.text.toByteArray
 
-const val defaultDelimiter = ','
-val logger = KotlinLogging.logger {}
+private const val defaultDelimiter = ','
+private val logger = KotlinLogging.logger {}
 
-fun getCopyCommand(
+data class ColumnStats(val name: String, val minLength: Int, val maxLength: Int, val type: String = "")
+
+data class AnalyzeResult(
+    val tableName: String,
+    val recordCount: Int,
+    val columns: List<ColumnStats>,
+) {
+    fun merge(analyzeResult: AnalyzeResult): AnalyzeResult {
+        return copy(
+            recordCount = recordCount + analyzeResult.recordCount,
+            columns = columns.map { columnStats ->
+                val currentStats = analyzeResult.columns.first { columnStats.name == it.name }
+                columnStats.copy(
+                    name = columnStats.name,
+                    maxLength = max(columnStats.maxLength, currentStats.maxLength),
+                    minLength = min(columnStats.minLength, currentStats.minLength),
+                )
+            },
+        )
+    }
+}
+
+private fun getCopyCommand(
     tableName: String,
     header: Boolean,
     delimiter: Char = defaultDelimiter,
@@ -53,10 +78,50 @@ private fun formatObject(value: Any?): String {
     }
 }
 
-fun recordToCsvBytes(record: List<String>): ByteArray {
+private fun recordToCsvBytes(record: Array<String>): ByteArray {
     return record.joinToString(separator = "\",\"", prefix = "\"", postfix = "\"\n") { value ->
         value.replace("\"", "\"\"")
     }.toByteArray()
+}
+
+private fun formatColumnName(name: String): String {
+    return name.replace("\\s+".toRegex(), "_")
+        .uppercase()
+        .replace("#", "_NUM")
+}
+
+private suspend fun <T> CsvParser.use(file: File, func: suspend CsvParser.(CsvParser) -> T): T {
+    try {
+        beginParsing(file)
+        return func(this)
+    } catch (e: Throwable) {
+        throw e
+    } finally {
+        stopParsing()
+    }
+}
+
+private fun analyzeRecords(
+    tableName: String,
+    header: Iterable<String>,
+    records: Iterable<Array<String>>,
+): AnalyzeResult {
+    var recordCount = 0
+    val stats = header.mapIndexed { index, name ->
+        val lengths = records.map { record ->
+            record[index].length
+        }
+        if (recordCount == 0) {
+            recordCount = lengths.size
+        }
+        ColumnStats(
+            name = name,
+            maxLength = lengths.maxOf { it },
+            minLength = lengths.minOf { it },
+            type = ""
+        )
+    }
+    return AnalyzeResult(tableName, recordCount, stats)
 }
 
 @Throws(IllegalArgumentException::class)
@@ -67,15 +132,9 @@ suspend fun Connection.loadFile(
     delimiter: Char = ',',
     qualified: Boolean = true,
 ) {
-    if (!file.exists()) {
-        throw IllegalArgumentException("File cannot be found")
-    }
-    if (!file.isFile) {
-        throw IllegalArgumentException("File object provided is not a file in the directory system")
-    }
-    if (tableNames.isEmpty()) {
-        throw IllegalArgumentException("Table names cannot be empty")
-    }
+    require(file.exists()) { "File cannot be found" }
+    require(file.isFile) { "File object provided is not a file in the directory system" }
+    require(tableNames.isNotEmpty()) { "Table names cannot be empty" }
     val loaderType = LoaderType
         .values()
         .firstOrNull { file.extension in it.extensions }
@@ -83,8 +142,8 @@ suspend fun Connection.loadFile(
     with(CopyManager(this.unwrap(PgConnection::class.java))) {
         when(loaderType) {
             LoaderType.Excel -> {
-                if (tableNames.size != subTableNames.size) {
-                    throw IllegalArgumentException("Number of table names must match number of sheet names")
+                require(tableNames.size == subTableNames.size) {
+                    "Number of table names must match number of sheet names"
                 }
                 loadExcelFile(
                     excelFile = file,
@@ -101,8 +160,8 @@ suspend fun Connection.loadFile(
                 )
             }
             LoaderType.MDB -> {
-                if (tableNames.size != subTableNames.size) {
-                    throw IllegalArgumentException("Number of table names must match number of sheet names")
+                require(tableNames.size == subTableNames.size) {
+                    "Number of table names must match number of mdb table names"
                 }
                 loadMdbFile(
                     mdbFile = file,
@@ -120,10 +179,84 @@ suspend fun Connection.loadFile(
     }
 }
 
+@Throws(IllegalArgumentException::class)
+suspend fun analyzeFile(
+    file: File,
+    tableNames: List<String>,
+    subTableNames: List<String> = listOf(),
+    delimiter: Char = ',',
+    qualified: Boolean = true,
+): Flow<AnalyzeResult> {
+    require(file.exists()) { "File cannot be found" }
+    require(file.isFile) { "File object provided is not a file in the directory system" }
+    require(tableNames.isNotEmpty()) { "Table names cannot be empty" }
+    val loaderType = LoaderType
+        .values()
+        .firstOrNull { file.extension in it.extensions }
+        ?: throw IllegalArgumentException("File must be of a supported data format")
+    return when(loaderType) {
+        LoaderType.Excel -> {
+            analyzeExcelFile(
+                excelFile = file,
+                tableNames = tableNames,
+                sheetNames = subTableNames,
+            )
+        }
+        LoaderType.Flat -> {
+            flow {
+                val result = analyzeFlatFile(
+                    flatFile = file,
+                    tableName = tableNames.first(),
+                    delimiter = delimiter,
+                    qualified = qualified,
+                )
+                emit(result)
+            }
+        }
+        LoaderType.MDB -> {
+            analyzeMdbFile(
+                mdbFile = file,
+                tableNames = tableNames,
+                mdbTableNames = subTableNames,
+            )
+        }
+        LoaderType.DBF -> {
+            flow {
+                val result = analyzeDbfFile(
+                    dbfFile = file,
+                    tableName = tableNames.first(),
+                )
+                emit(result)
+            }
+        }
+    }
+}
+
+private suspend fun analyzeFlatFile(
+    flatFile: File,
+    tableName: String,
+    delimiter: Char,
+    qualified: Boolean
+): AnalyzeResult {
+    val parserSettings = CsvParserSettings().apply {
+        format.delimiter = delimiter
+        format.quote = if (qualified) '"' else '\u0000'
+        format.quoteEscape = format.quote
+    }
+    return CsvParser(parserSettings).use(flatFile) { parser ->
+        val header = parser.parseNext().map { formatColumnName(it) }
+        generateSequence { parser.parseNext() }
+            .chunked(10000)
+            .asFlow()
+            .map { recordChunk -> analyzeRecords(tableName, header, recordChunk) }
+            .reduce { acc, analyzeResult -> acc.merge(analyzeResult) }
+    }
+}
+
 private suspend fun CopyManager.loadFlatFile(
     flatFile: File,
     tableName: String,
-    delimiter: Char = defaultDelimiter,
+    delimiter: Char,
     qualified: Boolean,
 ) {
     val copyStream = copyIn(
@@ -148,34 +281,69 @@ private suspend fun CopyManager.loadFlatFile(
     logger.info("Copy stream closed. Wrote $recordCount records to the target table $tableName")
 }
 
-private fun Sheet.excelSheetFlow(
+private fun Sheet.excelSheetRecords(
     evaluator: FormulaEvaluator,
     formatter: DataFormatter,
-) = rowIterator()
-    .asFlow()
-    .map { row ->
-        row.cellIterator()
-            .asSequence()
-            .map { cell ->
-                val cellValue = evaluator.evaluate(cell)
-                when (cellValue.cellType) {
-                    CellType.NUMERIC -> {
-                        val numValue = cellValue.numberValue
-                        when {
-                            DateUtil.isCellDateFormatted(cell) ->
-                                cell.localDateTimeCellValue.format(DateTimeFormatter.ISO_LOCAL_DATE)
-                            floor(numValue) == numValue -> numValue.toLong().toString()
-                            else -> numValue.toString()
+): Sequence<Array<String>> {
+    val iterator = rowIterator()
+    iterator.next()
+    return iterator
+        .asSequence()
+        .map { row ->
+            row.cellIterator()
+                .asSequence()
+                .map { cell ->
+                    val cellValue = evaluator.evaluate(cell)
+                    when (cellValue.cellType) {
+                        CellType.NUMERIC -> {
+                            val numValue = cellValue.numberValue
+                            when {
+                                DateUtil.isCellDateFormatted(cell) ->
+                                    cell.localDateTimeCellValue.format(DateTimeFormatter.ISO_LOCAL_DATE)
+                                floor(numValue) == numValue -> numValue.toLong().toString()
+                                else -> numValue.toString()
+                            }
                         }
-                    }
-                    CellType.STRING -> cellValue.stringValue
-                    CellType.BLANK -> ""
-                    CellType.BOOLEAN -> if (cellValue.booleanValue) "TRUE" else "FALSE"
-                    CellType._NONE, CellType.ERROR -> formatter.formatCellValue(cell)
-                    else -> ""
-                }.trim()
-            }.toList()
+                        CellType.STRING -> cellValue.stringValue
+                        CellType.BLANK -> ""
+                        CellType.BOOLEAN -> if (cellValue.booleanValue) "TRUE" else "FALSE"
+                        CellType._NONE, CellType.ERROR -> formatter.formatCellValue(cell)
+                        else -> ""
+                    }.trim()
+                }
+                .toList()
+                .toTypedArray()
+        }
+}
+
+private suspend fun analyzeExcelFile(
+    excelFile: File,
+    tableNames: List<String>,
+    sheetNames: List<String>,
+) = flow {
+    excelFile.inputStream().use { inputStream ->
+        withContext(Dispatchers.IO) {
+            @Suppress("BlockingMethodInNonBlockingContext")
+            WorkbookFactory.create(inputStream)
+        }.use { workbook ->
+            val formulaEvaluator = workbook.creationHelper.createFormulaEvaluator()
+            val dataFormatter = DataFormatter()
+            (sheetNames zip tableNames).forEach { (sheetName, tableName) ->
+                val sheet = workbook.getSheet(sheetName)
+                val header = sheet.first().cellIterator().asSequence().map { cell ->
+                    formatColumnName(cell.stringCellValue)
+                }.toList()
+                val analyzeResult = sheet.excelSheetRecords(formulaEvaluator, dataFormatter)
+                    .chunked(10000)
+                    .asFlow()
+                    .flowOn(Dispatchers.IO)
+                    .map { recordChunk -> analyzeRecords(tableName, header, recordChunk) }
+                    .reduce { acc, analyzeResult -> acc.merge(analyzeResult) }
+                emit(analyzeResult)
+            }
+        }
     }
+}
 
 private suspend fun CopyManager.loadExcelFile(
     excelFile: File,
@@ -197,7 +365,8 @@ private suspend fun CopyManager.loadExcelFile(
                         header = true,
                     )
                 )
-                sheet.excelSheetFlow(formulaEvaluator, dataFormatter)
+                sheet.excelSheetRecords(formulaEvaluator, dataFormatter)
+                    .asFlow()
                     .flowOn(Dispatchers.IO)
                     .map { record -> recordToCsvBytes(record) }
                     .collect {
@@ -210,16 +379,41 @@ private suspend fun CopyManager.loadExcelFile(
     }
 }
 
-private fun ResultSet.resultFlow(): Flow<List<String>> {
+private fun ResultSet.resultRecords(): Sequence<Array<String>> {
     return generateSequence {
         if (next()) {
             (1..metaData.columnCount).map { column ->
                 formatObject(getObject(column)).replace("\"", "\"\"")
-            }
+            }.toTypedArray()
         } else {
             null
         }
-    }.asFlow()
+    }
+}
+
+private fun analyzeMdbFile(
+    mdbFile: File,
+    tableNames: List<String>,
+    mdbTableNames: List<String>,
+) = flow {
+    DriverManager
+        .getConnection("jdbc:ucanaccess://${mdbFile.absolutePath}").use { connection ->
+            mdbTableNames.zip(tableNames).forEach { (mdbTableName, tableName) ->
+                connection
+                    .prepareStatement("SELECT * FROM $mdbTableName")
+                    .executeQuery()
+                    .use { rs ->
+                        val headers = (1..rs.metaData.columnCount).map { rs.metaData.getColumnName(it) }
+                        val analyzeResult = rs.resultRecords()
+                            .chunked(10000)
+                            .asFlow()
+                            .flowOn(Dispatchers.IO)
+                            .map { records -> analyzeRecords(tableName, headers, records) }
+                            .reduce { acc, analyzeResult -> acc.merge(analyzeResult) }
+                        emit(analyzeResult)
+                    }
+            }
+        }
 }
 
 private suspend fun CopyManager.loadMdbFile(
@@ -240,9 +434,10 @@ private suspend fun CopyManager.loadMdbFile(
                     .prepareStatement("SELECT * FROM $mdbTableName")
                     .executeQuery()
                     .use { rs ->
-                        rs.resultFlow()
+                        rs.resultRecords()
+                            .asFlow()
                             .flowOn(Dispatchers.IO)
-                            .map {record -> recordToCsvBytes(record) }
+                            .map { record -> recordToCsvBytes(record) }
                             .collect {
                                 copyStream.writeToCopy(it, 0, it.size)
                             }
@@ -252,20 +447,43 @@ private suspend fun CopyManager.loadMdbFile(
         }
 }
 
-private suspend fun dbfFileFlow(dbfFile: File) = flow {
+private fun getDbfHeader(dbfFile: File): List<String> {
+    return dbfFile.inputStream().use { inputStream ->
+        DBFReader(inputStream).use { reader ->
+            0.until(reader.fieldCount).map {
+                reader.getField(it).name
+            }
+        }
+    }
+}
+
+private fun dbfFileRecords(dbfFile: File) = sequence {
     dbfFile.inputStream().use { inputStream ->
         DBFReader(inputStream).use { reader ->
             generateSequence {
                 reader.nextRecord()
             }.forEach { record ->
-                emit(
+                yield(
                     record.map { value ->
                         formatObject(value)
-                    }
+                    }.toTypedArray()
                 )
             }
         }
     }
+}
+
+private suspend fun analyzeDbfFile(
+    dbfFile: File,
+    tableName: String,
+): AnalyzeResult {
+    val header = getDbfHeader(dbfFile)
+    return dbfFileRecords(dbfFile)
+        .chunked(10000)
+        .asFlow()
+        .flowOn(Dispatchers.IO)
+        .map { records -> analyzeRecords(tableName, header, records) }
+        .reduce { acc, analyzeResult -> acc.merge(analyzeResult) }
 }
 
 private suspend fun CopyManager.loadDbfFile(
@@ -278,7 +496,8 @@ private suspend fun CopyManager.loadDbfFile(
             header = false,
         )
     )
-    dbfFileFlow(dbfFile)
+    dbfFileRecords(dbfFile)
+        .asFlow()
         .flowOn(Dispatchers.IO)
         .map {record -> recordToCsvBytes(record) }
         .collect {
