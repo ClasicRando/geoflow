@@ -12,6 +12,7 @@ import org.ktorm.schema.*
 import org.ktorm.support.postgresql.LockingMode
 import org.ktorm.support.postgresql.insertReturning
 import org.ktorm.support.postgresql.locking
+import org.postgresql.util.PGobject
 import orm.entities.PipelineRunTask
 import orm.enums.TaskRunType
 import orm.enums.TaskStatus
@@ -98,15 +99,16 @@ object PipelineRunTasks: DbTable<PipelineRunTask>("pipeline_run_tasks") {
                 WHERE  ${this.pipelineRunTaskId.name} = ?
             """.trimIndent())
             .apply {
-                if (message != null) {
-                    setString(1, message)
-                    setString(2, TaskStatus.Failed.name)
-                    setTimestamp(3, null)
-                } else {
-                    setString(1, null)
-                    setString(2, TaskStatus.Complete.name)
-                    setTimestamp(3, Timestamp.from(Instant.now()))
+                val status = PGobject().apply {
+                    type = "task_status"
+                    value = if (message == null) TaskStatus.Complete.name else TaskStatus.Failed.name
                 }
+                setString(1, message)
+                setObject(2, status)
+                setTimestamp(
+                    3,
+                    if (message == null) Timestamp.from(Instant.now()) else null
+                )
                 setLong(4, pipelineRunTaskId)
             }.use { statement ->
                 statement.execute()
