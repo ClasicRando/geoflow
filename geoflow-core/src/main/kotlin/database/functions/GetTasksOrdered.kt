@@ -1,10 +1,14 @@
 package database.functions
 
 import orm.enums.TaskStatus
+import kotlin.reflect.full.createType
 
 object GetTasksOrdered: PlPgSqlTableFunction(
     name = "get_tasks_ordered",
-    parameterTypes = listOf(Long::class)
+    parameterTypes = listOf(
+        Long::class.createType(),
+        String::class.createType(nullable = true),
+    ),
 ) {
 
     fun nextToRun(runId: Long): Map<String, Any?>? {
@@ -13,9 +17,14 @@ object GetTasksOrdered: PlPgSqlTableFunction(
         }
     }
 
+    fun call(runId: Long, workflowState: String? = null): List<Map<String, Any?>> {
+        return super.call(runId, workflowState)
+    }
+
     val code = """
         CREATE OR REPLACE FUNCTION public.get_tasks_ordered(
             p_run_id bigint,
+			workflow_operation text default null,
             OUT task_order bigint,
             OUT pr_task_id bigint,
             OUT run_id bigint,
@@ -49,6 +58,9 @@ object GetTasksOrdered: PlPgSqlTableFunction(
             on     t1.pr_task_id = t2.pr_task_id
             join   tasks t3
             on     t2.task_id = t3.task_id
+			join   pipeline_runs t4
+			on     t2.run_id = t4.run_id
+			where  t2.workflow_operation = coalesce(${'$'}2,t4.workflow_operation)
             order by 1;
         ${'$'}BODY${'$'};
     """.trimIndent()
