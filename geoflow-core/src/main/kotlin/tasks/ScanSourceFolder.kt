@@ -43,7 +43,7 @@ class ScanSourceFolder(pipelineTaskId: Long): SystemTask(pipelineTaskId) {
             .filter { it.isFile }
             .toList()
         val missingFiles = sourceFiles.filter { sourceFile -> !files.any { sourceFile.fileName == it.name } }
-        val extraFiles = files.filter { file -> !sourceFiles.any { file.name == it.fileName } }
+//        val extraFiles = files.filter { file -> !sourceFiles.any { file.name == it.fileName } }
         val downloadTypes = listOf(FileCollectType.REST, FileCollectType.Download)
         if (missingFiles.isNotEmpty()) {
             if (hasScanned)
@@ -102,10 +102,10 @@ class ScanSourceFolder(pipelineTaskId: Long): SystemTask(pipelineTaskId) {
                 PipelineRunTasks.addTask(task, taskId)
             }
         }
-        if (extraFiles.isNotEmpty()) {
-            val fileNames = extraFiles.joinToString { it.name }
-            task.taskMessage = "Found extra files that could be added to source tables. $fileNames"
-            task.flushChanges()
-        }
+//        if (extraFiles.isNotEmpty()) {
+//            val fileNames = extraFiles.joinToString { it.name }
+//            task.taskMessage = "Found extra files that could be added to source tables. $fileNames"
+//            task.flushChanges()
+//        }
     }
 }

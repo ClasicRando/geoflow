@@ -1,34 +1,39 @@
 package tasks
 
 import database.DatabaseConnection
+import mu.KotlinLogging
 import orm.enums.TaskStatus
 import orm.tables.PipelineRunTasks
 import java.time.Instant
 
 abstract class SystemTask(pipelineRunTaskId: Long): PipelineTask(pipelineRunTaskId) {
 
+    protected val logger = KotlinLogging.logger {}
+
     abstract suspend fun run()
 
     override suspend fun runTask(): Boolean {
-        return DatabaseConnection.database.useTransaction {
-            val taskRecord = PipelineRunTasks.reserveRecord(pipelineRunTaskId)
-            taskRecord.taskStart = Instant.now()
-            taskRecord.taskStatus = TaskStatus.Running
-            taskRecord.taskCompleted = null
-            taskRecord.flushChanges()
-            runCatching {
+        updateTask {
+            taskStart = Instant.now()
+            taskStatus = TaskStatus.Running
+            taskCompleted = null
+            taskMessage = null
+        }
+        return DatabaseConnection.database.useTransaction { transaction ->
+            PipelineRunTasks.lockRecord(transaction, pipelineRunTaskId)
+            var message: String? = null
+            try {
                 run()
-                taskRecord.taskStatus = TaskStatus.Complete
-                taskRecord.taskCompleted = Instant.now()
-                taskRecord.flushChanges()
-                true
-            }.getOrElse { t ->
-                taskRecord.taskMessage = "ERROR: ${t.message}"
-                taskRecord.taskStatus = TaskStatus.Failed
-                taskRecord.taskCompleted = null
-                taskRecord.flushChanges()
-                false
+            } catch (t: Throwable) {
+                message = "ERROR in Task: ${t.stackTraceToString()}"
+            } finally {
+                PipelineRunTasks.finishTransaction(
+                    transaction,
+                    pipelineRunTaskId,
+                    message
+                )
             }
+            message == null
         }
     }
 }

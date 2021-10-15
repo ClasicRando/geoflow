@@ -6,15 +6,18 @@ import database.procedures.DeleteRunTaskChildren
 import formatInstantDateTime
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
+import org.ktorm.database.Transaction
 import org.ktorm.dsl.*
 import org.ktorm.schema.*
 import org.ktorm.support.postgresql.LockingMode
 import org.ktorm.support.postgresql.insertReturning
 import org.ktorm.support.postgresql.locking
+import org.postgresql.util.PGobject
 import orm.entities.PipelineRunTask
 import orm.enums.TaskRunType
 import orm.enums.TaskStatus
 import java.sql.Timestamp
+import java.time.Instant
 
 object PipelineRunTasks: DbTable<PipelineRunTask>("pipeline_run_tasks") {
 
@@ -69,6 +72,48 @@ object PipelineRunTasks: DbTable<PipelineRunTask>("pipeline_run_tasks") {
             MAXVALUE 9223372036854775807
             CACHE 1;
     """.trimIndent()
+
+    fun lockRecord(transaction: Transaction, pipelineRunTaskId: Long) {
+        transaction
+            .connection
+            .prepareStatement("""
+                SELECT *
+                FROM $tableName
+                WHERE ${this.pipelineRunTaskId.name} = ?
+                FOR SHARE
+            """.trimIndent())
+            .apply { setLong(1, pipelineRunTaskId) }
+            .use { statement ->
+                statement.executeQuery().close()
+            }
+    }
+
+    fun finishTransaction(transaction: Transaction, pipelineRunTaskId: Long, message: String?) {
+        transaction
+            .connection
+            .prepareStatement("""
+                UPDATE $tableName
+                SET    ${taskMessage.name} = ?,
+                       ${taskStatus.name} = ?,
+                       ${taskCompleted.name} = ?
+                WHERE  ${this.pipelineRunTaskId.name} = ?
+            """.trimIndent())
+            .apply {
+                val status = PGobject().apply {
+                    type = "task_status"
+                    value = if (message == null) TaskStatus.Complete.name else TaskStatus.Failed.name
+                }
+                setString(1, message)
+                setObject(2, status)
+                setTimestamp(
+                    3,
+                    if (message == null) Timestamp.from(Instant.now()) else null
+                )
+                setLong(4, pipelineRunTaskId)
+            }.use { statement ->
+                statement.execute()
+            }
+    }
 
     fun reserveRecord(pipelineRunTaskId: Long): PipelineRunTask {
         return DatabaseConnection
@@ -259,18 +304,5 @@ object PipelineRunTasks: DbTable<PipelineRunTask>("pipeline_run_tasks") {
                 set(taskStatus, status)
                 where { this@PipelineRunTasks.pipelineRunTaskId eq pipelineRunTaskId }
             }
-    }
-
-    @Throws(IllegalArgumentException::class)
-    fun getTaskClassName(pipelineRunTaskId: Long): String {
-        return DatabaseConnection
-            .database
-            .from(this)
-            .joinReferencesAndSelect()
-            .where(this.pipelineRunTaskId eq pipelineRunTaskId)
-            .map(this::createEntity)
-            .firstOrNull()
-            ?.task
-            ?.taskClassName ?: throw IllegalArgumentException("pr_task_id passed does not link to a record")
     }
 }

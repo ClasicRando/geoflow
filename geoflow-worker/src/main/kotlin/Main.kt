@@ -1,39 +1,64 @@
 import database.DatabaseConnection
-import it.justwrote.kjob.Mongo
+import it.justwrote.kjob.*
 import it.justwrote.kjob.job.JobExecutionType
-import it.justwrote.kjob.kjob
 import jobs.SystemJob
+import kotlinx.coroutines.NonCancellable
+import kotlinx.coroutines.withContext
 import mu.KotlinLogging
+import org.ktorm.dsl.eq
+import org.ktorm.dsl.update
 import orm.enums.TaskRunType
 import orm.enums.TaskStatus
 import orm.tables.PipelineRunTasks
 import tasks.SystemTask
 
+private val logger = KotlinLogging.logger {}
+
+fun startKjob(isMongo: Boolean): KJob {
+    return if (isMongo) {
+        kjob(Mongo) {
+            nonBlockingMaxJobs = 10
+            blockingMaxJobs = 1
+            maxRetries = 0
+            defaultJobExecutor = JobExecutionType.NON_BLOCKING
+
+            exceptionHandler = { t -> logger.error("Unhandled exception", t)}
+            keepAliveExecutionPeriodInSeconds = 60
+            jobExecutionPeriodInSeconds = 1
+            cleanupPeriodInSeconds = 300
+            cleanupSize = 50
+
+            connectionString = "mongodb://127.0.0.1:27017"
+            databaseName = "kjob"
+            jobCollection = "kjob-jobs"
+            lockCollection = "kjob-locks"
+            expireLockInMinutes = 5L
+        }.start()
+    } else {
+        kjob(InMem) {
+            nonBlockingMaxJobs = 10
+            blockingMaxJobs = 1
+            maxRetries = 0
+            defaultJobExecutor = JobExecutionType.NON_BLOCKING
+
+            exceptionHandler = { t -> logger.error("Unhandled exception", t)}
+            keepAliveExecutionPeriodInSeconds = 60
+            jobExecutionPeriodInSeconds = 1
+            cleanupPeriodInSeconds = 300
+            cleanupSize = 50
+
+            expireLockInMinutes = 5L
+        }.start()
+    }
+}
+
 fun main() {
-    val logger = KotlinLogging.logger {}
-    val kjob = kjob(Mongo) {
-        nonBlockingMaxJobs = 10
-        blockingMaxJobs = 1
-        maxRetries = 0
-        defaultJobExecutor = JobExecutionType.NON_BLOCKING
-
-        exceptionHandler = { t -> logger.error("Unhandled exception", t)}
-        keepAliveExecutionPeriodInSeconds = 60
-        jobExecutionPeriodInSeconds = 1
-        cleanupPeriodInSeconds = 300
-        cleanupSize = 50
-
-        connectionString = "mongodb://127.0.0.1:27017"
-        databaseName = "kjob"
-        jobCollection = "kjob-jobs"
-        lockCollection = "kjob-locks"
-        expireLockInMinutes = 5L
-    }.start()
+    val kjob = startKjob(false)
     kjob.register(SystemJob) {
         executionType = JobExecutionType.NON_BLOCKING
         maxRetries = 0
         execute {
-            runCatching {
+            try {
                 val runId = props[it.runId]
                 val task = ClassLoader
                     .getSystemClassLoader()
@@ -53,14 +78,15 @@ fun main() {
                         }
                     }
                 }
-            }.getOrElse { t ->
-                val pipelineRunTaskId = props[it.pipelineRunTaskId]
-                DatabaseConnection.database.useTransaction {
-                    val taskRecord = PipelineRunTasks.reserveRecord(pipelineRunTaskId)
-                    taskRecord.taskMessage = "ERROR: ${t.message}"
-                    taskRecord.taskStatus = TaskStatus.Failed
-                    taskRecord.taskCompleted = null
-                    taskRecord.flushChanges()
+            } catch (t: Throwable) {
+                withContext(NonCancellable) {
+                    val pipelineRunTaskId = props[it.pipelineRunTaskId]
+                    DatabaseConnection.database.update(PipelineRunTasks) {
+                        set(PipelineRunTasks.taskMessage, "ERROR in Job: ${t.message}")
+                        set(PipelineRunTasks.taskStatus, TaskStatus.Failed)
+                        set(PipelineRunTasks.taskCompleted, null)
+                        where { PipelineRunTasks.pipelineRunTaskId eq pipelineRunTaskId }
+                    }
                 }
             }
         }

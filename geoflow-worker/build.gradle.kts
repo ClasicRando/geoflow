@@ -16,6 +16,8 @@ dependencies {
     implementation("it.justwrote:kjob-core:$kjobVersion")
     // https://mvnrepository.com/artifact/it.justwrote/kjob-mongo
     implementation("it.justwrote:kjob-mongo:$kjobVersion")
+    // https://mvnrepository.com/artifact/it.justwrote/kjob-inmem
+    implementation("it.justwrote:kjob-inmem:$kjobVersion")
     implementation("org.jetbrains.kotlinx:kotlinx-coroutines-core:$coroutinesVersion")
     implementation("org.jetbrains.kotlinx:kotlinx-coroutines-core-jvm:$coroutinesVersion")
     // https://mvnrepository.com/artifact/org.slf4j/slf4j-api
