@@ -88,9 +88,9 @@ private fun recordToCsvBytes(record: Array<String>): ByteArray {
 
 private fun formatColumnName(name: String): String {
     return name.trim()
+        .replace("#", "NUM")
         .replace("\\s+".toRegex(), "_")
         .uppercase()
-        .replace("#", "_NUM")
         .replace("\\W".toRegex(), "")
         .replace("^\\d".toRegex()) {
             "_${it.value}"
@@ -113,31 +113,22 @@ private suspend fun <T> CsvParser.use(file: File, func: suspend CsvParser.(CsvPa
 private fun analyzeRecords(
     tableName: String,
     header: List<String>,
-    records: Iterable<Array<String>>,
+    records: List<Array<String>>,
 ): AnalyzeResult {
-    var recordCount = 0
-    val stats = header.mapIndexed { index, name, ->
-        val lengths = records.map { record ->
-            record[index].length
-        }
-        if (recordCount == 0) {
-            recordCount = lengths.size
-        }
-        ColumnStats(
-            name = name,
-            maxLength = lengths.maxOf { it },
-            minLength = lengths.minOf { it },
-            type = "VARCHAR"
-        )
-    }
-    return AnalyzeResult(tableName, recordCount, stats)
+    return analyzeRecords(
+        tableName,
+        header.map { it to "VARCHAR" },
+        records,
+    )
 }
 
 private fun analyzeRecords(
     tableName: String,
     header: List<Pair<String, String>>,
-    records: Iterable<Array<String>>,
+    records: List<Array<String>>,
 ): AnalyzeResult {
+    require(records.isNotEmpty()) { "Records to analyze cannot be empty" }
+    require(header.size == records.first().size) { "First record size must match header size" }
     var recordCount = 0
     val stats = header.mapIndexed { index, (name, type) ->
         val lengths = records.map { record ->
@@ -150,7 +141,7 @@ private fun analyzeRecords(
             name = name,
             maxLength = lengths.maxOf { it },
             minLength = lengths.minOf { it },
-            type = type
+            type = type,
         )
     }
     return AnalyzeResult(tableName, recordCount, stats)
@@ -314,6 +305,7 @@ private suspend fun CopyManager.loadFlatFile(
 }
 
 private fun Sheet.excelSheetRecords(
+    headerLength: Int,
     evaluator: FormulaEvaluator,
     formatter: DataFormatter,
 ): Sequence<Array<String>> {
@@ -322,11 +314,13 @@ private fun Sheet.excelSheetRecords(
     return iterator
         .asSequence()
         .map { row ->
-            row.cellIterator()
-                .asSequence()
+            0.until(headerLength)
+                .map { row.getCell(it, Row.MissingCellPolicy.CREATE_NULL_AS_BLANK) }
                 .map { cell ->
-                    val cellValue = evaluator.evaluate(cell)
+                    val cellValue = evaluator.evaluate(cell) ?: CellValue("")
                     when (cellValue.cellType) {
+                        null ->
+                            ""
                         CellType.NUMERIC -> {
                             val numValue = cellValue.numberValue
                             when {
@@ -336,7 +330,7 @@ private fun Sheet.excelSheetRecords(
                                 else -> numValue.toString()
                             }
                         }
-                        CellType.STRING -> cellValue.stringValue
+                        CellType.STRING -> cellValue.stringValue ?: ""
                         CellType.BLANK -> ""
                         CellType.BOOLEAN -> if (cellValue.booleanValue) "TRUE" else "FALSE"
                         CellType._NONE, CellType.ERROR -> formatter.formatCellValue(cell)
@@ -361,11 +355,11 @@ private suspend fun analyzeExcelFile(
             val formulaEvaluator = workbook.creationHelper.createFormulaEvaluator()
             val dataFormatter = DataFormatter()
             (sheetNames zip tableNames).forEach { (sheetName, tableName) ->
-                val sheet = workbook.getSheet(sheetName)
+                val sheet: Sheet = workbook.getSheet(sheetName) ?: throw IllegalStateException("Could not find sheet")
                 val header = sheet.first().cellIterator().asSequence().map { cell ->
                     formatColumnName(cell.stringCellValue)
                 }.toList()
-                val analyzeResult = sheet.excelSheetRecords(formulaEvaluator, dataFormatter)
+                val analyzeResult = sheet.excelSheetRecords(header.size, formulaEvaluator, dataFormatter)
                     .chunked(10000)
                     .asFlow()
                     .flowOn(Dispatchers.IO)
@@ -397,7 +391,8 @@ private suspend fun CopyManager.loadExcelFile(
                         header = true,
                     )
                 )
-                sheet.excelSheetRecords(formulaEvaluator, dataFormatter)
+                val headerLength = sheet.first().physicalNumberOfCells
+                sheet.excelSheetRecords(headerLength, formulaEvaluator, dataFormatter)
                     .asFlow()
                     .flowOn(Dispatchers.IO)
                     .map { record -> recordToCsvBytes(record) }
@@ -436,7 +431,10 @@ private fun analyzeMdbFile(
                     .executeQuery()
                     .use { rs ->
                         val headers = (1..rs.metaData.columnCount).map {
-                            rs.metaData.getColumnName(it) to (jdbcTypeNames[rs.metaData.getColumnType(it)] ?: "")
+                            Pair(
+                                formatColumnName(rs.metaData.getColumnName(it)),
+                                (jdbcTypeNames[rs.metaData.getColumnType(it)] ?: "")
+                            )
                         }
                         val analyzeResult = rs.resultRecords()
                             .chunked(10000)
