@@ -37,6 +37,7 @@ object PipelineRunTasks: DbTable<PipelineRunTask>("pipeline_run_tasks") {
         "task_run_type" to mapOf("name" to "Run Type"),
         "task_start" to mapOf("name" to "Start"),
         "task_completed" to mapOf("name" to "Completed"),
+        "actions" to mapOf("formatter" to "taskActionFormatter"),
     )
 
     override val createStatement = """
