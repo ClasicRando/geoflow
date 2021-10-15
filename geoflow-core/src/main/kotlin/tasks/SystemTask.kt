@@ -1,11 +1,14 @@
 package tasks
 
 import database.DatabaseConnection
+import mu.KotlinLogging
 import orm.enums.TaskStatus
 import orm.tables.PipelineRunTasks
 import java.time.Instant
 
 abstract class SystemTask(pipelineRunTaskId: Long): PipelineTask(pipelineRunTaskId) {
+
+    protected val logger = KotlinLogging.logger {}
 
     abstract suspend fun run()
 
