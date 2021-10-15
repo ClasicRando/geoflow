@@ -26,6 +26,8 @@ object GetTasksOrdered: PlPgSqlTableFunction(
             OUT task_status task_status,
             OUT parent_task_id bigint,
             OUT parent_task_order integer,
+            OUT workflow_operation text,
+            OUT task_stack_trace text,
             OUT task_name text,
             OUT task_description text,
             OUT task_class_name text,

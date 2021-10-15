@@ -192,6 +192,8 @@ object PipelineRunTasks: DbTable<PipelineRunTask>("pipeline_run_tasks") {
         val taskClassName: String,
         @SerialName("task_run_type")
         val taskRunType: String,
+        @SerialName("task_stack_trace")
+        val taskStackTrace: String,
     )
 
     @Throws(IllegalArgumentException::class)
@@ -212,6 +214,7 @@ object PipelineRunTasks: DbTable<PipelineRunTask>("pipeline_run_tasks") {
                 row["task_description"] as String,
                 row["task_class_name"] as String,
                 row["task_run_type"] as String,
+                (row["task_stack_trace"] as String?) ?: "",
             )
         }
     }
