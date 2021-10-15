@@ -54,7 +54,7 @@ fun startKjob(isMongo: Boolean): KJob {
 }
 
 fun main() {
-    val kjob = startKjob(false)
+    val kjob = startKjob(true)
     kjob.register(SystemJob) {
         executionType = JobExecutionType.NON_BLOCKING
         maxRetries = 0
