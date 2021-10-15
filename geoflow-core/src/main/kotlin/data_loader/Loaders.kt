@@ -56,7 +56,7 @@ private fun getCopyCommand(
     delimiter: Char = defaultDelimiter,
     qualified: Boolean = true,
 ) = """
-    COPY $tableName
+    COPY ${tableName.lowercase()}
     FROM STDIN
     WITH (
         FORMAT csv,
@@ -147,6 +147,24 @@ private fun analyzeRecords(
     return AnalyzeResult(tableName, recordCount, stats)
 }
 
+fun Connection.checkTableExists(tableName: String, schema: String = "public"): Boolean {
+    return prepareStatement("""
+        select table_name
+        from   information_schema.tables
+        where  table_schema = ?
+        and    table_name = ?
+    """.trimIndent())
+        .apply {
+            setString(1, schema)
+            setString(2, tableName.lowercase())
+        }
+        .use { statement ->
+            statement.executeQuery().use { rs ->
+                rs.next()
+            }
+        }
+}
+
 @Throws(IllegalArgumentException::class)
 suspend fun Connection.loadFile(
     file: File,
@@ -172,6 +190,7 @@ suspend fun Connection.loadFile(
                     excelFile = file,
                     tableNames = tableNames,
                     sheetNames = subTableNames,
+                    connection = this@loadFile,
                 )
             }
             LoaderType.Flat -> {
@@ -190,6 +209,7 @@ suspend fun Connection.loadFile(
                     mdbFile = file,
                     tableNames = tableNames,
                     mdbTableNames = subTableNames,
+                    connection = this@loadFile,
                 )
             }
             LoaderType.DBF -> {
@@ -200,6 +220,7 @@ suspend fun Connection.loadFile(
             }
         }
     }
+    commit()
 }
 
 @Throws(IllegalArgumentException::class)
@@ -375,6 +396,7 @@ private suspend fun CopyManager.loadExcelFile(
     excelFile: File,
     tableNames: List<String>,
     sheetNames: List<String>,
+    connection: Connection,
 ) {
     excelFile.inputStream().use { inputStream ->
         withContext(Dispatchers.IO) {
@@ -400,6 +422,7 @@ private suspend fun CopyManager.loadExcelFile(
                         copyStream.writeToCopy(it, 0, it.size)
                     }
                 val recordCount = copyStream.endCopy()
+                connection.commit()
                 logger.info("Copy stream closed. Wrote $recordCount records to the target table $tableName")
             }
         }
@@ -452,9 +475,10 @@ private suspend fun CopyManager.loadMdbFile(
     mdbFile: File,
     tableNames: List<String>,
     mdbTableNames: List<String>,
+    connection: Connection,
 ) {
     DriverManager
-        .getConnection("jdbc:ucanaccess://${mdbFile.absolutePath}").use { connection ->
+        .getConnection("jdbc:ucanaccess://${mdbFile.absolutePath}").use { mdbConnection ->
             (tableNames zip mdbTableNames).forEach { (tableName, mdbTableName) ->
                 val copyStream = copyIn(
                     getCopyCommand(
@@ -462,7 +486,7 @@ private suspend fun CopyManager.loadMdbFile(
                         header = false,
                     )
                 )
-                connection
+                mdbConnection
                     .prepareStatement("SELECT * FROM $mdbTableName")
                     .executeQuery()
                     .use { rs ->
@@ -474,7 +498,9 @@ private suspend fun CopyManager.loadMdbFile(
                                 copyStream.writeToCopy(it, 0, it.size)
                             }
                     }
-                copyStream.endCopy()
+                val recordCount = copyStream.endCopy()
+                connection.commit()
+                logger.info("Copy stream closed. Wrote $recordCount records to the target table $tableName")
             }
         }
 }
@@ -536,5 +562,6 @@ private suspend fun CopyManager.loadDbfFile(
         .collect {
             copyStream.writeToCopy(it, 0, it.size)
         }
-    copyStream.endCopy()
+    val recordCount = copyStream.endCopy()
+    logger.info("Copy stream closed. Wrote $recordCount records to the target table $tableName")
 }

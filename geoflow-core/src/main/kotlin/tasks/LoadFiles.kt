@@ -1,5 +1,6 @@
 package tasks
 
+import data_loader.checkTableExists
 import data_loader.loadFile
 import database.DatabaseConnection
 import database.sourceTableColumns
@@ -11,16 +12,16 @@ import org.ktorm.entity.joinToString
 import orm.entities.runFilesLocation
 import orm.tables.PipelineRuns
 import java.io.File
-import java.sql.SQLException
 
 class LoadFiles(pipelineRunTaskId: Long): SystemTask(pipelineRunTaskId) {
 
     override val taskId: Long = 13
     override suspend fun run() {
         val pipelineRun = PipelineRuns.getRun(task.runId) ?: throw IllegalArgumentException("Run ID must not be null")
-        DatabaseConnection.database.run {
-            useConnection { connection ->
-                sourceTables
+        DatabaseConnection.database.let { database ->
+            database.useConnection { connection ->
+                database
+                    .sourceTables
                     .filter { it.runId eq  task.runId }
                     .filter { it.load }
                     .groupBy { it.fileName }
@@ -31,7 +32,8 @@ class LoadFiles(pipelineRunTaskId: Long): SystemTask(pipelineRunTaskId) {
                             sourceTable.delimiter?.first() to sourceTable.qualified
                         }
                         for (sourceTable in sourceTables) {
-                            val createStatement = sourceTableColumns
+                            val createStatement = database
+                                .sourceTableColumns
                                 .filter { it.stOid eq sourceTable.stOid }
                                 .joinToString(
                                     separator = " text,",
@@ -40,11 +42,16 @@ class LoadFiles(pipelineRunTaskId: Long): SystemTask(pipelineRunTaskId) {
                                 ) {
                                     it.name
                                 }
-                            try {
-                                connection.prepareStatement(createStatement).execute()
-                            } catch (ex: SQLException) {
-                                connection.prepareStatement("drop table ${sourceTable.tableName}").execute()
-                                connection.prepareStatement(createStatement).execute()
+                            if (connection.checkTableExists(sourceTable.tableName)) {
+                                logger.info("Dropping ${sourceTable.tableName} to load")
+                                connection
+                                    .prepareStatement("drop table ${sourceTable.tableName}")
+                                    .use { statement ->
+                                        statement.execute()
+                                    }
+                            }
+                            connection.prepareStatement(createStatement).use { statement ->
+                                statement.execute()
                             }
                         }
                         connection.loadFile(
