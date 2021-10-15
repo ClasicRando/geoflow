@@ -70,10 +70,11 @@ fun main() {
                 when(val result = task.runTask()) {
                     is TaskResult.Success -> {
                         DatabaseConnection.database.update(PipelineRunTasks) {
-                            set(PipelineRunTasks.taskMessage, result.message)
-                            set(PipelineRunTasks.taskStatus, TaskStatus.Complete)
-                            set(PipelineRunTasks.taskCompleted, null)
-                            where { PipelineRunTasks.pipelineRunTaskId eq pipelineRunTaskId }
+                            set(it.taskMessage, result.message)
+                            set(it.taskStatus, TaskStatus.Complete)
+                            set(it.taskCompleted, null)
+                            set(it.taskStackTrace, null)
+                            where { it.pipelineRunTaskId eq pipelineRunTaskId }
                         }
                         if (props[it.runNext]) {
                             PipelineRunTasks.getNextTask(props[it.runId])?.let { nextTask ->
@@ -90,10 +91,11 @@ fun main() {
                     }
                     is TaskResult.Error -> {
                         DatabaseConnection.database.update(PipelineRunTasks) {
-                            set(PipelineRunTasks.taskMessage, result.message)
-                            set(PipelineRunTasks.taskStatus, TaskStatus.Failed)
-                            set(PipelineRunTasks.taskCompleted, null)
-                            where { PipelineRunTasks.pipelineRunTaskId eq pipelineRunTaskId }
+                            set(it.taskMessage, result.message)
+                            set(it.taskStatus, TaskStatus.Failed)
+                            set(it.taskCompleted, null)
+                            set(it.taskStackTrace, result.throwable.stackTraceToString())
+                            where { it.pipelineRunTaskId eq pipelineRunTaskId }
                         }
                     }
                 }
@@ -101,10 +103,11 @@ fun main() {
                 withContext(NonCancellable) {
                     val pipelineRunTaskId = props[it.pipelineRunTaskId]
                     DatabaseConnection.database.update(PipelineRunTasks) {
-                        set(PipelineRunTasks.taskMessage, "ERROR in Job: ${t.message}")
-                        set(PipelineRunTasks.taskStatus, TaskStatus.Failed)
-                        set(PipelineRunTasks.taskCompleted, null)
-                        where { PipelineRunTasks.pipelineRunTaskId eq pipelineRunTaskId }
+                        set(it.taskMessage, "ERROR in Job: ${t.message}")
+                        set(it.taskStatus, TaskStatus.Failed)
+                        set(it.taskCompleted, null)
+                        set(it.taskStackTrace, t.stackTraceToString())
+                        where { it.pipelineRunTaskId eq pipelineRunTaskId }
                     }
                 }
             }
