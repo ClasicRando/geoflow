@@ -11,6 +11,7 @@ import orm.enums.TaskRunType
 import orm.enums.TaskStatus
 import orm.tables.PipelineRunTasks
 import tasks.SystemTask
+import tasks.TaskResult
 
 private val logger = KotlinLogging.logger {}
 
@@ -59,22 +60,40 @@ fun main() {
         maxRetries = 0
         execute {
             try {
+                val pipelineRunTaskId = props[it.pipelineRunTaskId]
                 val runId = props[it.runId]
                 val task = ClassLoader
                     .getSystemClassLoader()
                     .loadClass("tasks.${props[it.taskClassName]}")
                     .getConstructor(Long::class.java)
                     .newInstance(props[it.pipelineRunTaskId]) as SystemTask
-                val taskResult = task.runTask()
-                if (taskResult && props[it.runNext]) {
-                    PipelineRunTasks.getNextTask(props[it.runId])?.let { nextTask ->
-                        if (nextTask.taskRunType == TaskRunType.System) {
-                            kjob.schedule(SystemJob) {
-                                props[it.runId] = runId
-                                props[it.pipelineRunTaskId] = nextTask.taskId
-                                props[it.taskClassName] = nextTask.taskClassName
-                                props[it.runNext] = true
+                when(val result = task.runTask()) {
+                    is TaskResult.Success -> {
+                        DatabaseConnection.database.update(PipelineRunTasks) {
+                            set(PipelineRunTasks.taskMessage, result.message)
+                            set(PipelineRunTasks.taskStatus, TaskStatus.Complete)
+                            set(PipelineRunTasks.taskCompleted, null)
+                            where { PipelineRunTasks.pipelineRunTaskId eq pipelineRunTaskId }
+                        }
+                        if (props[it.runNext]) {
+                            PipelineRunTasks.getNextTask(props[it.runId])?.let { nextTask ->
+                                if (nextTask.taskRunType == TaskRunType.System) {
+                                    kjob.schedule(SystemJob) {
+                                        props[it.runId] = runId
+                                        props[it.pipelineRunTaskId] = nextTask.taskId
+                                        props[it.taskClassName] = nextTask.taskClassName
+                                        props[it.runNext] = true
+                                    }
+                                }
                             }
+                        }
+                    }
+                    is TaskResult.Error -> {
+                        DatabaseConnection.database.update(PipelineRunTasks) {
+                            set(PipelineRunTasks.taskMessage, result.message)
+                            set(PipelineRunTasks.taskStatus, TaskStatus.Failed)
+                            set(PipelineRunTasks.taskCompleted, null)
+                            where { PipelineRunTasks.pipelineRunTaskId eq pipelineRunTaskId }
                         }
                     }
                 }

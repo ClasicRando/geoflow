@@ -12,7 +12,7 @@ abstract class SystemTask(pipelineRunTaskId: Long): PipelineTask(pipelineRunTask
 
     abstract suspend fun run()
 
-    override suspend fun runTask(): Boolean {
+    override suspend fun runTask(): TaskResult {
         updateTask {
             taskStart = Instant.now()
             taskStatus = TaskStatus.Running
@@ -21,19 +21,12 @@ abstract class SystemTask(pipelineRunTaskId: Long): PipelineTask(pipelineRunTask
         }
         return DatabaseConnection.database.useTransaction { transaction ->
             PipelineRunTasks.lockRecord(transaction, pipelineRunTaskId)
-            var message: String? = null
-            try {
+            runCatching {
                 run()
-            } catch (t: Throwable) {
-                message = "ERROR in Task: ${t.stackTraceToString()}"
-            } finally {
-                PipelineRunTasks.finishTransaction(
-                    transaction,
-                    pipelineRunTaskId,
-                    message
-                )
+                TaskResult.Success()
+            }.getOrElse { t ->
+                TaskResult.Error(t)
             }
-            message == null
         }
     }
 }

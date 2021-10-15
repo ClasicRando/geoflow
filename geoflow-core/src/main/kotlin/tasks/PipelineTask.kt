@@ -13,5 +13,5 @@ abstract class PipelineTask(val pipelineRunTaskId: Long) {
     }
     protected val task: PipelineRunTask by lazy { PipelineRunTasks.getRecord(pipelineRunTaskId) }
     abstract val taskId: Long
-    abstract suspend fun runTask(): Boolean
+    abstract suspend fun runTask(): TaskResult
 }
