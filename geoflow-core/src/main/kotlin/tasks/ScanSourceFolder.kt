@@ -5,9 +5,9 @@ import database.pipelineRunTasks
 import database.sourceTables
 import org.ktorm.dsl.eq
 import org.ktorm.dsl.notEq
+import org.ktorm.dsl.update
 import org.ktorm.entity.any
 import org.ktorm.entity.filter
-import org.ktorm.entity.first
 import org.ktorm.entity.toList
 import orm.entities.runFilesLocation
 import orm.enums.FileCollectType
@@ -55,19 +55,17 @@ class ScanSourceFolder(pipelineTaskId: Long): SystemTask(pipelineTaskId) {
                 .let { downloadFiles ->
                     if (downloadFiles.isNotEmpty()) {
                         PipelineRunTasks.addTask(task, DownloadMissingFiles.taskId)?.also { downloadTaskId ->
-                            DatabaseConnection
-                                .database
-                                .pipelineRunTasks
-                                .filter { it.pipelineRunTaskId eq downloadTaskId }
-                                .first()
-                                .apply {
-                                    taskMessage = downloadFiles.joinToString(
+                            DatabaseConnection.database.update(PipelineRunTasks) {
+                                set(
+                                    it.taskMessage,
+                                    downloadFiles.joinToString(
                                         separator = "','",
                                         prefix = "['",
                                         postfix = "']"
                                     )
-                                    flushChanges()
-                                }
+                                )
+                                where { it.pipelineRunTaskId eq downloadTaskId }
+                            }
                         }
                     } else {
                         null
@@ -79,20 +77,18 @@ class ScanSourceFolder(pipelineTaskId: Long): SystemTask(pipelineTaskId) {
                 .distinct()
                 .let { collectFiles ->
                     if (collectFiles.isNotEmpty()) {
-                        PipelineRunTasks.addTask(task, CollectMissingFiles.taskId)?.also { downloadTaskId ->
-                            DatabaseConnection
-                                .database
-                                .pipelineRunTasks
-                                .filter { it.pipelineRunTaskId eq downloadTaskId }
-                                .first()
-                                .apply {
-                                    taskMessage = collectFiles.joinToString(
+                        PipelineRunTasks.addTask(task, CollectMissingFiles.taskId)?.also { collectTaskId ->
+                            DatabaseConnection.database.update(PipelineRunTasks) {
+                                set(
+                                    it.taskMessage,
+                                    missingFiles.joinToString(
                                         separator = "','",
                                         prefix = "['",
                                         postfix = "']"
                                     )
-                                    flushChanges()
-                                }
+                                )
+                                where { it.pipelineRunTaskId eq collectTaskId }
+                            }
                         }
                     } else {
                         null

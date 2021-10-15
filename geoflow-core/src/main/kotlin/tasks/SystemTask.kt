@@ -32,10 +32,10 @@ abstract class SystemTask(pipelineRunTaskId: Long): PipelineTask(pipelineRunTask
 
     override suspend fun runTask(): TaskResult {
         updateTask {
-            taskStart = Instant.now()
-            taskStatus = TaskStatus.Running
-            taskCompleted = null
-            taskMessage = null
+            set(it.taskStart, Instant.now())
+            set(it.taskStatus, TaskStatus.Running)
+            set(it.taskCompleted, null)
+            set(it.taskMessage, null)
         }
         return DatabaseConnection.database.useTransaction { transaction ->
             PipelineRunTasks.lockRecord(transaction, pipelineRunTaskId)

@@ -9,15 +9,11 @@ import kotlinx.serialization.Serializable
 import org.ktorm.database.Transaction
 import org.ktorm.dsl.*
 import org.ktorm.schema.*
-import org.ktorm.support.postgresql.LockingMode
 import org.ktorm.support.postgresql.insertReturning
-import org.ktorm.support.postgresql.locking
-import org.postgresql.util.PGobject
 import orm.entities.PipelineRunTask
 import orm.enums.TaskRunType
 import orm.enums.TaskStatus
 import java.sql.Timestamp
-import java.time.Instant
 
 object PipelineRunTasks: DbTable<PipelineRunTask>("pipeline_run_tasks") {
 
@@ -30,6 +26,8 @@ object PipelineRunTasks: DbTable<PipelineRunTask>("pipeline_run_tasks") {
     val parentTaskId = long("parent_task_id").bindTo { it.parentTaskId }
     val parentTaskOrder = int("parent_task_order").bindTo { it.parentTaskOrder }
     val taskStatus = enum<TaskStatus>("task_status").bindTo { it.taskStatus }
+    val workflowOperation = text("workflow_operation")
+    val taskStackTrace = text("task_stack_trace")
 
     val tableDisplayFields = mapOf(
         "task_status" to mapOf("name" to "Status", "formatter" to "statusFormatter"),
@@ -89,44 +87,6 @@ object PipelineRunTasks: DbTable<PipelineRunTask>("pipeline_run_tasks") {
             }
     }
 
-    fun finishTransaction(transaction: Transaction, pipelineRunTaskId: Long, message: String?) {
-        transaction
-            .connection
-            .prepareStatement("""
-                UPDATE $tableName
-                SET    ${taskMessage.name} = ?,
-                       ${taskStatus.name} = ?,
-                       ${taskCompleted.name} = ?
-                WHERE  ${this.pipelineRunTaskId.name} = ?
-            """.trimIndent())
-            .apply {
-                val status = PGobject().apply {
-                    type = "task_status"
-                    value = if (message == null) TaskStatus.Complete.name else TaskStatus.Failed.name
-                }
-                setString(1, message)
-                setObject(2, status)
-                setTimestamp(
-                    3,
-                    if (message == null) Timestamp.from(Instant.now()) else null
-                )
-                setLong(4, pipelineRunTaskId)
-            }.use { statement ->
-                statement.execute()
-            }
-    }
-
-    fun reserveRecord(pipelineRunTaskId: Long): PipelineRunTask {
-        return DatabaseConnection
-            .database
-            .from(this)
-            .select()
-            .where(this.pipelineRunTaskId eq pipelineRunTaskId)
-            .locking(LockingMode.FOR_SHARE)
-            .map(this::createEntity)
-            .first()
-    }
-
     fun getRecord(pipelineRunTaskId: Long): PipelineRunTask {
         return DatabaseConnection
             .database
@@ -169,11 +129,13 @@ object PipelineRunTasks: DbTable<PipelineRunTask>("pipeline_run_tasks") {
             record.taskStatus == TaskStatus.Waiting ->
                 throw IllegalArgumentException("You cannot reset a waiting task")
             else -> {
-                record.taskStatus = TaskStatus.Waiting
-                record.taskCompleted = null
-                record.taskStart = null
-                record.taskMessage = null
-                record.flushChanges()
+                DatabaseConnection.database.update(this) {
+                    set(it.taskStatus, TaskStatus.Waiting)
+                    set(it.taskCompleted, null)
+                    set(it.taskStart, null)
+                    set(it.taskMessage, null)
+                    set(it.taskStackTrace, null)
+                }
                 DeleteRunTaskChildren.call(record.pipelineRunTaskId)
             }
         }
@@ -190,13 +152,13 @@ object PipelineRunTasks: DbTable<PipelineRunTask>("pipeline_run_tasks") {
         return DatabaseConnection
             .database
             .insertReturning(this, pipelineRunTaskId) {
-                set(runId, pipelineRunTask.runId)
-                set(taskStatus, TaskStatus.Waiting)
-                set(taskStart, null)
-                set(taskCompleted, null)
-                set(PipelineRunTasks.taskId, taskId)
-                set(parentTaskId, pipelineRunTask.pipelineRunTaskId)
-                set(parentTaskOrder, lastOrder + 1)
+                set(it.runId, pipelineRunTask.runId)
+                set(it.taskStatus, TaskStatus.Waiting)
+                set(it.taskStart, null)
+                set(it.taskCompleted, null)
+                set(it.taskId, taskId)
+                set(it.parentTaskId, pipelineRunTask.pipelineRunTaskId)
+                set(it.parentTaskOrder, lastOrder + 1)
             }
     }
 
@@ -302,8 +264,8 @@ object PipelineRunTasks: DbTable<PipelineRunTask>("pipeline_run_tasks") {
         DatabaseConnection
             .database
             .update(this) {
-                set(taskStatus, status)
-                where { this@PipelineRunTasks.pipelineRunTaskId eq pipelineRunTaskId }
+                set(it.taskStatus, status)
+                where { it.pipelineRunTaskId eq pipelineRunTaskId }
             }
     }
 }
