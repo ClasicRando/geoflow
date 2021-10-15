@@ -3,7 +3,11 @@ import it.justwrote.kjob.Mongo
 import it.justwrote.kjob.job.JobExecutionType
 import it.justwrote.kjob.kjob
 import jobs.SystemJob
+import kotlinx.coroutines.NonCancellable
+import kotlinx.coroutines.withContext
 import mu.KotlinLogging
+import org.ktorm.dsl.eq
+import org.ktorm.dsl.update
 import orm.enums.TaskRunType
 import orm.enums.TaskStatus
 import orm.tables.PipelineRunTasks
@@ -33,7 +37,7 @@ fun main() {
         executionType = JobExecutionType.NON_BLOCKING
         maxRetries = 0
         execute {
-            runCatching {
+            try {
                 val runId = props[it.runId]
                 val task = ClassLoader
                     .getSystemClassLoader()
@@ -53,14 +57,15 @@ fun main() {
                         }
                     }
                 }
-            }.getOrElse { t ->
-                val pipelineRunTaskId = props[it.pipelineRunTaskId]
-                DatabaseConnection.database.useTransaction {
-                    val taskRecord = PipelineRunTasks.reserveRecord(pipelineRunTaskId)
-                    taskRecord.taskMessage = "ERROR: ${t.message}"
-                    taskRecord.taskStatus = TaskStatus.Failed
-                    taskRecord.taskCompleted = null
-                    taskRecord.flushChanges()
+            } catch (t: Throwable) {
+                withContext(NonCancellable) {
+                    val pipelineRunTaskId = props[it.pipelineRunTaskId]
+                    DatabaseConnection.database.update(PipelineRunTasks) {
+                        set(PipelineRunTasks.taskMessage, "ERROR in Job: ${t.message}")
+                        set(PipelineRunTasks.taskStatus, TaskStatus.Failed)
+                        set(PipelineRunTasks.taskCompleted, null)
+                        where { PipelineRunTasks.pipelineRunTaskId eq pipelineRunTaskId }
+                    }
                 }
             }
         }
