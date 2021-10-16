@@ -109,6 +109,6 @@ function reworkTask(prTaskId) {
 
 function taskActionFormatter(value, row) {
     const prTaskId = row.pipeline_run_task_id;
-    const redoButton = row.task_status === 'Complete' ? `<i class="fas fa-redo p-1 inTableButton" onClick="reworkTask(${prTaskId})"></i>` : '';
+    const redoButton = row.task_status === 'Complete' || row.task_status === 'Failed' ? `<i class="fas fa-redo p-1 inTableButton" onClick="reworkTask(${prTaskId})"></i>` : '';
     return `<span style="display: inline;"><i class="fas fa-info-circle  p-1 inTableButton" onClick="showTaskInfo(${prTaskId})"></i>${redoButton}</span>`;
 }
