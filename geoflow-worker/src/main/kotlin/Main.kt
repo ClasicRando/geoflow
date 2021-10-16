@@ -12,6 +12,7 @@ import orm.enums.TaskStatus
 import orm.tables.PipelineRunTasks
 import tasks.SystemTask
 import tasks.TaskResult
+import java.time.Instant
 
 private val logger = KotlinLogging.logger {}
 
@@ -72,7 +73,7 @@ fun main() {
                         DatabaseConnection.database.update(PipelineRunTasks) {
                             set(it.taskMessage, result.message)
                             set(it.taskStatus, TaskStatus.Complete)
-                            set(it.taskCompleted, null)
+                            set(it.taskCompleted, Instant.now())
                             set(it.taskStackTrace, null)
                             where { it.pipelineRunTaskId eq pipelineRunTaskId }
                         }
