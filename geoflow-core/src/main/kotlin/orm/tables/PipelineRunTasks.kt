@@ -26,8 +26,8 @@ object PipelineRunTasks: DbTable<PipelineRunTask>("pipeline_run_tasks") {
     val parentTaskId = long("parent_task_id").bindTo { it.parentTaskId }
     val parentTaskOrder = int("parent_task_order").bindTo { it.parentTaskOrder }
     val taskStatus = enum<TaskStatus>("task_status").bindTo { it.taskStatus }
-    val workflowOperation = text("workflow_operation")
-    val taskStackTrace = text("task_stack_trace")
+    val workflowOperation = text("workflow_operation").bindTo { it.workflowOperation }
+    val taskStackTrace = text("task_stack_trace").bindTo { it.taskStackTrace }
 
     val tableDisplayFields = mapOf(
         "task_status" to mapOf("name" to "Status", "formatter" to "statusFormatter"),
@@ -56,6 +56,11 @@ object PipelineRunTasks: DbTable<PipelineRunTask>("pipeline_run_tasks") {
                 REFERENCES public.pipeline_runs (run_id) MATCH SIMPLE
                 ON UPDATE CASCADE
                 ON DELETE CASCADE
+                NOT VALID,
+            CONSTRAINT workflow_operation_fk FOREIGN KEY (workflow_operation)
+                REFERENCES public.workflow_operations (code) MATCH SIMPLE
+                ON UPDATE CASCADE
+                ON DELETE SET NULL
                 NOT VALID
         )
         WITH (
@@ -135,6 +140,7 @@ object PipelineRunTasks: DbTable<PipelineRunTask>("pipeline_run_tasks") {
                     set(it.taskStart, null)
                     set(it.taskMessage, null)
                     set(it.taskStackTrace, null)
+                    where { it.pipelineRunTaskId eq pipelineRunTaskId }
                 }
                 DeleteRunTaskChildren.call(record.pipelineRunTaskId)
             }
@@ -154,11 +160,10 @@ object PipelineRunTasks: DbTable<PipelineRunTask>("pipeline_run_tasks") {
             .insertReturning(this, pipelineRunTaskId) {
                 set(it.runId, pipelineRunTask.runId)
                 set(it.taskStatus, TaskStatus.Waiting)
-                set(it.taskStart, null)
-                set(it.taskCompleted, null)
                 set(it.taskId, taskId)
                 set(it.parentTaskId, pipelineRunTask.pipelineRunTaskId)
                 set(it.parentTaskOrder, lastOrder + 1)
+                set(it.workflowOperation, pipelineRunTask.workflowOperation)
             }
     }
 
