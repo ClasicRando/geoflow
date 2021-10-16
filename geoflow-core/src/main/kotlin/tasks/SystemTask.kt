@@ -13,21 +13,12 @@ abstract class SystemTask(pipelineRunTaskId: Long): PipelineTask(pipelineRunTask
 
     abstract suspend fun run()
 
-    protected fun messageAppend(text: String) {
+    protected fun addToMessage(text: String) {
         message.append(text)
-    }
-
-    protected fun messageAppend(func: () -> String) {
-        message.append(func())
     }
 
     protected fun setMessage(text: String) {
-        message.clear()
-        message.append(text)
-    }
-
-    protected fun setMessage(func: () -> String) {
-        setMessage(func())
+        message.clear().append(text)
     }
 
     override suspend fun runTask(): TaskResult {
@@ -35,7 +26,6 @@ abstract class SystemTask(pipelineRunTaskId: Long): PipelineTask(pipelineRunTask
             set(it.taskStart, Instant.now())
             set(it.taskStatus, TaskStatus.Running)
             set(it.taskCompleted, null)
-            set(it.taskMessage, null)
         }
         return DatabaseConnection.database.useTransaction { transaction ->
             PipelineRunTasks.lockRecord(transaction, pipelineRunTaskId)

@@ -99,10 +99,8 @@ class ScanSourceFolder(pipelineTaskId: Long): SystemTask(pipelineTaskId) {
             }
         }
         if (extraFiles.isNotEmpty()) {
-            setMessage {
-                val fileNames = extraFiles.joinToString { it.name }
-                "Found extra files that could be added to source tables. $fileNames"
-            }
+            val fileNames = extraFiles.joinToString { it.name }
+            setMessage("Found extra files that could be added to source tables. $fileNames")
         }
     }
 }
