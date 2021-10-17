@@ -6,28 +6,19 @@ import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.cancelAndJoin
 import kotlinx.coroutines.channels.ClosedReceiveChannelException
-import java.util.*
+import java.util.Collections.synchronizedSet
 import kotlin.collections.LinkedHashSet
-import java.util.concurrent.atomic.AtomicLong
-
-data class Connection(val session: DefaultWebSocketSession) {
-    companion object {
-        var lastId = AtomicLong(0)
-    }
-    val name = "user${lastId.getAndIncrement()}"
-}
 
 fun Route.publisher(path: String, channelName: String) {
     route(path) {
-        val connections = Collections.synchronizedSet(LinkedHashSet<Connection>())
+        val connections = synchronizedSet(LinkedHashSet<DefaultWebSocketSession>())
         var listener: Job? = null
         webSocket {
-            val connection = Connection(this)
-            connections += connection
+            connections += this
             if (listener == null) {
                 listener = startListener(channelName) { message ->
                     connections.forEach {
-                        it.session.send(message)
+                        it.send(message)
                     }
                 }
             }
@@ -54,7 +45,7 @@ fun Route.publisher(path: String, channelName: String) {
             }  catch (t: Throwable) {
                 call.application.environment.log.info("Exception during pipelineRunTasks WebSocket session", t)
             } finally {
-                connections.remove(connection)
+                connections.remove(this)
                 if (connections.isEmpty()) {
                     listener?.cancelAndJoin()
                     listener = null
