@@ -1,3 +1,26 @@
+class TableRefreshSubscriber {
+
+    constructor(url, $table) {
+        this.$table = $table
+        this.socket = new WebSocket(url);
+        this.socket.addEventListener('message', function(event) {
+            console.log(event);
+            $testTable.bootstrapTable('refresh');
+        });
+    }
+
+    get isActive() {
+        return this.socket.readyState == this.socket.OPEN;
+    }
+
+    attemptRestart() {
+        if (this.isActive) {
+            this.socket.close();
+        }
+        this.socket = new WebSocket(this.socket.url);
+    }
+}
+
 function post(params) {
     const form = document.createElement('form');
     form.method = 'post';
