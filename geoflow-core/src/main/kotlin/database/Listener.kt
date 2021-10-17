@@ -19,17 +19,17 @@ fun CoroutineScope.startListener(channelName: String, callback: suspend (String)
             while (isActive) {
                 pgConnection.notifications?.let { notifications ->
                     for (notification: PGNotification in notifications) {
-                        callback(notification.toString())
+                        callback(notification.parameter)
                     }
                 }
                 delay(1000)
             }
         } catch (e: SQLException) {
-            logger.info("SQL error that has caused the listener to close", e)
+            logger.info("SQL error that has caused the '$channelName' listener to close", e)
         } catch(c: CancellationException) {
-            logger.info("Job has been cancelled by parent scope")
+            logger.info("'$channelName' listener Job has been cancelled by parent scope")
         } catch (t: Throwable) {
-            logger.info("Generic error that has caused the listener to close", t)
+            logger.info("Generic error that has caused the '$channelName' listener to close", t)
         }
     }
 }
