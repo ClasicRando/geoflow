@@ -8,6 +8,14 @@ import kotlinx.coroutines.cancelAndJoin
 import kotlinx.coroutines.channels.ClosedReceiveChannelException
 import java.util.*
 import kotlin.collections.LinkedHashSet
+import java.util.concurrent.atomic.AtomicLong
+
+data class Connection(val session: DefaultWebSocketSession) {
+    companion object {
+        var lastId = AtomicLong(0)
+    }
+    val name = "user${lastId.getAndIncrement()}"
+}
 
 fun Route.publisher(path: String, channelName: String) {
     route(path) {
