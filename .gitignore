@@ -6,5 +6,5 @@
 /geoflow-server/test-files
 /geoflow-core/src/main/kotlin/MiniTests.kt
 /geoflow-core/out/
-/geoflow-server/out
-/geoflow-worker/out
+/geoflow-server/out/
+/geoflow-worker/out/
