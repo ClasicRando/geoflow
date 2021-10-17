@@ -1,9 +1,12 @@
 package database
 
 import kotlinx.coroutines.*
+import mu.KotlinLogging
 import org.postgresql.PGConnection
 import org.postgresql.PGNotification
 import java.sql.SQLException
+
+private val logger = KotlinLogging.logger {}
 
 @OptIn(ExperimentalCoroutinesApi::class)
 fun CoroutineScope.startListener(channelName: String, callback: suspend (String) -> Unit) = launch {
@@ -22,9 +25,11 @@ fun CoroutineScope.startListener(channelName: String, callback: suspend (String)
                 delay(1000)
             }
         } catch (e: SQLException) {
-            e.printStackTrace()
+            logger.info("SQL error that has caused the listener to close", e)
+        } catch(c: CancellationException) {
+            logger.info("Job has been cancelled by parent scope")
         } catch (t: Throwable) {
-            t.printStackTrace()
+            logger.info("Generic error that has caused the listener to close", t)
         }
     }
 }
