@@ -32,9 +32,9 @@ fun Route.index() {
     }
 }
 
-fun Route.pipelineStatus() = route("/pipeline-status") {
+fun Route.pipelineStatus() = route("/pipeline-status/{code}") {
     get {
-        val code = call.request.queryParameters["code"] ?: ""
+        val code = call.parameters.getOrFail("code")
         call.respondHtml {
             if (call.sessions.get<UserSession>()!!.hasRole(code)) {
                 pipelineStatus(code)
@@ -48,14 +48,14 @@ fun Route.pipelineStatus() = route("/pipeline-status") {
         val pickup = params["pickup"] ?: ""
         val runId = params["run_id"] ?: ""
         val redirect = if (pickup.isEmpty()) {
-            "/tasks?runId=$runId"
+            "/tasks/$runId"
         } else {
             runCatching {
                 PipelineRuns.pickupRun(
                     runId.toLong(),
                     call.sessions.get<UserSession>()!!.userId
                 )
-                "/tasks?runId=$runId"
+                "/tasks/$runId"
             }.getOrElse { t ->
                 call.application.environment.log.error("/pipeline-stats: pickup", t)
                 url {
@@ -68,29 +68,10 @@ fun Route.pipelineStatus() = route("/pipeline-status") {
     }
 }
 
-fun Route.pipelineTasks() = route("/tasks") {
+fun Route.pipelineTasks() = route("/tasks/{runId}") {
     get {
-        val user = call.sessions.get<UserSession>()!!
-        val runId = call.request.queryParameters["runId"]?.toLong() ?: 0
-        val run = PipelineRuns.getRun(runId)
-        val runUsernames = listOf(
-            run?.collectionUser?.username,
-            run?.loadUser?.username,
-            run?.checkUser?.username,
-            run?.qaUser?.username,
-        ).mapNotNull { it }
-        when {
-            run == null -> call.respondRedirect {
-                path("invalid-parameter")
-                parametersOf("message", "Run ID provided cannot be found")
-            }
-            user.hasRole("admin") || user.username in runUsernames -> {
-                call.respondHtml { pipelineTasks(runId) }
-            }
-            else -> call.respondRedirect {
-                path("invalid-parameter")
-                parametersOf("message", "You must be a part of this run to view it")
-            }
+        call.respondHtml {
+            pipelineTasks(call.parameters.getOrFail("runId").toLong())
         }
     }
 }
@@ -143,10 +124,10 @@ fun Route.api() = route("/api") {
         }
         call.respond(tasks)
     }
-    post("/run-task") {
+    post("/run-task/{runId}/{prTaskId}") {
         val user = call.sessions.get<UserSession>()!!
-        val runId = call.request.queryParameters["runId"]?.toLong() ?: 0
-        val pipelineRunTaskId = call.request.queryParameters["prTaskId"]?.toLong() ?: 0
+        val runId = call.parameters.getOrFail("runId").toLong()
+        val pipelineRunTaskId = call.parameters.getOrFail("prTaskId").toLong()
         val response = runCatching {
             val pipelineRunTask = PipelineRunTasks.getRecordForRun(user.username, runId, pipelineRunTaskId)
             if (pipelineRunTask.task.taskRunType == TaskRunType.User) {
@@ -169,10 +150,10 @@ fun Route.api() = route("/api") {
         }
         call.respond(response)
     }
-    post("/run-all") {
+    post("/run-all/{runId}/{prTaskId}") {
         val user = call.sessions.get<UserSession>()!!
-        val runId = call.request.queryParameters["runId"]?.toLong() ?: 0
-        val pipelineRunTaskId = call.request.queryParameters["prTaskId"]?.toLong() ?: 0
+        val runId = call.parameters.getOrFail("runId").toLong()
+        val pipelineRunTaskId = call.parameters.getOrFail("prTaskId").toLong()
         val response = runCatching {
             val pipelineRunTask = PipelineRunTasks.getRecordForRun(user.username, runId, pipelineRunTaskId)
             if (pipelineRunTask.task.taskRunType == TaskRunType.User) {
@@ -195,10 +176,10 @@ fun Route.api() = route("/api") {
         }
         call.respond(response)
     }
-    post("/reset-task") {
+    post("/reset-task/{runId}/{prTaskId}") {
         val user = call.sessions.get<UserSession>()!!
-        val runId = call.request.queryParameters["runId"]?.toLong() ?: 0
-        val pipelineRunTaskId = call.request.queryParameters["prTaskId"]?.toLong() ?: 0
+        val runId = call.parameters.getOrFail("runId").toLong()
+        val pipelineRunTaskId = call.parameters.getOrFail("prTaskId").toLong()
         val response = runCatching {
             PipelineRunTasks.resetRecord(user.username, runId, pipelineRunTaskId)
             mapOf("success" to "Reset $pipelineRunTaskId")

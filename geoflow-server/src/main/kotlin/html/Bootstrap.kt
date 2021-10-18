@@ -111,7 +111,7 @@ fun FlowContent.messageBoxModal() {
         }
     }
     script {
-        src = "assets/messagebox.js"
+        src = "/assets/messagebox.js"
     }
 }
 

@@ -60,7 +60,7 @@ open class BasePage: Template<HTML> {
                 src = "https://cdn.jsdelivr.net/npm/jquery/dist/jquery.min.js"
             }
             script {
-                src = "assets/utils.js"
+                src = "/assets/utils.js"
             }
             style {
                 unsafe {
