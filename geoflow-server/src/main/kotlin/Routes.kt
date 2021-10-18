@@ -122,11 +122,11 @@ fun Route.api() = route("/api") {
         }
         call.respond(actions)
     }
-    get("/pipeline-runs") {
+    get("/pipeline-runs/{code}") {
         val runs = runCatching {
             PipelineRuns.userRuns(
                 call.sessions.get<UserSession>()?.userId!!,
-                call.request.queryParameters["code"] ?: ""
+                call.parameters.getOrFail("code")
             )
         }.getOrElse { t ->
             call.application.environment.log.error("/api/pipeline-runs", t)
@@ -134,9 +134,9 @@ fun Route.api() = route("/api") {
         }
         call.respond(runs)
     }
-    get("/pipeline-run-tasks") {
+    get("/pipeline-run-tasks/{runId}") {
         val tasks = runCatching {
-            PipelineRunTasks.getOrderedTasks(call.request.queryParameters["runId"]?.toLong() ?: 0)
+            PipelineRunTasks.getOrderedTasks(call.parameters.getOrFail("runId").toLong())
         }.getOrElse { t ->
             call.application.environment.log.error("/api/pipeline-run-tasks", t)
             listOf()
@@ -214,8 +214,8 @@ fun Route.api() = route("/api") {
         call.respond(mapOf("status" to status))
     }
     route("/source-tables") {
-        get {
-            val runId = call.request.queryParameters["runId"]?.toLong() ?: 0
+        get("/{runId}") {
+            val runId = call.parameters.getOrFail("runId").toLong()
             val response = runCatching {
                 SourceTables.getRunSourceTables(runId)
             }.getOrElse { t ->
@@ -264,6 +264,10 @@ fun Route.api() = route("/api") {
             call.respond(response)
         }
     }
+}
+
+fun Route.sockets() = route("/sockets") {
+    publisher("/pipeline-run-tasks", "pipelineRunTasks")
 }
 
 fun Route.js() {

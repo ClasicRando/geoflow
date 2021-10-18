@@ -50,9 +50,10 @@ class PipelineTasks(runId: Long): BasePage() {
             }
         }
         setContent {
-            autoRefreshTable(
+            subscribeTable(
                 taskTableId,
-                "/api/pipeline-run-tasks?runId=$runId",
+                "/sockets/pipeline-run-tasks/$runId",
+                "/api/pipeline-run-tasks/$runId",
                 PipelineRunTasks.tableDisplayFields,
                 tableButtons = tableButtons,
                 headerButtons = headerButtons,

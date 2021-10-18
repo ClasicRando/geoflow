@@ -10,6 +10,7 @@ import io.ktor.response.*
 import io.ktor.routing.*
 import io.ktor.serialization.*
 import io.ktor.sessions.*
+import io.ktor.websocket.*
 import it.justwrote.kjob.Mongo
 import it.justwrote.kjob.job.JobExecutionType
 import it.justwrote.kjob.kjob
@@ -84,6 +85,9 @@ fun Application.module() {
     install(ContentNegotiation) {
         json()
     }
+    install(WebSockets) {
+
+    }
     routing {
         js()
         authenticate("auth-session") {
@@ -92,6 +96,7 @@ fun Application.module() {
             pipelineStatus()
             pipelineTasks()
             invalidParameter()
+            sockets()
         }
         authenticate("auth-form") {
             post("/login") {
