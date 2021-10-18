@@ -30,6 +30,15 @@ fun CoroutineScope.startListener(channelName: String, callback: suspend (String)
             logger.info("'$channelName' listener Job has been cancelled by parent scope")
         } catch (t: Throwable) {
             logger.info("Generic error that has caused the '$channelName' listener to close", t)
+        } finally {
+            withContext(NonCancellable) {
+                if (!connection.isClosed) {
+                    logger.info("Setting connection to unlisten to '$channelName'")
+                    connection.prepareStatement("UNLISTEN $channelName").use {
+                        it.execute()
+                    }
+                }
+            }
         }
     }
 }
