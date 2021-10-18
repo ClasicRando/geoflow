@@ -1,24 +1,36 @@
 import database.startListener
 import io.ktor.http.cio.websocket.*
 import io.ktor.routing.*
+import io.ktor.util.*
 import io.ktor.websocket.*
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.cancelAndJoin
 import kotlinx.coroutines.channels.ClosedReceiveChannelException
-import java.util.Collections.synchronizedSet
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
 import kotlin.collections.LinkedHashSet
+
+data class Connection(val session: DefaultWebSocketSession, val listenId: String)
 
 fun Route.publisher(path: String, channelName: String) {
     route(path) {
-        val connections = synchronizedSet(LinkedHashSet<DefaultWebSocketSession>())
+        val connections = LinkedHashSet<Connection>()
         var listener: Job? = null
-        webSocket {
-            connections += this
+        val publisherLock = Mutex()
+        webSocket("/{param}") {
+            val listenId = call.parameters.getOrFail("param")
+            val connection = Connection(this, listenId)
+            publisherLock.withLock {
+                connections += connection
+            }
             if (listener == null) {
                 listener = startListener(channelName) { message ->
-                    connections.forEach {
-                        it.send(message)
+                    publisherLock.withLock {
+                        connections
+                            .asSequence()
+                            .filter { it.listenId == message }
+                            .forEach { it.session.send(message) }
                     }
                 }
             }
@@ -45,10 +57,12 @@ fun Route.publisher(path: String, channelName: String) {
             }  catch (t: Throwable) {
                 call.application.environment.log.info("Exception during pipelineRunTasks WebSocket session", t)
             } finally {
-                connections.remove(this)
-                if (connections.isEmpty()) {
-                    listener?.cancelAndJoin()
-                    listener = null
+                publisherLock.withLock {
+                    connections.remove(connection)
+                    if (connections.isEmpty()) {
+                        listener?.cancelAndJoin()
+                        listener = null
+                    }
                 }
             }
         }
