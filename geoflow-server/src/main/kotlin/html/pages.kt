@@ -32,6 +32,15 @@ fun HTML.pipelineTasks(runId: Long) {
     }
 }
 
+fun HTML.errorPage(message: String) {
+    with(BasePage()) {
+        setContent {
+            +message
+        }
+        apply()
+    }
+}
+
 fun HTML.login(message: String) {
     lang = "en-US"
     head {
