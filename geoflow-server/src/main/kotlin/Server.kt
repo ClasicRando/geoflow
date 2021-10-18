@@ -1,6 +1,7 @@
 @file:Suppress("unused")
 
 import auth.UserSession
+import html.errorPage
 import html.login
 import io.ktor.application.*
 import io.ktor.auth.*
@@ -87,6 +88,23 @@ fun Application.module() {
     }
     install(WebSockets) {
 
+    }
+    install(StatusPages) {
+        exception<MissingRequestParameterException> { cause ->
+            call.respondHtml {
+                errorPage("Missing parameter ${cause.parameterName} in url. ${cause.message}")
+            }
+        }
+        exception<UnauthorizedRouteAccessException> { cause ->
+            call.respondHtml {
+                errorPage("The current use does not have access to the desired route, ${cause.route}")
+            }
+        }
+        exception<Throwable> { cause ->
+            call.respondHtml {
+                errorPage(cause.message ?: "")
+            }
+        }
     }
     routing {
         js()
