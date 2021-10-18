@@ -5,7 +5,7 @@ class TableRefreshSubscriber {
         this.socket = new WebSocket(url);
         this.socket.addEventListener('message', function(event) {
             console.log(event);
-            $testTable.bootstrapTable('refresh');
+            $table.bootstrapTable('refresh',{silent: true});
         });
     }
 
