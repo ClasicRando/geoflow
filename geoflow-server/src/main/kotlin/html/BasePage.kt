@@ -53,6 +53,15 @@ open class BasePage: Template<HTML> {
                 rel = "stylesheet"
                 href = "https://unpkg.com/bootstrap-table@1.18.3/dist/bootstrap-table.min.css"
             }
+            script {
+                src = "https://cdn.jsdelivr.net/npm/lodash@4.17.21/lodash.min.js"
+            }
+            script {
+                src = "https://cdn.jsdelivr.net/npm/jquery/dist/jquery.min.js"
+            }
+            script {
+                src = "assets/utils.js"
+            }
             style {
                 unsafe {
                     raw("""
@@ -97,12 +106,6 @@ open class BasePage: Template<HTML> {
                     }
                 }
                 insert(content)
-                script {
-                    src = "assets/utils.js"
-                }
-                script {
-                    src = "https://cdn.jsdelivr.net/npm/jquery/dist/jquery.min.js"
-                }
                 script {
                     src = "https://cdn.jsdelivr.net/npm/popper.js@1.16.0/dist/umd/popper.min.js"
                 }
