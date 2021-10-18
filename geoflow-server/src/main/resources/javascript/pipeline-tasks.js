@@ -1,3 +1,7 @@
+function getRunId() {
+    return window.location.href.match(/(?<=\/)[^/]+$/g)[0]||'';
+}
+
 function showSourceTables() {
     $(`#${sourceTablesTableId}`).bootstrapTable('refresh');
     $(`#${sourceTableModalId}`).modal('show');
@@ -5,9 +9,8 @@ function showSourceTables() {
 
 function clickRunTask() {
     let $table = $(`#${taskTableId}`);
-    let options = $table.bootstrapTable('getOptions');
-    if (options.autoRefreshStatus === false) {
-        showMessageBox('Error', 'Please turn on auto refresh to run tasks');
+    if (!tasksSubscriber.isActive) {
+        showMessageBox('Error', 'Task change listener is currently not running. Refresh page to reconnect');
         return;
     }
     let data = $table.bootstrapTable('getData');
@@ -20,15 +23,13 @@ function clickRunTask() {
         showMessageBox('Error', 'No task to run');
         return;
     }
-    const params = new URLSearchParams(window.location.href.replace(/^[^?]+/g, ''));
-    postValue(`/api/run-task?runId=${params.get('runId')}&prTaskId=${row.pipeline_run_task_id}`);
+    postValue(`/api/run-task/${getRunId()}/${row.pipeline_run_task_id}`);
 }
 
 function clickRunAllTasks() {
     let $table = $(`#${taskTableId}`);
-    let options =  $table.bootstrapTable('getOptions');
-    if (options.autoRefreshStatus === false) {
-        showMessageBox('Error', 'Please turn on auto refresh to run tasks');
+    if (!tasksSubscriber.isActive) {
+        showMessageBox('Error', 'Task change listener is currently not running. Refresh page to reconnect');
         return;
     }
     let data = $table.bootstrapTable('getData');
@@ -41,8 +42,7 @@ function clickRunAllTasks() {
         showMessageBox('Error', 'No task to run');
         return;
     }
-    const params = new URLSearchParams(window.location.href.replace(/^[^?]+/g, ''));
-    postValue(`/api/run-all?runId=${params.get('runId')}&prTaskId=${row.pipeline_run_task_id}`);
+    postValue(`/api/run-all/${getRunId()}/${row.pipeline_run_task_id}`);
 }
 
 function statusFormatter(value, row) {
@@ -73,9 +73,8 @@ function titleCase(title) {
 }
 
 function showTaskInfo(prTaskId) {
-    let options = $(`#${taskTableId}`).bootstrapTable('getOptions');
-    if (options.autoRefreshStatus === false) {
-        showMessageBox('Error', 'Please turn on auto refresh to select tasks');
+    if (!tasksSubscriber.isActive) {
+        showMessageBox('Error', 'Task change listener is currently not running. Refresh page to reconnect');
         return;
     }
     let data = $(`#${taskTableId}`).bootstrapTable('getData').find(row => row.pipeline_run_task_id === prTaskId);
@@ -98,13 +97,11 @@ function showTaskInfo(prTaskId) {
 }
 
 function reworkTask(prTaskId) {
-    let options = $(`#${taskTableId}`).bootstrapTable('getOptions');
-    if (options.autoRefreshStatus === false) {
-        showMessageBox('Error', 'Please turn on auto refresh to rework tasks');
+    if (!tasksSubscriber.isActive) {
+        showMessageBox('Error', 'Task change listener is currently not running. Refresh page to reconnect');
         return;
     }
-    const params = new URLSearchParams(window.location.href.replace(/^[^?]+/g, ''));
-    postValue(`/api/reset-task?runId=${params.get('runId')}&prTaskId=${prTaskId}`);
+    postValue(`/api/reset-task/${getRunId()}/${prTaskId}`);
 }
 
 function taskActionFormatter(value, row) {
