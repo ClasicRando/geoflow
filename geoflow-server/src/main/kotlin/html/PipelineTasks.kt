@@ -7,6 +7,7 @@ import orm.tables.PipelineRunTasks
 class PipelineTasks(runId: Long): BasePage() {
     private val taskDataModalId = "taskData"
     private val taskTableId = "tasks"
+    private val webSocketPath = "ws://localhost:8080/sockets/pipeline-run-tasks/$runId"
     private val tableButtons = listOf(
         TableButton(
             "btnRun",
@@ -50,13 +51,14 @@ class PipelineTasks(runId: Long): BasePage() {
             }
         }
         setContent {
-            subscribeTable(
+            basicTable(
                 taskTableId,
-                "/sockets/pipeline-run-tasks/$runId",
                 "/api/pipeline-run-tasks/$runId",
                 PipelineRunTasks.tableDisplayFields,
                 tableButtons = tableButtons,
                 headerButtons = headerButtons,
+                clickableRows = false,
+                showRefresh = false,
             )
             dataDisplayModal(
                 taskDataModalId,
@@ -67,11 +69,12 @@ class PipelineTasks(runId: Long): BasePage() {
         }
         setScript {
             script {
-                src = "https://unpkg.com/bootstrap-table@1.18.3/dist/extensions/auto-refresh/bootstrap-table-auto-refresh.js"
-            }
-            script {
                 unsafe {
                     raw("""
+                        var ${taskTableId}Subscriber = new TableRefreshSubscriber(
+                            '$webSocketPath',
+                            ${'$'}('#$taskTableId')
+                        );
                         var taskTableId = '$taskTableId';
                         var taskDataModalId = '$taskDataModalId';
                         var types = [${FileCollectType.values().joinToString("','", "'", "'")}];
