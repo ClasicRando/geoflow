@@ -107,6 +107,9 @@ open class BasePage: Template<HTML> {
                 }
                 insert(content)
                 script {
+                    src = "/assets/subscribe-table.js"
+                }
+                script {
                     src = "https://cdn.jsdelivr.net/npm/popper.js@1.16.0/dist/umd/popper.min.js"
                 }
                 script {

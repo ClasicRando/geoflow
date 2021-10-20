@@ -32,7 +32,7 @@ fun FlowContent.basicTable(
     headerButtons: List<HeaderButton> = listOf(),
     customSortFunction: String = "",
     clickableRows: Boolean = true,
-    showRefresh: Boolean = true,
+    subscriber: String = "",
 ) {
     if (headerButtons.isNotEmpty()) {
         ul(classes = "header-button-list") {
@@ -49,8 +49,11 @@ fun FlowContent.basicTable(
             attributes["data-toolbar"] = "#toolbar"
         }
         attributes["data-url"] = dataUrl
-        if (showRefresh) {
+        if (subscriber.isEmpty()) {
             attributes["data-show-refresh"] = "true"
+        } else {
+            attributes["data-sub"] = "true"
+            attributes["data-sub-url"] = subscriber
         }
         attributes["data-classes"] = "table table-bordered${if (clickableRows) " table-hover" else ""}"
         attributes["data-thead-classes"] = "thead-dark"

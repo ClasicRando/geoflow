@@ -58,7 +58,7 @@ class PipelineTasks(runId: Long): BasePage() {
                 tableButtons = tableButtons,
                 headerButtons = headerButtons,
                 clickableRows = false,
-                showRefresh = false,
+                subscriber = webSocketPath,
             )
             dataDisplayModal(
                 taskDataModalId,
@@ -69,17 +69,13 @@ class PipelineTasks(runId: Long): BasePage() {
         }
         setScript {
             script {
-                unsafe {
-                    raw("""
-                        var ${taskTableId}Subscriber = new TableRefreshSubscriber(
-                            '$webSocketPath',
-                            ${'$'}('#$taskTableId')
-                        );
-                        var taskTableId = '$taskTableId';
-                        var taskDataModalId = '$taskDataModalId';
-                        var types = [${FileCollectType.values().joinToString("','", "'", "'")}];
-                    """.trimIndent())
-                }
+                addParamsAsJsGlobalVariables(
+                    mapOf(
+                        "taskTableId" to taskTableId,
+                        "taskDataModalId" to taskDataModalId,
+                        "types" to FileCollectType.values(),
+                    )
+                )
             }
             script {
                 src = "/assets/pipeline-tasks.js"

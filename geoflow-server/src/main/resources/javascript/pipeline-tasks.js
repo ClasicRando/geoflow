@@ -1,3 +1,5 @@
+let tasksSubscriber = subscriberTables[taskTableId];
+
 function getRunId() {
     return window.location.href.match(/(?<=\/)[^/]+$/g)[0]||'';
 }
@@ -10,7 +12,7 @@ function showSourceTables() {
 function clickRunTask() {
     let $table = $(`#${taskTableId}`);
     if (!tasksSubscriber.isActive) {
-        showMessageBox('Error', 'Task change listener is currently not running. Refresh page to reconnect');
+        showMessageBox('Error', 'Task change listener is not currently running. Refresh page to reconnect');
         return;
     }
     let data = $table.bootstrapTable('getData');
@@ -29,7 +31,7 @@ function clickRunTask() {
 function clickRunAllTasks() {
     let $table = $(`#${taskTableId}`);
     if (!tasksSubscriber.isActive) {
-        showMessageBox('Error', 'Task change listener is currently not running. Refresh page to reconnect');
+        showMessageBox('Error', 'Task change listener is not currently running. Refresh page to reconnect');
         return;
     }
     let data = $table.bootstrapTable('getData');
@@ -74,7 +76,7 @@ function titleCase(title) {
 
 function showTaskInfo(prTaskId) {
     if (!tasksSubscriber.isActive) {
-        showMessageBox('Error', 'Task change listener is currently not running. Refresh page to reconnect');
+        showMessageBox('Error', 'Task change listener is not currently running. Refresh page to reconnect');
         return;
     }
     let data = $(`#${taskTableId}`).bootstrapTable('getData').find(row => row.pipeline_run_task_id === prTaskId);
@@ -98,7 +100,7 @@ function showTaskInfo(prTaskId) {
 
 function reworkTask(prTaskId) {
     if (!tasksSubscriber.isActive) {
-        showMessageBox('Error', 'Task change listener is currently not running. Refresh page to reconnect');
+        showMessageBox('Error', 'Task change listener is not currently running. Refresh page to reconnect');
         return;
     }
     postValue(`/api/reset-task/${getRunId()}/${prTaskId}`);
