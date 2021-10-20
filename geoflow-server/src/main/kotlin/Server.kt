@@ -97,7 +97,7 @@ fun Application.module() {
         }
         exception<UnauthorizedRouteAccessException> { cause ->
             call.respondHtml {
-                errorPage("The current use does not have access to the desired route, ${cause.route}")
+                errorPage("The current user does not have access to the desired route, ${cause.route}")
             }
         }
         exception<Throwable> { cause ->
