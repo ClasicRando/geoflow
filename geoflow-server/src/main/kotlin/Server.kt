@@ -113,7 +113,6 @@ fun Application.module() {
             api()
             pipelineStatus()
             pipelineTasks()
-            invalidParameter()
             sockets()
         }
         authenticate("auth-form") {
