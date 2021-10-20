@@ -111,7 +111,7 @@ fun FlowContent.messageBoxModal() {
         }
     }
     script {
-        src = "assets/messagebox.js"
+        src = "/assets/messagebox.js"
     }
 }
 
@@ -179,7 +179,7 @@ fun FlowContent.sourceTablesModal(runId: Long) {
                     id = "${sourceTableModalId}Body"
                     basicTable(
                         sourceTablesTableId,
-                        "/api/source-tables?runId=$runId",
+                        "/api/source-tables/$runId",
                         SourceTables.tableDisplayFields,
                         tableButtons = listOf(
                             TableButton(

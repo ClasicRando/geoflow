@@ -10,7 +10,7 @@ class PipelineStatus(workflowCode: String): BasePage() {
         setContent {
             basicTable(
                 tableId,
-                "/api/pipeline-runs?code=$workflowCode",
+                "/api/pipeline-runs/$workflowCode",
                 PipelineRuns.tableDisplayFields
             )
             basicModal(
@@ -30,7 +30,7 @@ class PipelineStatus(workflowCode: String): BasePage() {
                 }
             }
             script {
-                src = "assets/pipeline-status.js"
+                src = "/assets/pipeline-status.js"
             }
         }
     }

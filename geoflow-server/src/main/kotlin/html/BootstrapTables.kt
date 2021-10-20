@@ -29,14 +29,32 @@ fun FlowContent.basicTable(
     dataUrl: String,
     fields: Map<String, Map<String, String>>,
     tableButtons: List<TableButton> = listOf(),
+    headerButtons: List<HeaderButton> = listOf(),
     customSortFunction: String = "",
     clickableRows: Boolean = true,
+    subscriber: String = "",
 ) {
+    if (headerButtons.isNotEmpty()) {
+        ul(classes = "header-button-list") {
+            id = "toolbar"
+            for (headerButton in headerButtons) {
+                headerButton.html(this)
+            }
+        }
+    }
     table {
         id = tableId
         attributes["data-toggle"] = "table"
+        if (headerButtons.isNotEmpty()) {
+            attributes["data-toolbar"] = "#toolbar"
+        }
         attributes["data-url"] = dataUrl
-        attributes["data-show-refresh"] = "true"
+        if (subscriber.isEmpty()) {
+            attributes["data-show-refresh"] = "true"
+        } else {
+            attributes["data-sub"] = "true"
+            attributes["data-sub-url"] = subscriber
+        }
         attributes["data-classes"] = "table table-bordered${if (clickableRows) " table-hover" else ""}"
         attributes["data-thead-classes"] = "thead-dark"
         attributes["data-search"] = "true"
@@ -89,7 +107,7 @@ fun FlowContent.autoRefreshTable(
         ul(classes = "header-button-list") {
             id = "toolbar"
             for (headerButton in headerButtons) {
-                headerButton.html.invoke(this)
+                headerButton.html(this)
             }
         }
     }
