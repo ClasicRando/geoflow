@@ -35,8 +35,8 @@ fun Route.index() {
 fun Route.pipelineStatus() = route("/pipeline-status/{code}") {
     get {
         val code = call.parameters.getOrFail("code")
-        if (!call.sessions.get<UserSession>()!!.hasRole(code)) {
-            throw UnauthorizedRouteAccessException(call.request.uri)
+        require(call.sessions.get<UserSession>()!!.hasRole(code)) {
+            UnauthorizedRouteAccessException(call.request.uri)
         }
         call.respondHtml {
             pipelineStatus(code)
