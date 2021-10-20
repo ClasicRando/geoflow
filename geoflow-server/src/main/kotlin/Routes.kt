@@ -46,24 +46,19 @@ fun Route.pipelineStatus() = route("/pipeline-status/{code}") {
         val params = call.receiveParameters()
         val pickup = params["pickup"] ?: ""
         val runId = params["run_id"] ?: ""
-        val redirect = if (pickup.isEmpty()) {
-            "/tasks/$runId"
-        } else {
+        if (pickup.isNotEmpty()) {
             runCatching {
                 PipelineRuns.pickupRun(
                     runId.toLong(),
                     call.sessions.get<UserSession>()!!.userId
                 )
-                "/tasks/$runId"
+
             }.getOrElse { t ->
                 call.application.environment.log.error("/pipeline-stats: pickup", t)
-                url {
-                    path("/invalid-parameter")
-                    parametersOf("message", "Error: Could not pickup run")
-                }
+                throw t
             }
         }
-        call.respondRedirect(redirect)
+        call.respondRedirect("/tasks/$runId")
     }
 }
 
@@ -71,14 +66,6 @@ fun Route.pipelineTasks() = route("/tasks/{runId}") {
     get {
         call.respondHtml {
             pipelineTasks(call.parameters.getOrFail("runId").toLong())
-        }
-    }
-}
-
-fun Route.invalidParameter() {
-    get("/invalid-parameter") {
-        call.respondHtml {
-            invalidParameter(call.request.queryParameters["message"] ?: "")
         }
     }
 }
