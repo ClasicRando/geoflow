@@ -48,12 +48,12 @@ fun Application.module() {
             userParamName = "username"
             passwordParamName = "password"
             validate { credentials ->
-                val validateResult = InternalUsers.validateUser(credentials.name, credentials.password)
-                if (validateResult.isSuccess) {
-                    UserIdPrincipal(credentials.name)
-                } else {
-                    log.info(validateResult.message)
-                    null
+                when(val validateResult = InternalUsers.validateUser(credentials.name, credentials.password)) {
+                    is InternalUsers.ValidationResponse.Success -> UserIdPrincipal(credentials.name)
+                    is InternalUsers.ValidationResponse.Failure -> {
+                        log.info(validateResult.ERROR_MESSAGE)
+                        null
+                    }
                 }
             }
             challenge("/login?message=invalid")

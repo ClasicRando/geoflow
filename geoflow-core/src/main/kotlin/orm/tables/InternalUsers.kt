@@ -8,6 +8,12 @@ import org.ktorm.schema.text
 import org.ktorm.support.postgresql.textArray
 import orm.entities.InternalUser
 
+/**
+ * Table used to store users of the web server interface of the application
+ *
+ * General user definition with username, password (hashed) and roles provided to the user. This table is only used
+ * during the user validation/login phase. After that point, the session contains the user information needed
+ */
 object InternalUsers: DbTable<InternalUser>("internal_users") {
     val userOid = long("user_oid").primaryKey().bindTo { it.userOid }
     val name = text("name").bindTo { it.name }
@@ -39,8 +45,20 @@ object InternalUsers: DbTable<InternalUser>("internal_users") {
         )
     """.trimIndent()
 
-    data class ValidationResponse(val isSuccess: Boolean, val message: String = "")
+    /** Validation response as a sealed interface of success or failure (standard message) */
+    sealed interface ValidationResponse {
+        object Success : ValidationResponse
+        object Failure: ValidationResponse {
+            const val ERROR_MESSAGE = "Incorrect username or password"
+        }
+    }
 
+    /**
+     * Tries to look up the username provided and validate the password if the user can be found.
+     *
+     * If the user cannot be found or the password is incorrect, the [Failure][ValidationResponse.Failure] object is
+     * returned. Otherwise, [Success][ValidationResponse.Success] is returned
+     */
     fun validateUser(username: String, password: String): ValidationResponse {
         val user = DatabaseConnection
             .database
@@ -48,11 +66,20 @@ object InternalUsers: DbTable<InternalUser>("internal_users") {
             .select()
             .where(this.username eq username)
             .map(this::createEntity)
-            .firstOrNull() ?: return ValidationResponse(false, "Incorrect username or password")
-        val verified = BCrypt.verifyer().verify(password.toCharArray(), user.password).verified
-        return ValidationResponse(verified, if (verified) "" else "Incorrect username or password")
+            .firstOrNull()
+            ?: return ValidationResponse.Failure
+        return if (BCrypt.verifyer().verify(password.toCharArray(), user.password).verified) {
+            ValidationResponse.Success
+        } else {
+            ValidationResponse.Failure
+        }
     }
 
+    /**
+     * Returns the [InternalUser] entity if the username can be found.
+     *
+     * @throws IllegalArgumentException when the query returns an empty result
+     */
     @Throws(IllegalArgumentException::class)
     fun getUser(username: String): InternalUser {
         return DatabaseConnection
