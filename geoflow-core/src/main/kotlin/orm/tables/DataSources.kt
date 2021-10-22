@@ -3,6 +3,17 @@ package orm.tables
 import org.ktorm.schema.*
 import orm.entities.DataSource
 
+/**
+ * Table used to store sources of data. Core backing of how data is grouped and moves through the system from collection
+ * to reporting.
+ *
+ * The records contain data about how the source is moved through the system, treated during reporting and other meta
+ * details about the source
+ *
+ * Future Changes
+ * --------------
+ * - implement API requirements for users to perform CRUD operations on this table
+ */
 object DataSources: DbTable<DataSource>("data_sources") {
     val dsId = long("ds_id").primaryKey().bindTo { it.dsId }
     val code = text("code").bindTo { it.code }

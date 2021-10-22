@@ -3,7 +3,13 @@ package orm.tables
 import org.ktorm.schema.long
 import org.ktorm.schema.text
 import orm.entities.DataSourceContact
+import orm.entities.DataSource
 
+/**
+ * Table used to store contacts of a [DataSource]
+ *
+ * This table should never be used by itself but rather referenced in [DataSources] table
+ */
 object DataSourceContacts: DbTable<DataSourceContact>("data_source_contacts") {
     val contactId = long("contact_id").primaryKey().bindTo { it.contactId }
     val dsId = long("ds_id").bindTo { it.dsId }
