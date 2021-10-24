@@ -15,7 +15,12 @@ import orm.enums.TaskRunType
 import orm.enums.TaskStatus
 import java.sql.Timestamp
 
-object PipelineRunTasks: DbTable<PipelineRunTask>("pipeline_run_tasks") {
+/**
+ * Table used to store tasks that are associated with a specified run
+ *
+ * Records contain metadata about the task, and it's run status/outcome.
+ */
+object PipelineRunTasks: DbTable<PipelineRunTask>("pipeline_run_tasks"), ApiExposed, SequentialPrimaryKey {
 
     val pipelineRunTaskId = long("pr_task_id").primaryKey().bindTo { it.pipelineRunTaskId }
     val runId = long("run_id").bindTo { it.runId }
@@ -29,7 +34,7 @@ object PipelineRunTasks: DbTable<PipelineRunTask>("pipeline_run_tasks") {
     val workflowOperation = text("workflow_operation").bindTo { it.workflowOperation }
     val taskStackTrace = text("task_stack_trace").bindTo { it.taskStackTrace }
 
-    val tableDisplayFields = mapOf(
+    override val tableDisplayFields = mapOf(
         "task_status" to mapOf("name" to "Status", "formatter" to "statusFormatter"),
         "task_name" to mapOf("name" to "Task Name"),
         "task_run_type" to mapOf("name" to "Run Type"),
@@ -77,6 +82,9 @@ object PipelineRunTasks: DbTable<PipelineRunTask>("pipeline_run_tasks") {
             CACHE 1;
     """.trimIndent()
 
+    /**
+     * Locks the record specified by the [pipelineRunTaskId] to the provided [transaction]
+     */
     fun lockRecord(transaction: Transaction, pipelineRunTaskId: Long) {
         transaction
             .connection
@@ -92,6 +100,12 @@ object PipelineRunTasks: DbTable<PipelineRunTask>("pipeline_run_tasks") {
             }
     }
 
+    /**
+     * Returns the record specified by the provided [pipelineRunTaskId]
+     *
+     * @throws NoSuchElementException when there is no record for the ID
+     */
+    @Throws(NoSuchElementException::class)
     fun getRecord(pipelineRunTaskId: Long): PipelineRunTask {
         return DatabaseConnection
             .database
@@ -102,51 +116,54 @@ object PipelineRunTasks: DbTable<PipelineRunTask>("pipeline_run_tasks") {
             .first()
     }
 
+    /**
+     * Returns entity for [pipelineRunTaskId] when the requested task meets some requirements and is next to run
+     *
+     * @throws IllegalArgumentException various cases can throw this exception (with a specific message). These include
+     * - the user is not able to run tasks for the run
+     * - the entity obtained has a different runId
+     * - the entity obtained is not waiting to be scheduled
+     * - the entity obtained is not the next available task to run for the runId
+     */
     @Throws(IllegalArgumentException::class)
     fun getRecordForRun(username: String, runId: Long, pipelineRunTaskId: Long): PipelineRunTask {
-        if (!PipelineRuns.checkUserRun(runId, username)) {
-            throw IllegalArgumentException("User provided cannot run tasks for this pipeline run")
-        }
+        require(PipelineRuns.checkUserRun(runId, username)) { "User provided cannot run tasks for this pipeline run" }
         val record = getRecord(pipelineRunTaskId)
-        return when {
-            record.runId != runId ->
-                throw IllegalArgumentException("Specified run task is not part of the run referenced")
-            record.taskStatus != TaskStatus.Waiting ->
-                throw IllegalArgumentException("Specified run task must be waiting to be run")
-            else -> {
-                val nextTask = getNextTask(runId) ?: throw IllegalArgumentException("Cannot find next task")
-                if (nextTask.pipelineRunTaskId != record.pipelineRunTaskId)
-                    throw IllegalArgumentException("Selected task to run is not next")
-                record
-            }
-        }
+        require(record.runId == runId) { "Specified run task is not part of the run referenced" }
+        require(record.taskStatus == TaskStatus.Waiting) { "Specified run task must be waiting to be run" }
+        val nextTask = getNextTask(runId) ?: throw IllegalArgumentException("Cannot find next task")
+        require(nextTask.pipelineRunTaskId == record.pipelineRunTaskId) { "Selected task to run is not next" }
+        return record
     }
 
+    /**
+     * Reset task to waiting state and delete all children tasks using a stored procedure
+     *
+     * @throws IllegalArgumentException various cases can throw this exception (with a specific message). These include
+     * - the user is not able to run tasks for the run
+     * - the entity obtained has a different runId
+     * - the entity obtained is waiting to be scheduled
+     */
     @Throws(IllegalArgumentException::class)
     fun resetRecord(username: String, runId: Long, pipelineRunTaskId: Long) {
-        if (!PipelineRuns.checkUserRun(runId, username)) {
-            throw IllegalArgumentException("User provided cannot run tasks for this pipeline run")
-        }
+        require(PipelineRuns.checkUserRun(runId, username)) { "User provided cannot run tasks for this pipeline run" }
         val record = getRecord(pipelineRunTaskId)
-        when {
-            record.runId != runId ->
-                throw IllegalArgumentException("Specified retry task is not part of the run referenced")
-            record.taskStatus == TaskStatus.Waiting ->
-                throw IllegalArgumentException("You cannot reset a waiting task")
-            else -> {
-                DatabaseConnection.database.update(this) {
-                    set(it.taskStatus, TaskStatus.Waiting)
-                    set(it.taskCompleted, null)
-                    set(it.taskStart, null)
-                    set(it.taskMessage, null)
-                    set(it.taskStackTrace, null)
-                    where { it.pipelineRunTaskId eq pipelineRunTaskId }
-                }
-                DeleteRunTaskChildren.call(record.pipelineRunTaskId)
-            }
+        require(record.runId == runId) { "Specified retry task is not part of the run referenced" }
+        require(record.taskStatus != TaskStatus.Waiting) { "You cannot reset a waiting task" }
+        DatabaseConnection.database.update(this) {
+            set(it.taskStatus, TaskStatus.Waiting)
+            set(it.taskCompleted, null)
+            set(it.taskStart, null)
+            set(it.taskMessage, null)
+            set(it.taskStackTrace, null)
+            where { it.pipelineRunTaskId eq pipelineRunTaskId }
         }
+        DeleteRunTaskChildren.call(record.pipelineRunTaskId)
     }
 
+    /**
+     * Adds the desired generic task as the last child of the [pipelineRunTaskId]
+     */
     fun addTask(pipelineRunTask: PipelineRunTask, taskId: Long): Long? {
         val lastOrder = DatabaseConnection
             .database
@@ -167,6 +184,7 @@ object PipelineRunTasks: DbTable<PipelineRunTask>("pipeline_run_tasks") {
             }
     }
 
+    /** API response data class for JSON serialization */
     @Serializable
     data class Record(
         @SerialName("task_order")
@@ -201,7 +219,10 @@ object PipelineRunTasks: DbTable<PipelineRunTask>("pipeline_run_tasks") {
         val taskStackTrace: String,
     )
 
-    @Throws(IllegalArgumentException::class)
+    /**
+     * Returns all the tasks associated with the provided [runId], ordered by the parent child relationships and
+     * relative ordering within those relationships
+     */
     fun getOrderedTasks(runId: Long): List<Record> {
         return GetTasksOrdered.call(runId).map { row ->
             Record(
@@ -224,6 +245,7 @@ object PipelineRunTasks: DbTable<PipelineRunTask>("pipeline_run_tasks") {
         }
     }
 
+    /** Holds minimal details of the next available task to run */
     data class NextTask(
         val pipelineRunTaskId: Long,
         val taskId: Long,
@@ -231,6 +253,11 @@ object PipelineRunTasks: DbTable<PipelineRunTask>("pipeline_run_tasks") {
         val taskClassName: String,
     )
 
+    /**
+     * Returns the next runnable task for the given [runId] as a [NextTask]
+     *
+     * @throws IllegalArgumentException when a task in the run is currently running or scheduled
+     */
     @Throws(IllegalArgumentException::class)
     fun getNextTask(runId: Long): NextTask? {
         val running = DatabaseConnection
@@ -244,9 +271,7 @@ object PipelineRunTasks: DbTable<PipelineRunTask>("pipeline_run_tasks") {
             .limit(1)
             .map { row -> row[taskId] }
             .firstOrNull()
-        if (running != null) {
-            throw IllegalArgumentException("Task currently scheduled/running (id = $running)")
-        }
+        require(running == null) { "Task currently scheduled/running (id = $running)" }
         return GetTasksOrdered.nextToRun(runId)?.let { task ->
             NextTask(
                 task["pr_task_id"] as Long,
@@ -257,6 +282,12 @@ object PipelineRunTasks: DbTable<PipelineRunTask>("pipeline_run_tasks") {
         }
     }
 
+    /**
+     * Returns the status of the provided pipeline run task
+     *
+     * @throws IllegalArgumentException when a record cannot be found for the given ID
+     */
+    @Throws(IllegalArgumentException::class)
     fun getStatus(pipelineRunTaskId: Long): String {
         return DatabaseConnection
             .database
@@ -265,9 +296,13 @@ object PipelineRunTasks: DbTable<PipelineRunTask>("pipeline_run_tasks") {
             .where { this.pipelineRunTaskId eq pipelineRunTaskId }
             .map { row -> row[taskStatus] }
             .firstOrNull()
-            ?.name ?: ""
+            ?.name
+            ?: throw IllegalArgumentException("Cannot find a record associated with the given pipelineRunTaskId")
     }
 
+    /**
+     * Updates the status for the given record
+     */
     fun setStatus(pipelineRunTaskId: Long, status: TaskStatus) {
         DatabaseConnection
             .database
