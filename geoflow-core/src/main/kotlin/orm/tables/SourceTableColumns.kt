@@ -5,7 +5,13 @@ import org.ktorm.schema.long
 import org.ktorm.schema.text
 import orm.entities.SourceTableColumn
 
-object SourceTableColumns: DbTable<SourceTableColumn>("source_table_columns") {
+/**
+ * Table used to store the metadata of the columns found in the files/tables from [SourceTables]
+ *
+ * When a source file is analyzed the column metadata is inserted into this table to alert a user if the file has
+ * changed in the columns provided or the character length of data.
+ */
+object SourceTableColumns: DbTable<SourceTableColumn>("source_table_columns"), SequentialPrimaryKey {
     val stcOid = long("stc_oid").primaryKey().bindTo { it.stcOid }
     val name = text("name").bindTo { it.name }
     val type = text("type").bindTo { it.type }
