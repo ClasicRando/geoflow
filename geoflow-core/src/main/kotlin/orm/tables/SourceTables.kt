@@ -175,9 +175,7 @@ object SourceTables: DbTable<SourceTable>("source_tables"), ApiExposed, Sequenti
         }
         if ("file_name" in params) {
             val fileName = params["file_name"] ?: throw IllegalArgumentException("Filename cannot be null")
-            val fileExtension = "(?<=\\.)[^.]+\$".toRegex().find(fileName)?.value
-                ?: throw IllegalArgumentException("file extension could not be found")
-            val loaderType = LoaderType.values().first { fileExtension in it.extensions }
+            val loaderType = LoaderType.getLoaderType(fileName)
             if (loaderType == LoaderType.MDB || loaderType == LoaderType.Excel) {
                 val subTable = params["sub_table"]
                     ?: throw IllegalArgumentException("Sub Table must be not null for the provided filename")
