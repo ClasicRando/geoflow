@@ -4,7 +4,10 @@ import org.ktorm.schema.int
 import org.ktorm.schema.long
 import orm.entities.PipelineTask
 
-object PipelineTasks: DbTable<PipelineTask>("pipeline_tasks") {
+/**
+ * Table used to store the tasks associated with a generic pipeline from the [Pipelines] table
+ */
+object PipelineTasks: DbTable<PipelineTask>("pipeline_tasks"), SequentialPrimaryKey {
     val pipelineTaskId = long("pipeline_task_id").primaryKey().bindTo { it.pipelineTaskId }
     val pipelineId = long("pipeline_id").bindTo { it.pipelineId }
     val taskId = long("task_id").bindTo { it.taskId }
