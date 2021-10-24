@@ -2,6 +2,15 @@ package database.procedures
 
 import kotlin.reflect.full.createType
 
+/**
+ * Stored procedure that performs some standard maintenance of source_tables records.
+ *
+ * Some examples are:
+ * - fixing any record with incorrect loader_type based upon the file extension
+ * - setting file_id when null (should be able to delete this later due to NOT NULL constraint)
+ * - sets all non-FLAT file records to have a false qualified field
+ * - sets sub_table field to null when loader_type is not excel or mdb
+ */
 object UpdateFiles: SqlProcedure(
     name = "update_files",
     parameterTypes = listOf(
@@ -9,6 +18,7 @@ object UpdateFiles: SqlProcedure(
     ),
 ) {
 
+    /** Call the stored procedure */
     fun call(runId: Long) {
         super.call(runId)
     }

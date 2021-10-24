@@ -2,6 +2,10 @@ package database.procedures
 
 import kotlin.reflect.full.createType
 
+/**
+ * Stored Procedure that deletes all child tasks of a given pr_task_id. Uses recursive CTE to obtain all levels of child
+ * tasks for deletion
+ */
 object DeleteRunTaskChildren: SqlProcedure(
     "delete_run_task_children",
     parameterTypes = listOf(
@@ -9,6 +13,7 @@ object DeleteRunTaskChildren: SqlProcedure(
     ),
 ) {
 
+    /** Call the stored procedure */
     fun call(pipelineRunTaskId: Long) {
         super.call(pipelineRunTaskId)
     }
