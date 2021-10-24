@@ -17,7 +17,7 @@ import orm.enums.FileCollectType
 import orm.enums.LoaderType
 import kotlin.jvm.Throws
 
-object SourceTables: DbTable<SourceTable>("source_tables") {
+object SourceTables: DbTable<SourceTable>("source_tables"), ApiExposed, SequentialPrimaryKey {
 
     val stOid = long("st_oid").primaryKey().bindTo { it.stOid }
     val runId = long("run_id").bindTo { it.runId }
@@ -35,7 +35,8 @@ object SourceTables: DbTable<SourceTable>("source_tables") {
     val comments = text("comments").bindTo { it.comments }
     val collectType = enum<FileCollectType>("collect_type").bindTo { it.collectType }
     val delimiter = varchar("delimiter").bindTo { it.delimiter }
-    val tableDisplayFields = mapOf(
+
+    override val tableDisplayFields = mapOf(
         "table_name" to mapOf("editable" to "true", "sortable" to "true"),
         "file_id" to mapOf("name" to "File ID", "editable" to "true", "sortable" to "true"),
         "file_name" to mapOf("editable" to "true", "sortable" to "true"),
@@ -61,6 +62,7 @@ object SourceTables: DbTable<SourceTable>("source_tables") {
             MAXVALUE 9223372036854775807
             CACHE 1;
     """.trimIndent()
+
     override val createStatement = """
         CREATE TABLE IF NOT EXISTS public.source_tables
         (
@@ -90,6 +92,7 @@ object SourceTables: DbTable<SourceTable>("source_tables") {
         );
     """.trimIndent()
 
+    /** API response data class for JSON serialization */
     @Serializable
     data class Record(
         @SerialName("st_oid")
@@ -124,7 +127,10 @@ object SourceTables: DbTable<SourceTable>("source_tables") {
         val load: Boolean,
     )
 
-    @Throws(IllegalArgumentException::class)
+    /**
+     * Returns JSON serializable response of all source tables linked to a given [runId]. Returns an empty list when
+     * no source tables are linked to the [runId]
+     */
     fun getRunSourceTables(runId: Long): List<Record> {
         return DatabaseConnection
             .database
@@ -151,6 +157,12 @@ object SourceTables: DbTable<SourceTable>("source_tables") {
             }
     }
 
+    /**
+     * Builds insert or update assignments from a map of [params] provided from an HTTP request's query parameters
+     *
+     * Moves through possible fields to assign and if the field key can be found in the [params] then the value is
+     * extracted from the map to be used for field assignment
+     */
     private fun AssignmentsBuilder.buildAssignmentFromParams(params: Map<String, String?>) {
         if ("table_name" in params) {
             set(
@@ -197,7 +209,16 @@ object SourceTables: DbTable<SourceTable>("source_tables") {
         }
     }
 
-    @Throws(IllegalArgumentException::class, NumberFormatException::class, NoSuchElementException::class)
+    /**
+     * Uses [params] map to update a given record specified by the stOid provided in the map and return the stOid
+     *
+     * @throws IllegalArgumentException when various conditions are not met
+     * - [params] does not contain runId
+     * - [params] does not contain stOid
+     * - the username passed does not have access to update the source tables associated with the runId
+     * @throws NumberFormatException when the runId or stOid are not Long strings
+     */
+    @Throws(IllegalArgumentException::class, NumberFormatException::class)
     fun updateSourceTable(username: String, params: Map<String, String?>): Long {
         val runId = params["runId"]
             ?.toLong()
@@ -205,9 +226,7 @@ object SourceTables: DbTable<SourceTable>("source_tables") {
         val stOid = params["stOid"]
             ?.toLong()
             ?: throw IllegalArgumentException("stOid must be a non-null parameter in the url")
-        if (!PipelineRuns.checkUserRun(runId, username)) {
-            throw IllegalArgumentException("Username does not own the runId")
-        }
+        require(PipelineRuns.checkUserRun(runId, username)) { "Username does not own the runId" }
         DatabaseConnection.database.update(this) {
             buildAssignmentFromParams(params)
             where { it.stOid eq stOid }
@@ -215,20 +234,37 @@ object SourceTables: DbTable<SourceTable>("source_tables") {
         return stOid
     }
 
+    /**
+     * Uses [params] map to insert a record into [SourceTables] and return the new records stOid
+     *
+     * @throws IllegalArgumentException when various conditions are not met
+     * - [params] does not contain runId
+     * - the username passed does not have access to update the source tables associated with the runId
+     * - the insert command returns null meaning a record was not inserted
+     * @throws NumberFormatException when the runId or stOid are not Long strings
+     */
     @Throws(IllegalArgumentException::class, NumberFormatException::class, NoSuchElementException::class)
     fun insertSourceTable(username: String, params: Map<String, String?>): Long {
         val runId = params["runId"]
             ?.toLong()
             ?: throw IllegalArgumentException("runId must be a non-null parameter in the url")
-        if (!PipelineRuns.checkUserRun(runId, username)) {
-            throw IllegalArgumentException("Username does not own the runId")
-        }
+        require(PipelineRuns.checkUserRun(runId, username)) { "Username does not own the runId" }
         return DatabaseConnection.database.insertReturning(this, stOid) {
             buildAssignmentFromParams(params)
             set(SourceTables.runId, runId)
         } ?: throw IllegalArgumentException("Error while trying to insert record. Null returned")
     }
 
+
+    /**
+     * Uses [params] map to delete a record from [SourceTables] as specified by the stOid and return the stOid
+     *
+     * @throws IllegalArgumentException when various conditions are not met
+     * - [params] does not contain runId
+     * - [params] does not contain stOid
+     * - the username passed does not have access to update the source tables associated with the runId
+     * @throws NumberFormatException when the runId or stOid are not Long strings
+     */
     @Throws(IllegalArgumentException::class, NumberFormatException::class, NoSuchElementException::class)
     fun deleteSourceTable(username: String, params: Map<String, String?>): Long {
         val runId = params["runId"]
@@ -237,9 +273,7 @@ object SourceTables: DbTable<SourceTable>("source_tables") {
         val stOid = params["stOid"]
             ?.toLong()
             ?: throw IllegalArgumentException("stOid must be a non-null parameter in the url")
-        if (!PipelineRuns.checkUserRun(runId, username)) {
-            throw IllegalArgumentException("Username does not own the runId")
-        }
+        require(PipelineRuns.checkUserRun(runId, username)) { "Username does not own the runId" }
         DatabaseConnection.database.delete(this) {
             it.stOid eq stOid
         }
