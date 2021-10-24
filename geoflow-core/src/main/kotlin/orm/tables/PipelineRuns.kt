@@ -15,7 +15,13 @@ import orm.entities.PipelineRunTask
 import orm.enums.MergeType
 import kotlin.jvm.Throws
 
-object PipelineRuns: DbTable<PipelineRun>("pipeline_runs") {
+/**
+ * Table used to store the metadata associated with a run of a generic data pipeline
+ *
+ * Each run is linked with a data source and holds information about the users who interacted with the run, the current
+ * state/status of the run and various other meta details.
+ */
+object PipelineRuns: DbTable<PipelineRun>("pipeline_runs"), ApiExposed, Triggers {
     val runId = long("run_id").primaryKey().bindTo { it.runId }
     val dsId = long("ds_id").references(DataSources) { it.dataSource }
     val recordDate = date("record_date").bindTo { it.recordDate }
@@ -33,7 +39,7 @@ object PipelineRuns: DbTable<PipelineRun>("pipeline_runs") {
     val hasChildTables = boolean("has_child_tables").bindTo { it.hasChildTables }
     val mergeType = enum<MergeType>("merge_type").bindTo { it.mergeType }
 
-    val tableDisplayFields = mapOf(
+    override val tableDisplayFields = mapOf(
         "ds_id" to mapOf("name" to "Data Source ID"),
         "ds_code" to mapOf("name" to "Data Source Code"),
         "record_date" to mapOf(),
@@ -84,47 +90,54 @@ object PipelineRuns: DbTable<PipelineRun>("pipeline_runs") {
         );
     """.trimIndent()
 
-    // Trigger function for updating a pipeline run record
-    val updatePipelineRun = """
-        CREATE OR REPLACE FUNCTION public.update_pipeline_run()
-            RETURNS trigger
-            LANGUAGE 'plpgsql'
-            COST 100
-            VOLATILE NOT LEAKPROOF
-        AS ${'$'}BODY${'$'}
-        DECLARE
-            v_pipeline_id BIGINT;
-        BEGIN
-            SELECT CASE NEW.workflow_operation
-                    WHEN 'collection' THEN collection_pipeline
-                    WHEN 'load' THEN load_pipeline
-                    WHEN 'check' THEN check_pipeline
-                    WHEN 'qa' THEN qa_pipeline
-                   END
-            INTO   v_pipeline_id
-            FROM   data_sources
-            WHERE  ds_id = NEW.ds_id;
-            IF NEW.operation_state = 'Active' AND OLD.operation_state = 'Ready' THEN
-                INSERT INTO pipeline_run_tasks(run_id,task_id,parent_task_id,parent_task_order)
-                SELECT NEW.run_id, t2.task_id, t2.parent_task, t2.parent_task_order
-                FROM   pipelines t1
-                JOIN   pipeline_tasks t2
-                ON	   t1.pipeline_id = t2.pipeline_id
-                WHERE  t1.pipeline_id = v_pipeline_id;
-            END IF;
-            RETURN NEW;
-        END;
-        ${'$'}BODY${'$'};
-    """.trimIndent()
+    override val triggers: List<Trigger> = listOf(
+        // Trigger function for updating a pipeline run record
+        Trigger(
+            trigger = """
+                CREATE TRIGGER update_record
+                    BEFORE UPDATE 
+                    ON public.pipeline_runs
+                    FOR EACH ROW
+                    EXECUTE FUNCTION public.update_pipeline_run();
+            """.trimIndent(),
+            triggerFunction = """
+                CREATE OR REPLACE FUNCTION public.update_pipeline_run()
+                    RETURNS trigger
+                    LANGUAGE 'plpgsql'
+                    COST 100
+                    VOLATILE NOT LEAKPROOF
+                AS ${'$'}BODY${'$'}
+                DECLARE
+                    v_pipeline_id BIGINT;
+                BEGIN
+                    SELECT CASE NEW.workflow_operation
+                            WHEN 'collection' THEN collection_pipeline
+                            WHEN 'load' THEN load_pipeline
+                            WHEN 'check' THEN check_pipeline
+                            WHEN 'qa' THEN qa_pipeline
+                           END
+                    INTO   v_pipeline_id
+                    FROM   data_sources
+                    WHERE  ds_id = NEW.ds_id;
+                    IF NEW.operation_state = 'Active' AND OLD.operation_state = 'Ready' THEN
+                        INSERT INTO pipeline_run_tasks(run_id,task_id,parent_task_id,parent_task_order)
+                        SELECT NEW.run_id, t2.task_id, t2.parent_task, t2.parent_task_order
+                        FROM   pipelines t1
+                        JOIN   pipeline_tasks t2
+                        ON	   t1.pipeline_id = t2.pipeline_id
+                        WHERE  t1.pipeline_id = v_pipeline_id;
+                    END IF;
+                    RETURN NEW;
+                END;
+                ${'$'}BODY${'$'};
+            """.trimIndent(),
+        ),
+    )
 
-    val updateTrigger = """
-        CREATE TRIGGER update_record
-            BEFORE UPDATE 
-            ON public.pipeline_runs
-            FOR EACH ROW
-            EXECUTE FUNCTION public.update_pipeline_run();
-    """.trimIndent()
-
+    /**
+     * Checks if a username is linked to the given runId. Returns true if user is a part of the run
+     * @throws IllegalArgumentException when the username does not link to a user in [InternalUsers]
+     */
     fun checkUserRun(runId: Long, username: String): Boolean {
         val user = InternalUsers.getUser(username)
         if ("admin" in user.roles) {
@@ -141,6 +154,7 @@ object PipelineRuns: DbTable<PipelineRun>("pipeline_runs") {
         return user.userOid in runUserIds
     }
 
+    /** API response data class for JSON serialization */
     @Serializable
     data class Record(
         @SerialName("run_id")
@@ -160,8 +174,18 @@ object PipelineRuns: DbTable<PipelineRun>("pipeline_runs") {
         @SerialName("check_user")
         val checkUser: String,
         @SerialName("qa_user")
-        val qaUser: String)
+        val qaUser: String,
+    )
 
+    /**
+     * Returns the runs associated with a userId and within a specified state
+     *
+     * Future Changes
+     * --------------
+     * - should make the state value an enum to avoid unwanted state
+     *
+     * @throws IllegalArgumentException when the state provided does not match the required values
+     */
     @Throws(IllegalArgumentException::class)
     fun userRuns(userId: Long, state: String): List<Record> {
         val columnCheck = when(state) {
@@ -192,6 +216,10 @@ object PipelineRuns: DbTable<PipelineRun>("pipeline_runs") {
             }
     }
 
+    /**
+     * Returns the last runId for the data source linked to the pipeline run task. If a past run cannot be found, null
+     * is returned
+     */
     fun lastRun(pipelineRunTask: PipelineRunTask): Long? {
         val dsId = DatabaseConnection
             .database
@@ -211,6 +239,10 @@ object PipelineRuns: DbTable<PipelineRun>("pipeline_runs") {
             .firstOrNull()
     }
 
+    /**
+     * Attempts to return a PipelineRun entity from the provided runId. Returns null if the runId does not match any
+     * records
+     */
     fun getRun(runId: Long): PipelineRun? {
         return DatabaseConnection
             .database
@@ -221,6 +253,11 @@ object PipelineRuns: DbTable<PipelineRun>("pipeline_runs") {
             .firstOrNull()
     }
 
+    /**
+     * Locks the record for the specified run and returns the entity
+     *
+     * @throws NoSuchElementException when the runId does not match any record
+     */
     @Throws(NoSuchElementException::class)
     private fun reserveRecord(runId: Long): PipelineRun {
         return DatabaseConnection
@@ -233,6 +270,12 @@ object PipelineRuns: DbTable<PipelineRun>("pipeline_runs") {
             .first()
     }
 
+    /**
+     * Sets a run to a specific user for the current workflow operation.
+     *
+     * @throws NoSuchElementException when the reserve record function cannot find a record
+     * @throws IllegalArgumentException when the run's workflow operation is not valid
+     */
     @Throws(NoSuchElementException::class, IllegalArgumentException::class)
     fun pickupRun(runId: Long, userId: Long) {
         DatabaseConnection.database.run {
