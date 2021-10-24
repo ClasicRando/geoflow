@@ -1,5 +1,19 @@
 package orm.tables
 
+import java.io.InputStream
+
+/**
+ * Table should be created with default data during build script operation
+ */
+interface DefaultData {
+    /** Name of the file in the resources folder that contains the default data needed to be loaded */
+    val defaultRecordsFileName: String
+}
+
+/** Extends default data tables to have easy access to the resources file specified */
+val DefaultData.defaultRecordsFile: InputStream?
+    get() = this::class.java.classLoader.getResourceAsStream(defaultRecordsFileName)
+
 /**
  * Table is used to return results in the API
  */
