@@ -4,6 +4,9 @@ import org.ktorm.schema.text
 import orm.entities.Prov
 import java.io.InputStream
 
+/**
+ * Table used to store the province/state codes that can be used to define prov/state level [DataSources]
+ */
 object Provs: DbTable<Prov>("provs"), DefaultData {
 
     val provCode = text("prov_code").primaryKey().bindTo { it.provCode }
