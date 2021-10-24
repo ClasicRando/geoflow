@@ -17,6 +17,14 @@ import orm.enums.FileCollectType
 import orm.enums.LoaderType
 import kotlin.jvm.Throws
 
+/**
+ * Table used to store source files for pipeline runs. Contains metadata about the files, how the file should be loaded
+ * into the database, and what table the data should be loaded into.
+ *
+ * Future Changes
+ * --------------
+ * - add constraint to make sure file_id follows a specific pattern
+ */
 object SourceTables: DbTable<SourceTable>("source_tables"), ApiExposed, SequentialPrimaryKey {
 
     val stOid = long("st_oid").primaryKey().bindTo { it.stOid }
