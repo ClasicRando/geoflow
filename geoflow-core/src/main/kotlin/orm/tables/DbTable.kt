@@ -11,6 +11,9 @@ import org.ktorm.schema.Table
  * statements
  */
 abstract class DbTable<E: Entity<E>>(tableName: String): Table<E>(tableName) {
+    /**
+     * SQL create statement for the table
+     */
     abstract val createStatement: String
     val hasForeignKey: Boolean
         get() = createStatement.contains("FOREIGN KEY")
