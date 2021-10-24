@@ -5,6 +5,9 @@ import org.ktorm.schema.text
 import org.ktorm.support.postgresql.textArray
 import orm.entities.PlottingField
 
+/**
+ * Table has yet to be finalized and should not be used until then
+ */
 object PlottingFields: DbTable<PlottingField>("plotting_fields") {
     val name = text("name").bindTo { it.name }
     val addressLine1 = text("address_line1").bindTo { it.addressLine1 }

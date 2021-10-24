@@ -3,6 +3,9 @@ package orm.tables
 import org.ktorm.schema.*
 import orm.entities.PlottingMethod
 
+/**
+ * Table has yet to be finalized and should not be used until then
+ */
 object PlottingMethods: DbTable<PlottingMethod>("plotting_methods") {
     val dsId = long("ds_id").bindTo { it.dsId }
     val order = short("order").bindTo { it.order }

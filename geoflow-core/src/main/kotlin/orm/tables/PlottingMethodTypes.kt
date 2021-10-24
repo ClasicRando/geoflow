@@ -4,6 +4,9 @@ import org.ktorm.schema.int
 import org.ktorm.schema.text
 import orm.entities.PlottingMethodType
 
+/**
+ * Table has yet to be finalized and should not be used until then
+ */
 object PlottingMethodTypes: DbTable<PlottingMethodType>("plotting_method_types") {
     val methodId = int("method_id").primaryKey().bindTo { it.methodId }
     val name = text("name").bindTo { it.name }
