@@ -1,10 +1,19 @@
 package database.procedures
 
+import kotlin.reflect.full.createType
+
 object UpdateFiles: SqlProcedure(
     name = "update_files",
-    parameterTypes = listOf(Long::class)
+    parameterTypes = listOf(
+        Long::class.createType(),
+    ),
 ) {
-    val code = """
+
+    fun call(runId: Long) {
+        super.call(runId)
+    }
+
+    override val code = """
         CREATE OR REPLACE PROCEDURE public.update_files(
         	run_id bigint)
         LANGUAGE 'sql'

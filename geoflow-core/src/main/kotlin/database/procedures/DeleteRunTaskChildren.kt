@@ -1,10 +1,19 @@
 package database.procedures
 
+import kotlin.reflect.full.createType
+
 object DeleteRunTaskChildren: SqlProcedure(
     "delete_run_task_children",
-    parameterTypes = listOf(Long::class)
+    parameterTypes = listOf(
+        Long::class.createType(),
+    ),
 ) {
-    val code = """
+
+    fun call(pipelineRunTaskId: Long) {
+        super.call(pipelineRunTaskId)
+    }
+
+    override val code = """
         CREATE OR REPLACE PROCEDURE public.delete_run_task_children(
         	pr_task_id bigint)
         LANGUAGE 'sql'
