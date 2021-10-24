@@ -8,14 +8,19 @@ import org.ktorm.schema.text
 import orm.entities.WorkflowOperation
 import kotlin.jvm.Throws
 
-object WorkflowOperations: DbTable<WorkflowOperation>("workflow_operations"), DefaultData {
+/**
+ * Table used to store the types of workflow states used in generic data pipelines.
+ */
+object WorkflowOperations: DbTable<WorkflowOperation>("workflow_operations"), DefaultData, ApiExposed {
     val code = text("code").primaryKey().bindTo { it.code }
     val href = text("href").bindTo { it.href }
     val role = text("role").bindTo { it.role }
     val name = text("name").bindTo { it.name }
     val workflowOrder = int("workflow_order").bindTo { it.workflowOrder }
 
-    val tableDisplayFields = mapOf("name" to mapOf("name" to "Operation"))
+    override val tableDisplayFields = mapOf(
+        "name" to mapOf("name" to "Operation"),
+    )
 
     override val defaultRecordsFileName: String = "workflow_operations.csv"
 
@@ -34,10 +39,16 @@ object WorkflowOperations: DbTable<WorkflowOperation>("workflow_operations"), De
         );
     """.trimIndent()
 
+    /** API response data class for JSON serialization */
     @Serializable
     data class Record(val name: String, val href: String)
 
-    @Throws(IllegalArgumentException::class)
+    /**
+     * Returns a JSON serializable response of operations available to a user
+     *
+     * @throws IllegalStateException when either QueryRowSet value is null
+     */
+    @Throws(IllegalStateException::class)
     fun userOperations(roles: List<String>): List<Record> {
         return DatabaseConnection
             .database
@@ -50,19 +61,9 @@ object WorkflowOperations: DbTable<WorkflowOperation>("workflow_operations"), De
             .orderBy(workflowOrder.asc())
             .map { row ->
                 Record(
-                    row[name] ?: throw IllegalArgumentException("name cannot be null"),
-                    row[href] ?: throw IllegalArgumentException("href cannot be null")
+                    row[name] ?: throw IllegalStateException("name cannot be null"),
+                    row[href] ?: throw IllegalStateException("href cannot be null")
                 )
             }
-    }
-
-    fun workflowName(workflowCode: String): String {
-        return DatabaseConnection
-            .database
-            .from(this)
-            .select(name)
-            .where(code eq workflowCode)
-            .map { row -> row[name] }
-            .firstOrNull() ?: ""
     }
 }
