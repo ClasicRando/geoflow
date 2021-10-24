@@ -3,6 +3,29 @@ package database.functions
 import orm.enums.TaskStatus
 import kotlin.reflect.full.createType
 
+/**
+ * Table Function to retrieve all tasks belonging to a pipeline run, ordered by relative parent child order.
+ *
+ * This means that the function will start with parentId of 0, and select each task followed by the children of that
+ * task if they exist. For example, if a run has the following tasks (structured as 'Task ID', 'Parent Task ID',
+ * 'Parent Task Order'):
+ *
+ * - A, 0, 1
+ * - B, 0, 2
+ * - C, 0, 3
+ * - D, B, 1
+ * - E, B, 2
+ * - F, D, 1
+ *
+ * The resulting list of tasks would be (by 'Task ID' or first column):
+ *
+ * 1. A
+ * 2. B
+ * 3. D
+ * 4. F
+ * 5. E
+ * 6. C
+ */
 object GetTasksOrdered: PlPgSqlTableFunction(
     name = "get_tasks_ordered",
     parameterTypes = listOf(
@@ -11,17 +34,25 @@ object GetTasksOrdered: PlPgSqlTableFunction(
     ),
 ) {
 
+    /**
+     * Calls the current scope 'call' function using the [runId] and returns the next task to run (ie Waiting)
+     */
     fun nextToRun(runId: Long): Map<String, Any?>? {
         return call(runId).firstOrNull { task ->
             (task["task_status"] as String) == TaskStatus.Waiting.name
         }
     }
 
+    /**
+     * Current scope 'call' function that uses the [runId] and [workflowState] to call the parent class scope 'call'
+     * function. Makes sure users of this object provide the correct parameters before calling the super function.
+     * Returns the list of ResultSet rows as a map
+     */
     fun call(runId: Long, workflowState: String? = null): List<Map<String, Any?>> {
         return super.call(runId, workflowState)
     }
 
-    val code = """
+    override val functionCode = """
         CREATE OR REPLACE FUNCTION public.get_tasks_ordered(
             p_run_id bigint,
 			workflow_operation text default null,
@@ -65,44 +96,46 @@ object GetTasksOrdered: PlPgSqlTableFunction(
         ${'$'}BODY${'$'};
     """.trimIndent()
 
-    val innerFunction = """
-        CREATE OR REPLACE FUNCTION public.get_task_children(
-            p_run_id bigint,
-            p_parent_task_id bigint,
-            OUT pr_task_id bigint)
-            RETURNS SETOF bigint 
-            LANGUAGE 'plpgsql'
-            COST 100
-            VOLATILE PARALLEL UNSAFE
-            ROWS 1000
-        
-        AS ${'$'}BODY${'$'}
-        declare
-            r record;
-            i record;
-        begin
-            for r in (select distinct t1.pr_task_id, t1.parent_task_order, case when t2.task_id is not null then true else false end has_children
-                      from   pipeline_run_tasks t1
-                      left join pipeline_run_tasks t2
-                      on     t1.run_id = t2.run_id
-                      and    t1.pr_task_id = t2.parent_task_id
-                      left join tasks t3
-                      on     t1.task_id = t3.task_id
-                      where  t1.run_id = $1
-                      and    t1.parent_task_id = $2
-                      order by t1.parent_task_order)
-            loop
-                pr_task_id := r.pr_task_id;
-                return next;
-                if r.has_children then
-                    for i in (select * from get_task_children($1, r.pr_task_id))
-                    loop
-                        pr_task_id := i.pr_task_id;
-                        return next;
-                    end loop;
-                end if;
-            end loop;
-        end;
-        ${'$'}BODY${'$'};
-    """.trimIndent()
+    override val innerFunctions = listOf(
+        """
+            CREATE OR REPLACE FUNCTION public.get_task_children(
+                p_run_id bigint,
+                p_parent_task_id bigint,
+                OUT pr_task_id bigint)
+                RETURNS SETOF bigint 
+                LANGUAGE 'plpgsql'
+                COST 100
+                VOLATILE PARALLEL UNSAFE
+                ROWS 1000
+            
+            AS ${'$'}BODY${'$'}
+            declare
+                r record;
+                i record;
+            begin
+                for r in (select distinct t1.pr_task_id, t1.parent_task_order, case when t2.task_id is not null then true else false end has_children
+                          from   pipeline_run_tasks t1
+                          left join pipeline_run_tasks t2
+                          on     t1.run_id = t2.run_id
+                          and    t1.pr_task_id = t2.parent_task_id
+                          left join tasks t3
+                          on     t1.task_id = t3.task_id
+                          where  t1.run_id = $1
+                          and    t1.parent_task_id = $2
+                          order by t1.parent_task_order)
+                loop
+                    pr_task_id := r.pr_task_id;
+                    return next;
+                    if r.has_children then
+                        for i in (select * from get_task_children($1, r.pr_task_id))
+                        loop
+                            pr_task_id := i.pr_task_id;
+                            return next;
+                        end loop;
+                    end if;
+                end loop;
+            end;
+            ${'$'}BODY${'$'};
+        """.trimIndent(),
+    )
 }
