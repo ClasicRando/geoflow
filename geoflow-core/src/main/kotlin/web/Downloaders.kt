@@ -14,9 +14,12 @@ import java.util.zip.ZipFile
 import kotlin.jvm.Throws
 
 /**
+ * Downloads a file from the specified [url] and writes that file to the [outputPath].
  *
+ * If the file already exits, it will be overwritten by incoming file.
+ *
+ * @throws IOException if an I/O error has occurred
  */
-@Throws(IOException::class)
 @Suppress("BlockingMethodInNonBlockingContext")
 suspend fun downloadFile(
     url: String,
@@ -33,9 +36,12 @@ suspend fun downloadFile(
 }
 
 /**
+ * Downloads a zip file from the specified [url] and unzips all the files within the zip folder to the [outputPath].
  *
+ * Writes the zip download to a temp file and writes each zip entry into a file
+ *
+ * @throws IOException if an I/O error has occurred
  */
-@Throws(IOException::class, IllegalStateException::class)
 @Suppress("BlockingMethodInNonBlockingContext")
 suspend fun downloadZip(url: String, outputPath: String) {
     HttpClient(CIO).use { client ->
