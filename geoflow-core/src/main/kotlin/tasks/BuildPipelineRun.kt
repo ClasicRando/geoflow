@@ -10,6 +10,14 @@ import orm.tables.PipelineRunTasks
 import orm.tables.PipelineRuns
 import orm.tables.SourceTables
 
+/**
+ * System task to build the initial pipeline run state.
+ *
+ * Checks for past runs for the data source. If past runs exist, copy forward the last run's source table data. If not,
+ * then create 2 new child tasks:
+ * 1. User task to remind the user to populate the source tables provided
+ * 2. System task to validate that the run is ready to proceed
+ */
 class BuildPipelineRun(pipelineRunTaskId: Long): SystemTask(pipelineRunTaskId) {
 
     override val taskId: Long = 1
