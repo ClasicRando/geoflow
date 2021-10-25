@@ -43,10 +43,10 @@ class DownloadMissingFiles(pipelineRunTaskId: Long): SystemTask(pipelineRunTaskI
             .forEach { url ->
                 when {
                     url.contains("/arcgis/rest/", ignoreCase = true) -> {
-                        ArcGisScraper.fromUrl(
+                        scrapeArcGisService(
                             url = url,
                             outputPath = outputFolder
-                        ).scrape()
+                        )
                     }
                     url.endsWith(".zip") -> {
                         downloadZip(
