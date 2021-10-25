@@ -19,6 +19,7 @@ object SourceTableColumns: DbTable<SourceTableColumn>("source_table_columns"), S
     val minLength = int("min_length").bindTo { it.minLength }
     val label = text("label").bindTo { it.label }
     val stOid = long("st_oid").bindTo { it.stOid }
+    val columnIndex = int("column_index").bindTo { it.columnIndex }
 
     val createSequence = """
         CREATE SEQUENCE public.source_table_columns_stc_oid_seq
@@ -38,6 +39,7 @@ object SourceTableColumns: DbTable<SourceTableColumn>("source_table_columns"), S
             min_length integer NOT NULL,
             label text COLLATE pg_catalog."default" NOT NULL,
             stc_oid bigint NOT NULL DEFAULT nextval('source_table_columns_stc_oid_seq'::regclass),
+            column_index integer NOT NULL,
             CONSTRAINT source_table_columns_pkey PRIMARY KEY (stc_oid),
             CONSTRAINT column_name_in_table UNIQUE (st_oid, name)
         )

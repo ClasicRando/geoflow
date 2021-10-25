@@ -10,4 +10,5 @@ interface SourceTableColumn: Entity<SourceTableColumn> {
     val minLength: Int
     val label: String
     val stOid: Long
+    val columnIndex: Int
 }
