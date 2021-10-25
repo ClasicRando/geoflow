@@ -1,9 +1,13 @@
 package tasks
 
 import database.DatabaseConnection
+import database.procedures.UpdateFiles
 import org.ktorm.dsl.*
 import orm.tables.SourceTables
 
+/**
+ * System task to validate the pipeline run has at least 1 [SourceTables] record entry
+ */
 class ValidateFirstPipeline(pipelineRunTaskId: Long): SystemTask(pipelineRunTaskId) {
 
     override val taskId: Long = 11
