@@ -15,11 +15,26 @@ import orm.tables.PipelineRunTasks
 import orm.tables.PipelineRuns
 import java.io.File
 
+/**
+ * System task that scans the source folder to find any missing or extra files in the 'files' folder.
+ *
+ * Collects all source tables associated with the run and walks the 'files' folder to find existing and required files.
+ * Finding all missing files that are required and separates those files as downloadable (Download or REST collect type)
+ * or collectable (all other file types that require manual intervention to collect). Once the missing file requirements
+ * are found, the appropriate tasks ([DownloadMissingFiles] and [CollectMissingFiles]) are added as children tasks with
+ * a second [ScanSourceFolder] task to valid after the missing files are resolved.
+ */
 class ScanSourceFolder(pipelineTaskId: Long): SystemTask(pipelineTaskId) {
 
     override val taskId: Long = 3
 
     override suspend fun run() {
+        val pipelineRun = PipelineRuns.getRun(task.runId) ?: throw Exception("Run cannot be null")
+        val folder = File(pipelineRun.runFilesLocation)
+        require(folder.exists()) {
+            "Files location specified by data source does not exist or the system does not have access"
+        }
+        require(folder.isDirectory) { "Files location specified by data source is not a directory" }
         val hasScanned = DatabaseConnection
             .database
             .pipelineRunTasks
@@ -27,17 +42,11 @@ class ScanSourceFolder(pipelineTaskId: Long): SystemTask(pipelineTaskId) {
             .filter { it.taskId eq taskId }
             .filter { it.pipelineRunTaskId notEq pipelineRunTaskId }
             .any()
-        val pipelineRun = PipelineRuns.getRun(task.runId) ?: throw Exception("Run cannot be null")
         val sourceFiles = DatabaseConnection
             .database
             .sourceTables
             .filter { it.runId eq task.runId }
             .toList()
-        val folder = File(pipelineRun.runFilesLocation)
-        if (!folder.exists())
-            throw Exception("Files location specified by data source does not exist or the system does not have access")
-        if (!folder.isDirectory)
-            throw Exception("Files location specified by data source is not a directory")
         val files = folder
             .walk()
             .filter { it.isFile }
@@ -47,7 +56,7 @@ class ScanSourceFolder(pipelineTaskId: Long): SystemTask(pipelineTaskId) {
         val downloadTypes = listOf(FileCollectType.REST, FileCollectType.Download)
         if (missingFiles.isNotEmpty()) {
             if (hasScanned)
-                throw Exception("Attempted to rescan after download but still missing files")
+                throw IllegalStateException("Attempted to rescan after download but still missing files")
             val downloadTaskId = missingFiles
                 .filter { it.collectType in downloadTypes }
                 .map { it.fileName }
