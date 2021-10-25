@@ -6,9 +6,7 @@ import orm.entities.runFilesLocation
 import orm.enums.FileCollectType
 import orm.tables.PipelineRuns
 import orm.tables.SourceTables
-import web.ArcGisScraper
-import web.FileDownloader
-import web.ZipDownloader
+import web.*
 
 /**
  * System task that downloads missing files that have a URL to reference.
@@ -51,16 +49,16 @@ class DownloadMissingFiles(pipelineRunTaskId: Long): SystemTask(pipelineRunTaskI
                         ).scrape()
                     }
                     url.endsWith(".zip") -> {
-                        ZipDownloader(
+                        downloadZip(
                             url = url,
                             outputPath = outputFolder
-                        ).request()
+                        )
                     }
                     else -> {
-                        FileDownloader(
+                        downloadFile(
                             url = url,
                             outputPath = outputFolder
-                        ).request()
+                        )
                     }
                 }
             }
