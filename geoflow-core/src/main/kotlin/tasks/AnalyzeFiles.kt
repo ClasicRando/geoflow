@@ -6,14 +6,24 @@ import database.sourceTables
 import kotlinx.coroutines.flow.buffer
 import kotlinx.coroutines.flow.collect
 import org.ktorm.dsl.eq
+import org.ktorm.dsl.update
 import org.ktorm.entity.filter
 import org.ktorm.entity.groupBy
 import org.ktorm.support.postgresql.insertOrUpdate
 import orm.entities.runFilesLocation
 import orm.tables.PipelineRuns
 import orm.tables.SourceTableColumns
+import orm.tables.SourceTables
 import java.io.File
 
+/**
+ * System task to analyze all the source files for a pipeline run that are marked to be analyzed.
+ *
+ * Iterates over all the source tables in a pipeline run that have a 'true' analyze field and analyze the specified
+ * file. One file might have multiple sub tables so each source table record is grouped by filename. After the files
+ * have been analyzed, the column stats are inserted (or updated if they already exist) into the [SourceTableColumns]
+ * table and the [SourceTables] record is updated to show it has been analyzed.
+ */
 class AnalyzeFiles(pipelineRunTaskId: Long): SystemTask(pipelineRunTaskId) {
 
     override val taskId: Long = 12
@@ -43,24 +53,30 @@ class AnalyzeFiles(pipelineRunTaskId: Long): SystemTask(pipelineRunTaskId) {
                             .eachCount()
                             .filter { it.value > 1 }
                             .toMutableMap()
-                        analyzeResult.columns.forEach { column ->
+                        analyzeResult.columns.forEachIndexed { i, column ->
                             val columnName = repeats[column.name]?.let { repeatCount ->
                                 repeats[column.name] = repeatCount - 1
                                 "${column.name}_${repeatCount}"
                             } ?: column.name
                             insertOrUpdate(SourceTableColumns) {
-                                set(SourceTableColumns.name, columnName)
-                                set(SourceTableColumns.type, column.type)
-                                set(SourceTableColumns.maxLength, column.maxLength)
-                                set(SourceTableColumns.minLength, column.minLength)
-                                set(SourceTableColumns.label, "")
-                                set(SourceTableColumns.stOid, sourceTable.stOid)
-                                onConflict(SourceTableColumns.stOid, SourceTableColumns.name) {
-                                    set(SourceTableColumns.type, column.type)
-                                    set(SourceTableColumns.maxLength, column.maxLength)
-                                    set(SourceTableColumns.minLength, column.minLength)
+                                set(it.name, columnName)
+                                set(it.type, column.type)
+                                set(it.maxLength, column.maxLength)
+                                set(it.minLength, column.minLength)
+                                set(it.label, "")
+                                set(it.stOid, sourceTable.stOid)
+                                set(it.columnIndex, i)
+                                onConflict(it.stOid, it.name) {
+                                    set(it.type, column.type)
+                                    set(it.maxLength, column.maxLength)
+                                    set(it.minLength, column.minLength)
                                 }
                             }
+                        }
+                        update(SourceTables) {
+                            set(it.analyze, false)
+                            set(it.recordCount, sourceTable.recordCount)
+                            where { it.stOid eq sourceTable.stOid }
                         }
                     }
                 }
