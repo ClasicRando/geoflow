@@ -22,7 +22,7 @@ fun getUserPipelineTask(pipelineRunTaskId: Long, taskClassName: String): UserTas
         .newInstance(pipelineRunTaskId) as UserTask
 }
 
-fun <T> requireNotEmpty(collection: Collection<T>, lazyMessage: () -> Any) {
+inline fun <T> requireNotEmpty(collection: Collection<T>, lazyMessage: () -> Any) {
     if (collection.isEmpty()) {
         val message = lazyMessage()
         throw IllegalArgumentException(message.toString())
