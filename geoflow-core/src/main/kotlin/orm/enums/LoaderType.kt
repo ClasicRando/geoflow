@@ -14,14 +14,25 @@ enum class LoaderType(val extensions: List<String>) {
     ;
 
     companion object {
+        /**
+         * Returns a [LoaderType] from the [fileName]. Extracts an extension and calls [getLoaderTypeFromExtension]
+         *
+         * @throws IllegalArgumentException when the extension cannot be found or the extension is not supported
+         */
         fun getLoaderType(fileName: String): LoaderType {
             val fileExtension = "(?<=\\.)[^.]+\$".toRegex().find(fileName)?.value
-                ?: throw IllegalArgumentException("file extension could not be found")
+                ?: throw IllegalArgumentException("File extension could not be found")
             return getLoaderTypeFromExtension(fileExtension)
         }
 
-        private fun getLoaderTypeFromExtension(extension: String): LoaderType {
-            return values().first { extension in it.extensions }
+        /**
+         * Returns a [LoaderType] from the [extension].
+         *
+         * @throws IllegalArgumentException when the extension is not supported
+         */
+        fun getLoaderTypeFromExtension(extension: String): LoaderType {
+            return values().firstOrNull { extension in it.extensions }
+                ?: throw IllegalArgumentException("Extension must does not match a supported file type")
         }
     }
 }
