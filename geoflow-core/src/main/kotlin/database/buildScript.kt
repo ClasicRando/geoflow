@@ -1,6 +1,7 @@
 package database
 
 import data_loader.checkTableExists
+import data_loader.loadDefaultData
 import mu.KotlinLogging
 import org.reflections.Reflections
 import org.reflections.scanners.Scanners.*
@@ -51,8 +52,11 @@ private fun Connection.createTable(table: DbTable<*>) {
     logger.info("Starting ${table.tableName}")
     require(!checkTableExists(table.tableName)) { "${table.tableName} already exists" }
     val interfaces = table::class.java.interfaces.filter { it in tableInterfaces }
-    if (SequentialPrimaryKey::class.java in interfaces) {
-        val pkField = "PRIMARY KEY \\((.+)\\)".toRegex()
+    val sequentialPrimaryKey = SequentialPrimaryKey::class.java in interfaces
+    var sequenceName = ""
+    var pkField = ""
+    if (sequentialPrimaryKey) {
+        pkField = "PRIMARY KEY \\((.+)\\)".toRegex()
             .find(table.createStatement)
             ?.groupValues
             ?.get(1)
@@ -65,7 +69,7 @@ private fun Connection.createTable(table: DbTable<*>) {
             "bigint" -> 9223372036854775807
             else -> throw IllegalStateException("PK field type must be a numeric serial type")
         }
-        val sequenceName = pkFieldMatch.groupValues[2]
+        sequenceName = pkFieldMatch.groupValues[2]
         logger.info("Creating ${table.tableName}'s sequence, $sequenceName")
         prepareStatement("""
             CREATE SEQUENCE public.$sequenceName
@@ -99,6 +103,19 @@ private fun Connection.createTable(table: DbTable<*>) {
                 ?: throw IllegalStateException("Cannot find trigger name")
             logger.info("Creating ${table.tableName}'s trigger, $triggerName")
             this.prepareStatement(trigger.trigger)
+        }
+    }
+    if (DefaultData::class.java in interfaces) {
+        (table as DefaultData).defaultRecordsFile?.let { defaultRecordsStream ->
+            val recordCount = loadDefaultData(table.tableName, defaultRecordsStream)
+            logger.info("Inserted $recordCount records into ${table.tableName}")
+        }
+        if (sequentialPrimaryKey) {
+            this.prepareStatement("SELECT setval(?, max($pkField)) from ${table.tableName}").apply {
+                setString(1, sequenceName)
+            }.use {
+                it.execute()
+            }
         }
     }
 }
