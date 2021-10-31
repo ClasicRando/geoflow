@@ -21,14 +21,6 @@ object SourceTableColumns: DbTable<SourceTableColumn>("source_table_columns"), S
     val stOid = long("st_oid").bindTo { it.stOid }
     val columnIndex = int("column_index").bindTo { it.columnIndex }
 
-    val createSequence = """
-        CREATE SEQUENCE public.source_table_columns_stc_oid_seq
-            INCREMENT 1
-            START 1
-            MINVALUE 1
-            MAXVALUE 9223372036854775807
-            CACHE 1;
-    """.trimIndent()
     override val createStatement = """
         CREATE TABLE IF NOT EXISTS public.source_table_columns
         (

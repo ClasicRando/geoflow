@@ -55,6 +55,8 @@ object PipelineRunTasks: DbTable<PipelineRunTask>("pipeline_run_tasks"), ApiExpo
             task_status task_status NOT NULL DEFAULT 'Waiting'::task_status,
             parent_task_id bigint NOT NULL DEFAULT 0,
             parent_task_order integer NOT NULL,
+            workflow_operation text COLLATE pg_catalog."default" NOT NULL,
+            task_stack_trace text COLLATE pg_catalog."default",
             CONSTRAINT pipeline_run_tasks_pkey PRIMARY KEY (pr_task_id),
             CONSTRAINT task_per_run UNIQUE (run_id, task_id),
             CONSTRAINT run_id FOREIGN KEY (pr_task_id)
@@ -71,15 +73,6 @@ object PipelineRunTasks: DbTable<PipelineRunTask>("pipeline_run_tasks"), ApiExpo
         WITH (
             OIDS = FALSE
         );
-    """.trimIndent()
-
-    val createSequence = """
-        CREATE SEQUENCE public.pipeline_run_tasks_pr_task_id_seq
-            INCREMENT 1
-            START 1
-            MINVALUE 1
-            MAXVALUE 9223372036854775807
-            CACHE 1;
     """.trimIndent()
 
     /**

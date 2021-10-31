@@ -14,21 +14,12 @@ import orm.entities.InternalUser
  * General user definition with username, password (hashed) and roles provided to the user. This table is only used
  * during the user validation/login phase. After that point, the session contains the user information needed
  */
-object InternalUsers: DbTable<InternalUser>("internal_users") {
+object InternalUsers: DbTable<InternalUser>("internal_users"), SequentialPrimaryKey {
     val userOid = long("user_oid").primaryKey().bindTo { it.userOid }
     val name = text("name").bindTo { it.name }
     val username = text("username").bindTo { it.username }
     val password = text("password").bindTo { it.password }
     val roles = textArray("roles").bindTo { it.roles }
-
-    val createSequence = """
-        CREATE SEQUENCE public.internal_users_user_oid_seq
-            INCREMENT 1
-            START 1
-            MINVALUE 1
-            MAXVALUE 9223372036854775807
-            CACHE 1;
-    """.trimIndent()
 
     override val createStatement = """
         CREATE TABLE IF NOT EXISTS public.internal_users

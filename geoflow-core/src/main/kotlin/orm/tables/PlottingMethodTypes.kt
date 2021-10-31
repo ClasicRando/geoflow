@@ -7,7 +7,7 @@ import orm.entities.PlottingMethodType
 /**
  * Table has yet to be finalized and should not be used until then
  */
-object PlottingMethodTypes: DbTable<PlottingMethodType>("plotting_method_types") {
+object PlottingMethodTypes: DbTable<PlottingMethodType>("plotting_method_types"), SequentialPrimaryKey {
     val methodId = int("method_id").primaryKey().bindTo { it.methodId }
     val name = text("name").bindTo { it.name }
 
@@ -21,14 +21,5 @@ object PlottingMethodTypes: DbTable<PlottingMethodType>("plotting_method_types")
         WITH (
             OIDS = FALSE
         );
-    """.trimIndent()
-
-    val createSequence = """
-        CREATE SEQUENCE public.plotting_method_types_method_id_seq
-            INCREMENT 1
-            START 1
-            MINVALUE 1
-            MAXVALUE 2147483647
-            CACHE 1;
     """.trimIndent()
 }

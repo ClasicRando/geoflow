@@ -26,13 +26,4 @@ object RecordWarehouseTypes: DbTable<RecordWarehouseType>("record_warehouse_type
             OIDS = FALSE
         );
     """.trimIndent()
-
-    val createSequence = """
-        CREATE SEQUENCE public.record_warehouse_types_id_seq
-            INCREMENT 1
-            START 1
-            MINVALUE 1
-            MAXVALUE 2147483647
-            CACHE 1;
-    """.trimIndent()
 }

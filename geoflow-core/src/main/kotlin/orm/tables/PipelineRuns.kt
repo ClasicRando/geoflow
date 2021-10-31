@@ -21,7 +21,7 @@ import kotlin.jvm.Throws
  * Each run is linked with a data source and holds information about the users who interacted with the run, the current
  * state/status of the run and various other meta details.
  */
-object PipelineRuns: DbTable<PipelineRun>("pipeline_runs"), ApiExposed, Triggers {
+object PipelineRuns: DbTable<PipelineRun>("pipeline_runs"), ApiExposed, SequentialPrimaryKey, Triggers {
     val runId = long("run_id").primaryKey().bindTo { it.runId }
     val dsId = long("ds_id").references(DataSources) { it.dataSource }
     val recordDate = date("record_date").bindTo { it.recordDate }
@@ -49,15 +49,6 @@ object PipelineRuns: DbTable<PipelineRun>("pipeline_runs"), ApiExposed, Triggers
         "check_user" to mapOf(),
         "qa_user" to mapOf("name" to "QA User"),
     )
-
-    val createSequence = """
-        CREATE SEQUENCE public.pipeline_runs_run_id_seq
-            INCREMENT 1
-            START 1
-            MINVALUE 1
-            MAXVALUE 9223372036854775807
-            CACHE 1;
-    """.trimIndent()
 
     override val createStatement = """
         CREATE TABLE IF NOT EXISTS public.pipeline_runs

@@ -62,15 +62,6 @@ object SourceTables: DbTable<SourceTable>("source_tables"), ApiExposed, Sequenti
         "action" to mapOf("formatter" to "actionFormatter"),
     )
 
-    val createSequence = """
-        CREATE SEQUENCE public.source_tables_st_oid_seq
-            INCREMENT 1
-            START 1
-            MINVALUE 1
-            MAXVALUE 9223372036854775807
-            CACHE 1;
-    """.trimIndent()
-
     override val createStatement = """
         CREATE TABLE IF NOT EXISTS public.source_tables
         (

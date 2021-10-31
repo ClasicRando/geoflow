@@ -10,7 +10,7 @@ import orm.entities.DataSource
  *
  * This table should never be used by itself but rather referenced in [DataSources] table
  */
-object DataSourceContacts: DbTable<DataSourceContact>("data_source_contacts") {
+object DataSourceContacts: DbTable<DataSourceContact>("data_source_contacts"), SequentialPrimaryKey {
     val contactId = long("contact_id").primaryKey().bindTo { it.contactId }
     val dsId = long("ds_id").bindTo { it.dsId }
     val name = text("name").bindTo { it.name }
@@ -34,14 +34,5 @@ object DataSourceContacts: DbTable<DataSourceContact>("data_source_contacts") {
         WITH (
             OIDS = FALSE
         );
-    """.trimIndent()
-
-    val createSequence = """
-        CREATE SEQUENCE public.data_source_contacts_contact_id_seq
-            INCREMENT 1
-            START 1
-            MINVALUE 1
-            MAXVALUE 9223372036854775807
-            CACHE 1;
     """.trimIndent()
 }

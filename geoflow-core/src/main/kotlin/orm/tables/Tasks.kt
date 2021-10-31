@@ -43,13 +43,4 @@ object Tasks: DbTable<Task>("tasks"), SequentialPrimaryKey {
             OIDS = FALSE
         );
     """.trimIndent()
-
-    val createSequence = """
-        CREATE SEQUENCE public.tasks_task_id_seq
-            INCREMENT 1
-            START 1
-            MINVALUE 1
-            MAXVALUE 9223372036854775807
-            CACHE 1;
-    """.trimIndent()
 }

@@ -1,12 +1,11 @@
 package database
 
+import data_loader.checkTableExists
 import mu.KotlinLogging
 import org.reflections.Reflections
 import org.reflections.scanners.Scanners.*
-import orm.tables.DbTable
+import orm.tables.*
 import java.sql.Connection
-import kotlin.reflect.full.memberProperties
-import kotlin.reflect.jvm.jvmErasure
 
 data class PostgresEnumType(val name: String, val constantValues: List<String>) {
     val postgresName = name.replace("[A-Z]".toRegex()) { "_" + it.value.lowercase() }.trimStart('_')
@@ -21,101 +20,114 @@ data class PostgresEnumType(val name: String, val constantValues: List<String>) 
     """.trimIndent()
 }
 
+val tableInterfaces by lazy {
+    Reflections("orm.tables")
+        .get(SubTypes.of(TableBuildRequirement::class.java))
+        .map { className -> ClassLoader.getSystemClassLoader().loadClass(className) }
+}
+
+private val enums by lazy {
+    Reflections("orm.enums")
+        .get(SubTypes.of(Enum::class.java).asClass<Enum<*>>())
+        .asSequence()
+        .map { enum ->
+            PostgresEnumType(enum.simpleName, enum.enumConstants.map { it.toString() })
+        }
+}
+
+val tables by lazy {
+    Reflections("orm.tables")
+        .get(SubTypes.of(DbTable::class.java).asClass<DbTable<*>>())
+        .asSequence()
+        .map { table -> table.getDeclaredField("INSTANCE").get(null)::class }
+        .filter { !it.isAbstract }
+        .map { kClass -> kClass.objectInstance!! as DbTable<*> }
+        .toList()
+}
+
 private val logger = KotlinLogging.logger {}
 
 private fun Connection.createTable(table: DbTable<*>) {
     logger.info("Starting ${table.tableName}")
-    val fields = table::class.memberProperties
-        .filter { it.returnType.jvmErasure == String::class }
-        .associate { property ->
-            val value = property
-                .getter
-                .call(table)
-                ?.toString()
-                ?: ""
-            Pair(property.name, value)
-        }
-    fields["createSequence"]?.let { createSequence ->
-        val sequenceName = "CREATE SEQUENCE public\\.(\\S+)"
-            .toRegex()
-            .find(createSequence)
+    require(!checkTableExists(table.tableName)) { "${table.tableName} already exists" }
+    val interfaces = table::class.java.interfaces.filter { it in tableInterfaces }
+    if (SequentialPrimaryKey::class.java in interfaces) {
+        val pkField = "PRIMARY KEY \\((.+)\\)".toRegex()
+            .find(table.createStatement)
             ?.groupValues
             ?.get(1)
-            ?: ""
+            ?: throw IllegalStateException("Cannot find primary key constraint for sequential primary key interface")
+        val pkFieldMatch = "$pkField ([a-z]+) .+ nextval\\('(.+)'::regclass\\)".toRegex()
+            .find(table.createStatement)
+            ?: throw IllegalStateException("Cannot find sequence name for sequential primary key interface")
+        val maxValue = when(pkFieldMatch.groupValues[1]) {
+            "integer" -> 2147483647
+            "bigint" -> 9223372036854775807
+            else -> throw IllegalStateException("PK field type must be a numeric serial type")
+        }
+        val sequenceName = pkFieldMatch.groupValues[2]
         logger.info("Creating ${table.tableName}'s sequence, $sequenceName")
-        this.prepareStatement(createSequence).execute()
+        prepareStatement("""
+            CREATE SEQUENCE public.$sequenceName
+                INCREMENT 1
+                START 1
+                MINVALUE 1
+                MAXVALUE $maxValue
+                CACHE 1;
+        """.trimIndent())
+            .use {
+                it.execute()
+            }
     }
-    this
-        .prepareStatement("SELECT * FROM information_schema.tables WHERE table_name = ?")
-        .apply {
-            setString(1, table.tableName)
-        }
-        .executeQuery()
-        .use { rs ->
-            if (rs.next())
-                throw IllegalStateException("${table.tableName} already exists")
-        }
     logger.info("Creating ${table.tableName}")
     this.prepareStatement(table.createStatement).execute()
-    fields
-        .filterValues { it.startsWith("CREATE TRIGGER", ignoreCase = true) }
-        .forEach { (_, statement) ->
+    if (Triggers::class.java in interfaces) {
+        (table as Triggers).triggers.forEach { trigger ->
             val functionName = "EXECUTE FUNCTION (public\\.)?(.+)\\(\\)"
                 .toRegex()
-                .find(statement)
+                .find(trigger.trigger)
                 ?.groupValues
-                ?.get(2) ?: throw IllegalStateException("Cannot find trigger function name")
-            val functionStatement = fields
-                .filterValues { it.contains(functionName) }
-                .firstNotNullOfOrNull { it.value }
-                ?: throw IllegalStateException("No property to match the trigger function name")
+                ?.get(2)
+                ?: throw IllegalStateException("Cannot find trigger function name")
             logger.info("Creating ${table.tableName}'s trigger function, $functionName")
-            this.prepareStatement(functionStatement).execute()
+            this.prepareStatement(trigger.triggerFunction).execute()
             val triggerName = "CREATE TRIGGER (\\S+)"
                 .toRegex()
-                .find(statement)
+                .find(trigger.trigger)
                 ?.groupValues
-                ?.get(1) ?: throw IllegalStateException("Cannot find trigger name")
+                ?.get(1)
+                ?: throw IllegalStateException("Cannot find trigger name")
             logger.info("Creating ${table.tableName}'s trigger, $triggerName")
-            this.prepareStatement(statement)
+            this.prepareStatement(trigger.trigger)
         }
+    }
 }
 
-private fun Connection.createTables(tables: List<DbTable<*>>, createdTables: Set<String> = setOf()) {
+private fun Connection.createTables(
+    tables: List<DbTable<*>>,
+    createdTables: Set<String> = setOf()
+) {
     if (tables.isEmpty()) {
         return
     }
     val tablesToCreate = if (createdTables.isEmpty()) {
         tables.filter { !it.hasForeignKey }
     } else {
-        tables.filter { table -> table.hasForeignKey && table.referencedTables.any { it in createdTables } }
+        tables.filter { table -> table.referencedTables.all { it in createdTables } }
     }
     for (table in tablesToCreate) {
-        this.createTable(table)
+        createTable(table)
     }
-    this.createTables(tables.minus(tablesToCreate), createdTables.union(tablesToCreate.map { it.tableName }))
+    createTables(tables.minus(tablesToCreate), createdTables.union(tablesToCreate.map { it.tableName }))
 }
 
 fun buildDatabase() {
     try {
         DatabaseConnection.database.useConnection { connection ->
-            Reflections("orm.enums")
-                .get(SubTypes.of(Enum::class.java).asClass<Enum<*>>())
-                .asSequence()
-                .map { enum ->
-                    PostgresEnumType(enum.simpleName, enum.enumConstants.map { it.toString() })
-                }
-                .forEach { enum ->
-                    logger.info("Creating ${enum.postgresName}")
-                    connection.prepareStatement(enum.create).execute()
-                }
-            val tables = Reflections("orm.tables")
-                .get(SubTypes.of(DbTable::class.java).asClass<DbTable<*>>())
-                .asSequence()
-                .map { table -> table.getDeclaredField("INSTANCE").get(null)::class }
-                .filter { !it.isAbstract }
-                .map { kClass -> kClass.objectInstance!! as DbTable<*> }
-                .toList()
+            for (enum in enums) {
+                logger.info("Creating ${enum.postgresName}")
+                connection.prepareStatement(enum.create).execute()
+            }
             connection.createTables(tables)
         }
     } catch (ex: Exception) {

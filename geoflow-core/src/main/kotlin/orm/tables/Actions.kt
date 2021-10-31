@@ -21,7 +21,7 @@ import kotlin.jvm.Throws
  * form interface for the current user to create another user. These endpoints should include role validation so that a
  * user without the required role is given an error status page.
  */
-object Actions: DbTable<Action>("actions") {
+object Actions: DbTable<Action>("actions"), ApiExposed, SequentialPrimaryKey {
     val actionOid = long("action_oid").primaryKey().bindTo { it.actionOid }
     val state = text("state").bindTo { it.state }
     val role = text("role").bindTo { it.role }
@@ -36,19 +36,11 @@ object Actions: DbTable<Action>("actions") {
      * of the field (as described here [column-options](https://bootstrap-table.com/docs/api/column-options/)) with the
      * 'data-' prefix automatically added during table HTML creation
      */
-    val tableDisplayFields = mapOf(
+    override val tableDisplayFields = mapOf(
         "name" to mapOf("name" to "Action"),
         "description" to mapOf(),
     )
 
-    val createSequence = """
-        CREATE SEQUENCE public.actions_action_oid_seq
-            INCREMENT 1
-            START 1
-            MINVALUE 1
-            MAXVALUE 9223372036854775807
-            CACHE 1;
-    """.trimIndent()
     override val createStatement = """
         CREATE TABLE IF NOT EXISTS public.actions
         (
