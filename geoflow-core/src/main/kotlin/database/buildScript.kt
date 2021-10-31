@@ -2,6 +2,8 @@ package database
 
 import data_loader.checkTableExists
 import data_loader.loadDefaultData
+import database.functions.PlPgSqlTableFunction
+import database.procedures.SqlProcedure
 import mu.KotlinLogging
 import org.reflections.Reflections
 import org.reflections.scanners.Scanners.*
@@ -21,7 +23,7 @@ data class PostgresEnumType(val name: String, val constantValues: List<String>) 
     """.trimIndent()
 }
 
-val tableInterfaces by lazy {
+private val tableInterfaces by lazy {
     Reflections("orm.tables")
         .get(SubTypes.of(TableBuildRequirement::class.java))
         .map { className -> ClassLoader.getSystemClassLoader().loadClass(className) }
@@ -36,7 +38,7 @@ private val enums by lazy {
         }
 }
 
-val tables by lazy {
+private val tables by lazy {
     Reflections("orm.tables")
         .get(SubTypes.of(DbTable::class.java).asClass<DbTable<*>>())
         .asSequence()
@@ -44,6 +46,24 @@ val tables by lazy {
         .filter { !it.isAbstract }
         .map { kClass -> kClass.objectInstance!! as DbTable<*> }
         .toList()
+}
+
+private val procedures by lazy {
+    Reflections("database.procedures")
+        .get(SubTypes.of(SqlProcedure::class.java).asClass<SqlProcedure>())
+        .asSequence()
+        .map { procedure -> procedure.getDeclaredField("INSTANCE").get(null)::class }
+        .filter { !it.isAbstract }
+        .map { kClass -> kClass.objectInstance!! as SqlProcedure }
+}
+
+private val tableFunctions by lazy {
+    Reflections("database.functions")
+        .get(SubTypes.of(PlPgSqlTableFunction::class.java).asClass<PlPgSqlTableFunction>())
+        .asSequence()
+        .map { procedure -> procedure.getDeclaredField("INSTANCE").get(null)::class }
+        .filter { !it.isAbstract }
+        .map { kClass -> kClass.objectInstance!! as PlPgSqlTableFunction }
 }
 
 private val logger = KotlinLogging.logger {}
@@ -146,6 +166,17 @@ fun buildDatabase() {
                 connection.prepareStatement(enum.create).execute()
             }
             connection.createTables(tables)
+            for (procedure in procedures) {
+                logger.info("Creating ${procedure.name}")
+                connection.prepareStatement(procedure.code).execute()
+            }
+            for (tableFunction in tableFunctions) {
+                logger.info("Creating ${tableFunction.name}")
+                for (innerFunction in tableFunction.innerFunctions) {
+                    connection.prepareStatement(innerFunction).execute()
+                }
+                connection.prepareStatement(tableFunction.functionCode).execute()
+            }
         }
     } catch (ex: Exception) {
         logger.error("Error trying to construct database schema", ex)
