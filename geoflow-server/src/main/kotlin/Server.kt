@@ -17,7 +17,6 @@ import it.justwrote.kjob.job.JobExecutionType
 import it.justwrote.kjob.kjob
 import mu.KotlinLogging
 import orm.tables.InternalUsers
-import java.time.Instant
 
 val logger = KotlinLogging.logger {}
 val kjob = kjob(Mongo) {
@@ -126,7 +125,6 @@ fun Application.module() {
                             username = username,
                             name = user.name,
                             roles = user.roles.mapNotNull { it },
-                            expiration = Instant.now().plusSeconds(60L * 60).epochSecond
                         )
                     )
                     "/index"
