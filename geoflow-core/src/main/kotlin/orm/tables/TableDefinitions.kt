@@ -2,10 +2,13 @@ package orm.tables
 
 import java.io.InputStream
 
+/** Base interface for interfaces used to create tables in the buildScript file. Helps reflection operations */
+interface TableBuildRequirement
+
 /**
  * Table should be created with default data during build script operation
  */
-interface DefaultData {
+interface DefaultData: TableBuildRequirement {
     /** Name of the file in the resources folder that contains the default data needed to be loaded */
     val defaultRecordsFileName: String
 }
@@ -31,7 +34,7 @@ interface ApiExposed {
 /**
  * Table's primary key is a sequential value. Tells build script to look through create statement to make sequence
  */
-interface SequentialPrimaryKey
+interface SequentialPrimaryKey: TableBuildRequirement
 
 /**
  * Data Class to hold the trigger create statement and trigger function create statement
@@ -41,7 +44,7 @@ data class Trigger(val trigger: String, val triggerFunction: String)
 /**
  * Table contains triggers. Defined as a list of Trigger data classes
  */
-interface Triggers {
+interface Triggers: TableBuildRequirement {
     /**
      * List of triggers on a Table.
      */
