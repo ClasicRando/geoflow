@@ -12,6 +12,7 @@ import org.postgresql.jdbc.PgConnection
 import orm.enums.LoaderType
 import requireNotEmpty
 import java.io.File
+import java.io.InputStream
 import java.lang.Integer.min
 import java.math.BigDecimal
 import java.sql.*
@@ -190,6 +191,17 @@ fun Connection.checkTableExists(tableName: String, schema: String = "public"): B
                 rs.next()
             }
         }
+}
+
+fun Connection.loadDefaultData(tableName: String, inputStream: InputStream): Long {
+    return CopyManager(this.unwrap(PgConnection::class.java))
+        .copyIn(
+            getCopyCommand(
+                tableName = tableName,
+                header = true,
+            ),
+            inputStream
+        )
 }
 
 /**
