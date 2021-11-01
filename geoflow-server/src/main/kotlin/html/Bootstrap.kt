@@ -6,6 +6,10 @@ import orm.tables.SourceTables
 
 const val messageBoxId = "msgBox"
 
+/**
+ * Creates a basic Bootstrap modal with an [id][modalId], [header text][headerText], [body message][bodyMessage] and
+ * name of a [function][okClickFunction] that is called when the ok button is pressed.
+ */
 fun FlowContent.basicModal(modalId: String, headerText: String, bodyMessage: String, okClickFunction: String) {
     div(classes = "modal fade") {
         id = modalId
@@ -44,6 +48,9 @@ fun FlowContent.basicModal(modalId: String, headerText: String, bodyMessage: Str
     }
 }
 
+/**
+ * Creates a blank modal that can have various values displayed during webpage operation.
+ */
 fun FlowContent.dataDisplayModal(modalId: String, headerText: String) {
     div(classes = "modal fade") {
         id = modalId
@@ -75,6 +82,10 @@ fun FlowContent.dataDisplayModal(modalId: String, headerText: String) {
     }
 }
 
+/**
+ * Creates a modal that can be used to display a simple message during webpage operations. Only call this function
+ * once per webpage templating to avoid having more than 1 messagebox popup during message display call.
+ */
 fun FlowContent.messageBoxModal() {
     div(classes = "modal fade") {
         id = messageBoxId
@@ -106,15 +117,21 @@ fun FlowContent.messageBoxModal() {
         }
     }
     script {
-        unsafe {
-            raw("var messageBoxId = '$messageBoxId';")
-        }
+        addParamsAsJsGlobalVariables(
+            mapOf(
+                "messageBoxId" to messageBoxId,
+            )
+        )
     }
     script {
         src = "/assets/messagebox.js"
     }
 }
 
+/**
+ * Simple confirmation modal that prompts the user with a [message][confirmMessage] to make sure they want to perform
+ * the current action. After the user blocks the OK button the [resultFunction] is called.
+ */
 fun FlowContent.confirmModal(confirmModalId: String, confirmMessage: String, resultFunction: String) {
     div(classes = "modal fade") {
         id = confirmModalId
@@ -158,6 +175,11 @@ private const val sourceTableModalId = "sourceTableData"
 private const val sourceTablesTableId = "sourceTables"
 private const val deleteSourceTableConfirmId = "deleteSourceTable"
 
+/**
+ * Creates a modal to show the source tables for a given pipeline run in a [basicTable]. This function also adds the
+ * modal to edit table entries (including the [confirmModal] after editing). Only call this function once per webpage
+ * templating to avoid having more than 1 modal popup during show call.
+ */
 fun FlowContent.sourceTablesModal(runId: Long) {
     div(classes = "modal fade") {
         id = sourceTableModalId
