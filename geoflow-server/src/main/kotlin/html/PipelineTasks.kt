@@ -1,13 +1,15 @@
 package html
 
+import io.ktor.html.*
 import kotlinx.html.*
 import orm.enums.FileCollectType
 import orm.tables.PipelineRunTasks
 
-class PipelineTasks(runId: Long): BasePage() {
-    private val taskDataModalId = "taskData"
-    private val taskTableId = "tasks"
-    private val webSocketPath = "ws://localhost:8080/sockets/pipeline-run-tasks/$runId"
+/** Page for pipeline task operations */
+object PipelineTasks {
+
+    private const val taskDataModalId = "taskData"
+    private const val taskTableId = "tasks"
     private val tableButtons = listOf(
         TableButton(
             "btnRun",
@@ -34,31 +36,42 @@ class PipelineTasks(runId: Long): BasePage() {
             }
         }
     )
-    init {
-        setStyles {
+
+    /**
+     * Returns a [BasePage] with:
+     * - 2 CSS classes
+     * - basic table for pipeline task records with various [tableButtons] and [headerButtons]. Subscribed to given
+     * WebSocket for table updates
+     * - display modal for task details
+     * - modal for source tables (see [sourceTablesModal] for details)
+     * - messagebox modal
+     * - class level constants assigned to global javascript variables
+     * - a specific script for this page loaded from assets
+     */
+    fun withRunId(runId: Long): Template<HTML> {
+        return BasePage.withStyles {
             unsafe {
                 raw("""
-                    .header-button-list {
-                        margin 0;
-                        padding 0;
-                    }
-                    .header-button {
-                        margin-right 10px;
-                        padding: 0 10px;
-                        display: inline-block;
-                    }
-                """.trimIndent())
+                .header-button-list {
+                    margin 0;
+                    padding 0;
+                }
+                .header-button {
+                    margin-right 10px;
+                    padding: 0 10px;
+                    display: inline-block;
+                }
+            """.trimIndent())
             }
-        }
-        setContent {
+        }.withContent {
             basicTable(
                 taskTableId,
-                "/api/pipeline-run-tasks/$runId",
+                "/api/pipeline-run-tasks/${runId}",
                 PipelineRunTasks.tableDisplayFields,
                 tableButtons = tableButtons,
                 headerButtons = headerButtons,
                 clickableRows = false,
-                subscriber = webSocketPath,
+                subscriber = "ws://localhost:8080/sockets/pipeline-run-tasks/${runId}",
             )
             dataDisplayModal(
                 taskDataModalId,
@@ -66,8 +79,7 @@ class PipelineTasks(runId: Long): BasePage() {
             )
             sourceTablesModal(runId)
             messageBoxModal()
-        }
-        setScript {
+        }.withScript {
             script {
                 addParamsAsJsGlobalVariables(
                     mapOf(

@@ -1,33 +1,19 @@
 package html
 
+import io.ktor.html.*
 import kotlinx.html.*
 
-fun HTML.index() {
-    with(Index()) {
-        apply()
-    }
+fun HTML.applyTemplate(template: Template<HTML>) = with(template) {
+    apply()
 }
 
-fun HTML.pipelineStatus(workflowCode: String) {
-    with(PipelineStatus(workflowCode)) {
-        apply()
-    }
-}
+fun HTML.index() = applyTemplate(Index.page)
 
-fun HTML.pipelineTasks(runId: Long) {
-    with(PipelineTasks(runId)) {
-        apply()
-    }
-}
+fun HTML.pipelineStatus(workflowCode: String) = applyTemplate(PipelineStatus.withWorkflowCode(workflowCode))
 
-fun HTML.errorPage(message: String) {
-    with(BasePage()) {
-        setContent {
-            +message
-        }
-        apply()
-    }
-}
+fun HTML.pipelineTasks(runId: Long) = applyTemplate(PipelineTasks.withRunId(runId))
+
+fun HTML.errorPage(message: String) = applyTemplate(BasePage.withContent { +message })
 
 fun HTML.login(message: String) {
     lang = "en-US"
