@@ -14,8 +14,8 @@ data class UserSession(
     val username: String,
     val name: String,
     val roles: List<String>,
+    val expiration: Long = Instant.now().plusSeconds(60L * 60).epochSecond,
 ): Principal {
-    private val expiration = Instant.now().plusSeconds(60L * 60).epochSecond
     val isExpired: Boolean
         get() = Instant.now().isAfter(Instant.ofEpochSecond(expiration))
     fun hasRole(role: String): Boolean = "admin" in roles || role in roles
