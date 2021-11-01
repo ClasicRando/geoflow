@@ -2,7 +2,6 @@ import auth.UserSession
 import html.*
 import io.ktor.application.*
 import io.ktor.html.*
-import io.ktor.http.*
 import io.ktor.http.content.*
 import io.ktor.request.*
 import io.ktor.response.*
