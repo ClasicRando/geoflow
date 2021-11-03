@@ -1,19 +1,28 @@
 import kotlin.reflect.full.createType
 
+/** Exception thrown when a user requests a route that they are not authorized to access. */
 class UnauthorizedRouteAccessException(val route: String): Exception()
 
+/** Require contract that throws any [Throwable] the user wants by providing a lambda that returns any Throwable. */
 fun require(value: Boolean, throwable: () -> Throwable) {
     if (!value) {
-        throwable()
+        val error = throwable()
+        throw error
     }
 }
 
+/**
+ * Require contract that throws any [Throwable] defined as a generic Throwable type that accepts a single String
+ * parameter as the exception message. The message is obtained using a lazy [lambda][lazyMessage] that is only evaluated
+ * if the value is false.
+ */
 @JvmName("requireGeneric")
-inline fun <reified T: Throwable> require(value: Boolean, message: () -> String) {
+inline fun <reified T: Throwable> require(value: Boolean, lazyMessage: () -> String) {
     if (!value) {
         val constructor = T::class.constructors
             .firstOrNull { it.parameters.size == 1 && it.parameters[0].type == String::class.createType() }
             ?: throw IllegalArgumentException("Defined Throwable does not have a single String parameter constructor")
-        throw constructor.call(message())
+        val message = lazyMessage()
+        throw constructor.call(message)
     }
 }

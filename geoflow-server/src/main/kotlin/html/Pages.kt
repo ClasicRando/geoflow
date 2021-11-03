@@ -3,22 +3,28 @@ package html
 import io.ktor.html.*
 import kotlinx.html.*
 
+/** Utility function to apply any HTML template */
 fun HTML.applyTemplate(template: Template<HTML>) = with(template) {
     apply()
 }
 
+/** Base page applies static Index template */
 fun HTML.index() = applyTemplate(Index.page)
 
+/** PipelineStatus page with template created from [workflowCode] */
 fun HTML.pipelineStatus(workflowCode: String) = applyTemplate(PipelineStatus.withWorkflowCode(workflowCode))
 
+/** PipelineTasks page with template created from [runId] */
 fun HTML.pipelineTasks(runId: Long) = applyTemplate(PipelineTasks.withRunId(runId))
 
+/** BasePage template with simple message inserted */
 fun HTML.errorPage(message: String) = applyTemplate(BasePage.withContent { +message })
 
-fun HTML.login(message: String) {
+/** Simple login form page with an optional message if session expired or past login attempt was unsuccessful */
+fun HTML.login(message: String = "") {
     lang = "en-US"
     head {
-        title("GeoFlow")
+        title(content = "GeoFlow")
         meta {
             charset = "utf-8"
         }
@@ -52,7 +58,7 @@ fun HTML.login(message: String) {
                     +message
                 }
             }
-            div("form-group") {
+            div(classes = "form-group") {
                 label {
                     htmlFor = "username"
                     +"Username"
@@ -63,7 +69,7 @@ fun HTML.login(message: String) {
                     required = true
                 }
             }
-            div("form-group") {
+            div(classes = "form-group") {
                 label {
                     htmlFor = "password"
                     +"Password"
