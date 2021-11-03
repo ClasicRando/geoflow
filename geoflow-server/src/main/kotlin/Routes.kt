@@ -13,24 +13,25 @@ import orm.enums.TaskRunType
 import orm.enums.TaskStatus
 import orm.tables.*
 
+/** Entry route that handles empty an empty path or the index route. Empty routes are redirected to index. */
 fun Route.index() {
     get("/") {
         call.respondRedirect("/index")
     }
-    route("/index") {
-        get {
-            call.respondHtml {
-                index()
-            }
-        }
-        post {
-            val params = call.receiveParameters()
-            val href = params["href"] ?: "/index"
-            call.respondRedirect(href)
+    get("/index") {
+        call.respondHtml {
+            index()
         }
     }
 }
 
+/**
+ * Pipeline status route that handles all workflow code values.
+ *
+ * For GET requests, the current user must be authorized to access the workflow code specified in the request. For POST
+ * requests, the user is trying to pick up the run specified. Tries to pick up run and throws error (after logging)
+ * if operation cannot complete successfully. If successful, the user if redirected to appropriate route.
+ */
 fun Route.pipelineStatus() = route("/pipeline-status/{code}") {
     get {
         val code = call.parameters.getOrFail("code")
@@ -43,24 +44,21 @@ fun Route.pipelineStatus() = route("/pipeline-status/{code}") {
     }
     post {
         val params = call.receiveParameters()
-        val pickup = params["pickup"] ?: ""
-        val runId = params["run_id"] ?: ""
-        if (pickup.isNotEmpty()) {
-            runCatching {
-                PipelineRuns.pickupRun(
-                    runId.toLong(),
-                    call.sessions.get<UserSession>()!!.userId
-                )
-
-            }.getOrElse { t ->
-                call.application.environment.log.error("/pipeline-stats: pickup", t)
-                throw t
-            }
+        val runId = params.getOrFail("run_id").toLong()
+        try {
+            PipelineRuns.pickupRun(
+                runId,
+                call.sessions.get<UserSession>()!!.userId
+            )
+        } catch (t: Throwable) {
+            call.application.environment.log.error("/pipeline-stats: pickup", t)
+            throw t
         }
         call.respondRedirect("/tasks/$runId")
     }
 }
 
+/** Pipeline tasks route that handles request to view a specific run's task list. */
 fun Route.pipelineTasks() = route("/tasks/{runId}") {
     get {
         call.respondHtml {
@@ -69,7 +67,9 @@ fun Route.pipelineTasks() = route("/tasks/{runId}") {
     }
 }
 
+/** Base API route. This will be moved to a new module/service later in development */
 fun Route.api() = route("/api") {
+    /** Returns list of operations based upon the current user's roles. */
     get("/operations") {
         val operations = runCatching {
             WorkflowOperations.userOperations(call.sessions.get<UserSession>()?.roles!!)
@@ -79,6 +79,7 @@ fun Route.api() = route("/api") {
         }
         call.respond(operations)
     }
+    /** Returns list of actions based upon the current user's roles. */
     get("/actions") {
         val actions = runCatching {
             Actions.userActions(call.sessions.get<UserSession>()?.roles!!)
@@ -88,6 +89,7 @@ fun Route.api() = route("/api") {
         }
         call.respond(actions)
     }
+    /** Returns list of pipeline runs for the given workflow code based upon the current user. */
     get("/pipeline-runs/{code}") {
         val runs = runCatching {
             PipelineRuns.userRuns(
@@ -100,6 +102,7 @@ fun Route.api() = route("/api") {
         }
         call.respond(runs)
     }
+    /** Returns list of pipeline tasks for the given run. */
     get("/pipeline-run-tasks/{runId}") {
         val tasks = runCatching {
             PipelineRunTasks.getOrderedTasks(call.parameters.getOrFail("runId").toLong())
@@ -109,6 +112,14 @@ fun Route.api() = route("/api") {
         }
         call.respond(tasks)
     }
+    /**
+     * Tries to run a specified pipeline task based upon the pipeline run task ID provided.
+     *
+     * If the underlining task is a User task then it is run right away and the response is a completed message. If the
+     * underlining task is a System task then it is scheduled to run and the response is a scheduled message. During the
+     * task fetching and assessment, an error can be thrown. The error is caught, logged and the response becomes an
+     * error message.
+     */
     post("/run-task/{runId}/{prTaskId}") {
         val user = call.sessions.get<UserSession>()!!
         val runId = call.parameters.getOrFail("runId").toLong()
@@ -135,6 +146,16 @@ fun Route.api() = route("/api") {
         }
         call.respond(response)
     }
+    /**
+     * Tries to run a specified pipeline task based upon the pipeline run task ID provided while continuing to run
+     * subsequent tasks until a user task appears or the current running task fail.
+     *
+     * If the underlining task is a User task then it is run right away and the response is a completed message. If the
+     * underlining task is a System task then it is scheduled to run and the response is a scheduled message. The prop
+     * of 'runNext' is also set to true to tell the worker to continue running tasks after successful completion.
+     * During the task fetching and assessment, an error can be thrown. The error is caught, logged and the response
+     * becomes an error message.
+     */
     post("/run-all/{runId}/{prTaskId}") {
         val user = call.sessions.get<UserSession>()!!
         val runId = call.parameters.getOrFail("runId").toLong()
@@ -161,6 +182,7 @@ fun Route.api() = route("/api") {
         }
         call.respond(response)
     }
+    /** Resets the provided pipeline run task to a waiting state and deletes all child tasks if any exist. */
     post("/reset-task/{runId}/{prTaskId}") {
         val user = call.sessions.get<UserSession>()!!
         val runId = call.parameters.getOrFail("runId").toLong()
@@ -174,12 +196,9 @@ fun Route.api() = route("/api") {
         }
         call.respond(response)
     }
-    get("/task-status") {
-        val pipelineRunTaskId = call.request.queryParameters["prTaskId"]?.toLong() ?: 0
-        val status = PipelineRunTasks.getStatus(pipelineRunTaskId)
-        call.respond(mapOf("status" to status))
-    }
+    /** Source tables route */
     route("/source-tables") {
+        /** Returns all source table records for the provided pipeline run */
         get("/{runId}") {
             val runId = call.parameters.getOrFail("runId").toLong()
             val response = runCatching {
@@ -190,6 +209,7 @@ fun Route.api() = route("/api") {
             }
             call.respond(response)
         }
+        /** Updates a source table record (specified by the stOid) with the provided parameters */
         patch {
             val user = call.sessions.get<UserSession>()!!
             val params = call.request.queryParameters.names().associateWith { call.request.queryParameters[it] }
@@ -203,6 +223,7 @@ fun Route.api() = route("/api") {
             }
             call.respond(response)
         }
+        /** Creates a new source table record with the provided parameters */
         post {
             val user = call.sessions.get<UserSession>()!!
             val params = call.request.queryParameters.names().associateWith { call.request.queryParameters[it] }
@@ -216,6 +237,7 @@ fun Route.api() = route("/api") {
             }
             call.respond(response)
         }
+        /** Deletes an existing source table record with the provided stOid */
         delete {
             val user = call.sessions.get<UserSession>()!!
             val params = call.request.queryParameters.names().associateWith { call.request.queryParameters[it] }
@@ -232,10 +254,13 @@ fun Route.api() = route("/api") {
     }
 }
 
+/** WebSocket routes used in pub/sub pattern. */
 fun Route.sockets() = route("/sockets") {
+    /**  */
     publisher("/pipeline-run-tasks", "pipelineRunTasks")
 }
 
+/** Route for static Javascript assets */
 fun Route.js() {
     static("assets") {
         resources("javascript")
