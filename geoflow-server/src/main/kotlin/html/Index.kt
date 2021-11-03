@@ -13,7 +13,8 @@ object Index {
      * A [BasePage] instance with:
      * - a basic table for workflow operations
      * - a basic table for user actions
-     * - javascript raw code for registering table row click events to a post function found in 'utils.js'
+     * - mapping object properties to javascript global variables named after the property name
+     * - link to static asset for registering table row click events to navigate to the desired href
      */
     val page = BasePage.withContent {
         div(classes = "row") {
@@ -34,12 +35,15 @@ object Index {
         }
     }.withScript {
         script {
-            unsafe {
-                raw("""
-                    $('#$operationsTableId').on('click-row.bs.table', (e, row, element, field) => { post(row) });
-                    $('#$actionsTableId').on('click-row.bs.table', (e, row, element, field) => { post(row) });
-                """.trimIndent())
-            }
+            addParamsAsJsGlobalVariables(
+                mapOf(
+                    ::operationsTableId.name to operationsTableId,
+                    ::actionsTableId.name to actionsTableId,
+                )
+            )
+        }
+        script {
+            src = "/assets/index.js"
         }
     }
 }

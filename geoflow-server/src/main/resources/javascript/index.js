@@ -1,0 +1,2 @@
+$(`#${operationsTableId}`).on('click-row.bs.table', (e, row, element, field) => { window.location.assign(row.href) });
+$(`#${actionsTableId}`).on('click-row.bs.table', (e, row, element, field) => { window.location.assign(row.href) });
