@@ -14,7 +14,7 @@ object PipelineStatus {
      * Returns a [BasePage] with:
      * - a basic table for pipeline status records
      * - a basic modal for when the user can pick up a run not previously assigned to another user
-     * - class level constants assigned to global javascript variables
+     * - class level constants assigned to global javascript variables named after the constant's names
      * - a specific script for this page loaded from assets
      */
     fun withWorkflowCode(workflowCode: String): Template<HTML> {
@@ -34,8 +34,8 @@ object PipelineStatus {
             script {
                 addParamsAsJsGlobalVariables(
                     mapOf(
-                        "modalId" to modalId,
-                        "tableId" to tableId,
+                        ::modalId.name to modalId,
+                        ::tableId.name to tableId,
                     )
                 )
             }

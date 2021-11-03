@@ -45,7 +45,7 @@ object PipelineTasks {
      * - display modal for task details
      * - modal for source tables (see [sourceTablesModal] for details)
      * - messagebox modal
-     * - class level constants assigned to global javascript variables
+     * - class level constants assigned to global javascript variables named after the constant's names
      * - a specific script for this page loaded from assets
      */
     fun withRunId(runId: Long): Template<HTML> {
@@ -83,8 +83,8 @@ object PipelineTasks {
             script {
                 addParamsAsJsGlobalVariables(
                     mapOf(
-                        "taskTableId" to taskTableId,
-                        "taskDataModalId" to taskDataModalId,
+                        ::taskTableId.name to taskTableId,
+                        ::taskDataModalId.name to taskDataModalId,
                         "types" to FileCollectType.values(),
                     )
                 )
