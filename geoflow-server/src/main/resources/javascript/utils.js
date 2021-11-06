@@ -21,6 +21,10 @@ class TableRefreshSubscriber {
     }
 }
 
+function redirect(route) {
+    window.location.assign(route);
+}
+
 function post(params) {
     const form = document.createElement('form');
     form.method = 'post';

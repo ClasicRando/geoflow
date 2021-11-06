@@ -1,0 +1,9 @@
+file_extension,loader_type
+"xlsx","Excel"
+"xls","Excel"
+"csv","Flat"
+"tsv","Flat"
+"txt","Flat"
+"mdb","MDB"
+"accdb","MDB"
+"dbf","DBF"

@@ -10,37 +10,46 @@ import org.apache.poi.ss.usermodel.*
 import org.postgresql.copy.CopyManager
 import org.postgresql.jdbc.PgConnection
 import orm.enums.LoaderType
+import requireNotEmpty
 import java.io.File
+import java.io.InputStream
 import java.lang.Integer.min
-import java.sql.Connection
-import java.sql.DriverManager
+import java.math.BigDecimal
+import java.sql.*
 import kotlin.math.floor
-import java.sql.ResultSet
-import java.sql.Types
 import java.time.*
 import java.time.format.DateTimeFormatter
-import java.util.*
+import java.util.Date
 import kotlin.io.use
 import kotlin.math.max
 import kotlin.text.toByteArray
 
 private const val defaultDelimiter = ','
 private val logger = KotlinLogging.logger {}
+/** Map of jdbc type constants to the name they represent */
 private val jdbcTypeNames = Types::class.java.fields.associate { (it.get(null) as Int) to it.name  }
 
+/** Container for column metadata and stats. Obtained during file analysis */
 data class ColumnStats(val name: String, val minLength: Int, val maxLength: Int, val type: String = "")
 
+/** Result container for file analysis. Holds table stats and metadata required for schema */
 data class AnalyzeResult(
     val tableName: String,
     val recordCount: Int,
     val columns: List<ColumnStats>,
 ) {
+    /**
+     * Merge another [result][analyzeResult] into this result. Adds the 2 record counts and for each column, chooses
+     * the higher or lower column lengths for [maxLength][ColumnStats.maxLength] and [minLength][ColumnStats.minLength]
+     * respectively. Returns a new [AnalyzeResult] instance without altering any object.
+     */
     fun merge(analyzeResult: AnalyzeResult): AnalyzeResult {
-        return copy(
+        return AnalyzeResult(
+            tableName = tableName,
             recordCount = recordCount + analyzeResult.recordCount,
             columns = columns.map { columnStats ->
                 val currentStats = analyzeResult.columns.first { columnStats.name == it.name }
-                columnStats.copy(
+                ColumnStats(
                     name = columnStats.name,
                     maxLength = max(columnStats.maxLength, currentStats.maxLength),
                     minLength = min(columnStats.minLength, currentStats.minLength),
@@ -50,6 +59,11 @@ data class AnalyzeResult(
     }
 }
 
+/**
+ * Obtain the Postgresql COPY command for the specified [tableName] through a stream with various format options. The
+ * byte stream will always be CSV file like with a specified [delimiter] and a possible [header] line. There is also
+ * an option for non-qualified files where the QUOTE nad ESCAPE options are not set.
+ */
 private fun getCopyCommand(
     tableName: String,
     header: Boolean,
@@ -66,42 +80,53 @@ private fun getCopyCommand(
     )
 """.trimIndent()
 
+/** Accepts a nullable object and formats the value to string. Most of the formatting is for Date-like types */
 private fun formatObject(value: Any?): String {
     return when(value) {
         null -> ""
         is Boolean -> if (value) "TRUE" else "FALSE"
         is String -> value
+        is BigDecimal -> value.toPlainString()
+        is ByteArray -> value.decodeToString()
+        is Timestamp -> value.toInstant().atOffset(ZoneOffset.UTC).format(DateTimeFormatter.ISO_DATE_TIME)
         is Instant -> value.atOffset(ZoneOffset.UTC).format(DateTimeFormatter.ISO_DATE_TIME)
         is LocalDateTime -> value.format(DateTimeFormatter.ISO_LOCAL_DATE_TIME)
         is LocalDate -> value.format(DateTimeFormatter.ISO_LOCAL_DATE)
         is LocalTime -> value.format(DateTimeFormatter.ISO_LOCAL_TIME)
         is Date -> value.toInstant().atOffset(ZoneOffset.UTC).format(DateTimeFormatter.ISO_DATE_TIME)
+        is Time -> value.toLocalTime().format(DateTimeFormatter.ISO_LOCAL_TIME)
         else -> value.toString()
     }
 }
 
+/** Converts an array of String values to a ByteArray that reflects a CSV record. Used to pipe output to COPY command */
 private fun recordToCsvBytes(record: Array<String>): ByteArray {
     return record.joinToString(separator = "\",\"", prefix = "\"", postfix = "\"\n") { value ->
         value.replace("\"", "\"\"")
     }.toByteArray()
 }
 
+/** Transforms a source column name to a valid PostgreSQL column name */
 private fun formatColumnName(name: String): String {
     return name.trim()
         .replace("#", "NUM")
         .replace("\\s+".toRegex(), "_")
         .uppercase()
         .replace("\\W".toRegex(), "")
-        .replace("^\\d".toRegex()) {
-            "_${it.value}"
-        }
+        .replace("^\\d".toRegex()) { "_${it.value}" }
         .take(60)
 }
 
-private suspend fun <T> CsvParser.use(file: File, func: suspend CsvParser.(CsvParser) -> T): T {
+/**
+ * Utility function to use a parser like a closable object.
+ *
+ * Performs the suspending [block] wrapped in a  try-catch-finally with the given context of a [CsvParser]. Function
+ * starts parsing before the [block] and always stops the parser before function exit in finally block.
+ */
+private suspend fun <T> CsvParser.use(file: File, block: suspend CsvParser.(CsvParser) -> T): T {
     try {
         beginParsing(file)
-        return func(this)
+        return block(this)
     } catch (e: Throwable) {
         throw e
     } finally {
@@ -109,8 +134,8 @@ private suspend fun <T> CsvParser.use(file: File, func: suspend CsvParser.(CsvPa
     }
 }
 
-@JvmName("analyzeStringRecords")
-private fun analyzeRecords(
+/** Analyzes records for files without defined column types. Calls [analyzeRecords] with the default type of VARCHAR */
+private fun analyzeNonTypedRecords(
     tableName: String,
     header: List<String>,
     records: List<Array<String>>,
@@ -122,6 +147,11 @@ private fun analyzeRecords(
     )
 }
 
+/**
+ * Analyzes a [records] chunk given a [tableName] and [header] list, returning an [AnalyzeResult].
+ *
+ * The result is obtained by using passed data and looking into each column and finding the max and min string lengths.
+ */
 private fun analyzeRecords(
     tableName: String,
     header: List<Pair<String, String>>,
@@ -129,24 +159,22 @@ private fun analyzeRecords(
 ): AnalyzeResult {
     require(records.isNotEmpty()) { "Records to analyze cannot be empty" }
     require(header.size == records.first().size) { "First record size must match header size" }
-    var recordCount = 0
+    val recordCount = records.size
     val stats = header.mapIndexed { index, (name, type) ->
         val lengths = records.map { record ->
             record[index].length
-        }
-        if (recordCount == 0) {
-            recordCount = lengths.size
-        }
+        }.sorted()
         ColumnStats(
             name = name,
-            maxLength = lengths.maxOf { it },
-            minLength = lengths.minOf { it },
+            maxLength = lengths.last(),
+            minLength = lengths.first(),
             type = type,
         )
     }
     return AnalyzeResult(tableName, recordCount, stats)
 }
 
+/** Running SQL query to find out if the [tableName] can be found in the given [schema] */
 fun Connection.checkTableExists(tableName: String, schema: String = "public"): Boolean {
     return prepareStatement("""
         select table_name
@@ -165,7 +193,31 @@ fun Connection.checkTableExists(tableName: String, schema: String = "public"): B
         }
 }
 
-@Throws(IllegalArgumentException::class)
+fun Connection.loadDefaultData(tableName: String, inputStream: InputStream): Long {
+    return CopyManager(this.unwrap(PgConnection::class.java))
+        .copyIn(
+            getCopyCommand(
+                tableName = tableName,
+                header = true,
+            ),
+            inputStream
+        )
+}
+
+/**
+ * Loads a given [file] into the Connection, if the file type is supported.
+ *
+ * Checks some assumptions (see Throws), creates a [CopyManager] and then calls the appropriate extension function to
+ * load the given file type. Loading is performed by reading and transforming each file's record into a [ByteArray] to
+ * stream those bytes to the Connection server. For more details or loading requirement per [LoaderType] see the
+ * appropriate loader functions.
+ *
+ * @throws IllegalArgumentException various cases:
+ * - [file] does not exist
+ * - [file] provided is not a file
+ * - [tableNames] is empty
+ * - [LoaderType] cannot be found
+ */
 suspend fun Connection.loadFile(
     file: File,
     tableNames: List<String>,
@@ -175,11 +227,8 @@ suspend fun Connection.loadFile(
 ) {
     require(file.exists()) { "File cannot be found" }
     require(file.isFile) { "File object provided is not a file in the directory system" }
-    require(tableNames.isNotEmpty()) { "Table names cannot be empty" }
-    val loaderType = LoaderType
-        .values()
-        .firstOrNull { file.extension in it.extensions }
-        ?: throw IllegalArgumentException("File must be of a supported data format")
+    requireNotEmpty(tableNames) { "Table names cannot be empty" }
+    val loaderType = LoaderType.getLoaderTypeFromExtension(file.extension)
     with(CopyManager(this.unwrap(PgConnection::class.java))) {
         when(loaderType) {
             LoaderType.Excel -> {
@@ -223,7 +272,23 @@ suspend fun Connection.loadFile(
     commit()
 }
 
-@Throws(IllegalArgumentException::class)
+/**
+ * Returns a Flow that emits [AnalyzeResult] instances for a given [file] if the file type is supported.
+ *
+ * Checks some assumptions (see Throws) then calls the appropriate extension function to analyze the given file type.
+ * Analyzing is performed by reading and transforming each file's records into chunks then provides metadata and stats
+ * on the file's columns. For more details or analyzing requirement per [LoaderType] see the appropriate analysis
+ * functions.
+ *
+ * Since files can contain multiple sub tables, those analysis functions are an extension of [FlowCollector] in order
+ * to process and emit results directly within the function.
+ *
+ * @throws IllegalArgumentException various cases:
+ * - [file] does not exist
+ * - [file] provided is not a file
+ * - [tableNames] is empty
+ * - [LoaderType] cannot be found
+ */
 suspend fun analyzeFile(
     file: File,
     tableNames: List<String>,
@@ -233,21 +298,18 @@ suspend fun analyzeFile(
 ): Flow<AnalyzeResult> {
     require(file.exists()) { "File cannot be found" }
     require(file.isFile) { "File object provided is not a file in the directory system" }
-    require(tableNames.isNotEmpty()) { "Table names cannot be empty" }
-    val loaderType = LoaderType
-        .values()
-        .firstOrNull { file.extension in it.extensions }
-        ?: throw IllegalArgumentException("File must be of a supported data format")
-    return when(loaderType) {
-        LoaderType.Excel -> {
-            analyzeExcelFile(
-                excelFile = file,
-                tableNames = tableNames,
-                sheetNames = subTableNames,
-            )
-        }
-        LoaderType.Flat -> {
-            flow {
+    requireNotEmpty(tableNames) { "Table names cannot be empty" }
+    val loaderType = LoaderType.getLoaderTypeFromExtension(file.extension)
+    return flow {
+        when(loaderType) {
+            LoaderType.Excel -> {
+                analyzeExcelFile(
+                    excelFile = file,
+                    tableNames = tableNames,
+                    sheetNames = subTableNames,
+                )
+            }
+            LoaderType.Flat -> {
                 val result = analyzeFlatFile(
                     flatFile = file,
                     tableName = tableNames.first(),
@@ -256,16 +318,14 @@ suspend fun analyzeFile(
                 )
                 emit(result)
             }
-        }
-        LoaderType.MDB -> {
-            analyzeMdbFile(
-                mdbFile = file,
-                tableNames = tableNames,
-                mdbTableNames = subTableNames,
-            )
-        }
-        LoaderType.DBF -> {
-            flow {
+            LoaderType.MDB -> {
+                analyzeMdbFile(
+                    mdbFile = file,
+                    tableNames = tableNames,
+                    mdbTableNames = subTableNames,
+                )
+            }
+            LoaderType.DBF -> {
                 val result = analyzeDbfFile(
                     dbfFile = file,
                     tableName = tableNames.first(),
@@ -276,6 +336,12 @@ suspend fun analyzeFile(
     }
 }
 
+/**
+ * Uses a [CsvParser] to parse flat file into records and analyze the resulting columns.
+ *
+ * Generates a chunked sequence of 10000 records per chunk to analyze and reduce to a single [AnalyzeResult]. Requires
+ * that standard flat file properties are provided.
+ */
 private suspend fun analyzeFlatFile(
     flatFile: File,
     tableName: String,
@@ -292,11 +358,18 @@ private suspend fun analyzeFlatFile(
         generateSequence { parser.parseNext() }
             .chunked(10000)
             .asFlow()
-            .map { recordChunk -> analyzeRecords(tableName, header, recordChunk) }
+            .flowOn(Dispatchers.IO)
+            .map { recordChunk -> analyzeNonTypedRecords(tableName, header, recordChunk) }
             .reduce { acc, analyzeResult -> acc.merge(analyzeResult) }
     }
 }
 
+/**
+ * Extension function allows for a CopyManager to easily load a [flatFile] line by line to a given [table][tableName].
+ *
+ * Creates a [CopyIn][org.postgresql.copy.CopyIn] instance then utilizes the provided stream to write each line of the
+ * file to the Connection of the CopyManager.
+ */
 private suspend fun CopyManager.loadFlatFile(
     flatFile: File,
     tableName: String,
@@ -325,6 +398,13 @@ private suspend fun CopyManager.loadFlatFile(
     logger.info("Copy stream closed. Wrote $recordCount records to the target table $tableName")
 }
 
+/**
+ * Extension function to extract a sequence of records from an Excel [Sheet].
+ *
+ * Uses the sheet's [row iterator][Sheet.rowIterator] to traverse the sheet and collect each row's cells as String.
+ * Since a cell can have many types, be a formula or be null, we apply a transformation to extract the cell value and
+ * convert that value to a String.
+ */
 private fun Sheet.excelSheetRecords(
     headerLength: Int,
     evaluator: FormulaEvaluator,
@@ -340,8 +420,7 @@ private fun Sheet.excelSheetRecords(
                 .map { cell ->
                     val cellValue = evaluator.evaluate(cell) ?: CellValue("")
                     when (cellValue.cellType) {
-                        null ->
-                            ""
+                        null -> ""
                         CellType.NUMERIC -> {
                             val numValue = cellValue.numberValue
                             when {
@@ -363,11 +442,16 @@ private fun Sheet.excelSheetRecords(
         }
 }
 
-private suspend fun analyzeExcelFile(
+/**
+ * Extension function to analyze all the required sheets (as per [sheetNames]).
+ *
+ * Generates a chunked sequence of 10000 records per chunk to analyze and reduce to a single [AnalyzeResult].
+ */
+private suspend fun FlowCollector<AnalyzeResult>.analyzeExcelFile(
     excelFile: File,
     tableNames: List<String>,
     sheetNames: List<String>,
-) = flow {
+) {
     excelFile.inputStream().use { inputStream ->
         withContext(Dispatchers.IO) {
             @Suppress("BlockingMethodInNonBlockingContext")
@@ -384,7 +468,7 @@ private suspend fun analyzeExcelFile(
                     .chunked(10000)
                     .asFlow()
                     .flowOn(Dispatchers.IO)
-                    .map { recordChunk -> analyzeRecords(tableName, header, recordChunk) }
+                    .map { recordChunk -> analyzeNonTypedRecords(tableName, header, recordChunk) }
                     .reduce { acc, analyzeResult -> acc.merge(analyzeResult) }
                 emit(analyzeResult)
             }
@@ -392,6 +476,12 @@ private suspend fun analyzeExcelFile(
     }
 }
 
+/**
+ * Extension function allows for a CopyManager to easily load a [file][excelFile] to each table using the linked sheet.
+ *
+ * Creates a [CopyIn][org.postgresql.copy.CopyIn] instance for each sheet then utilizes the provided stream to write
+ * each record of the sheet to the Connection of the CopyManager.
+ */
 private suspend fun CopyManager.loadExcelFile(
     excelFile: File,
     tableNames: List<String>,
@@ -429,48 +519,60 @@ private suspend fun CopyManager.loadExcelFile(
     }
 }
 
-private fun ResultSet.resultRecords(): Sequence<Array<String>> {
-    return generateSequence {
-        if (next()) {
-            (1..metaData.columnCount).map { column ->
-                formatObject(getObject(column)).replace("\"", "\"\"")
-            }.toTypedArray()
-        } else {
-            null
+/**
+ * Extension function to yield rows as an array of Strings
+ */
+private fun ResultSet.resultRecords() = sequence {
+    while (next()) {
+        val row = mutableListOf<String>()
+        for (i in 1..metaData.columnCount) {
+            row += formatObject(getObject(i)).replace("\"", "\"\"")
+        }
+        yield(row.toTypedArray())
+    }
+}
+
+/**
+ * Extension function to analyze all the required sub tables (as per [mdbTableNames]).
+ *
+ * Generates a chunked sequence of 10000 records per chunk to analyze and reduce to a single [AnalyzeResult].
+ */
+private suspend fun FlowCollector<AnalyzeResult>.analyzeMdbFile(
+    mdbFile: File,
+    tableNames: List<String>,
+    mdbTableNames: List<String>,
+) {
+    DriverManager .getConnection("jdbc:ucanaccess://${mdbFile.absolutePath}").use { connection ->
+        mdbTableNames.zip(tableNames).forEach { (mdbTableName, tableName) ->
+            connection
+                .prepareStatement("SELECT * FROM $mdbTableName")
+                .executeQuery()
+                .use { rs ->
+                    val headers = (1..rs.metaData.columnCount).map {
+                        Pair(
+                            formatColumnName(rs.metaData.getColumnName(it)),
+                            jdbcTypeNames.getOrDefault(rs.metaData.getColumnType(it), "")
+                        )
+                    }
+                    val analyzeResult = rs.resultRecords()
+                        .chunked(10000)
+                        .asFlow()
+                        .flowOn(Dispatchers.IO)
+                        .map { records -> analyzeRecords(tableName, headers, records) }
+                        .reduce { acc, analyzeResult -> acc.merge(analyzeResult) }
+                    emit(analyzeResult)
+                }
         }
     }
 }
 
-private fun analyzeMdbFile(
-    mdbFile: File,
-    tableNames: List<String>,
-    mdbTableNames: List<String>,
-) = flow {
-    DriverManager
-        .getConnection("jdbc:ucanaccess://${mdbFile.absolutePath}").use { connection ->
-            mdbTableNames.zip(tableNames).forEach { (mdbTableName, tableName) ->
-                connection
-                    .prepareStatement("SELECT * FROM $mdbTableName")
-                    .executeQuery()
-                    .use { rs ->
-                        val headers = (1..rs.metaData.columnCount).map {
-                            Pair(
-                                formatColumnName(rs.metaData.getColumnName(it)),
-                                (jdbcTypeNames[rs.metaData.getColumnType(it)] ?: "")
-                            )
-                        }
-                        val analyzeResult = rs.resultRecords()
-                            .chunked(10000)
-                            .asFlow()
-                            .flowOn(Dispatchers.IO)
-                            .map { records -> analyzeRecords(tableName, headers, records) }
-                            .reduce { acc, analyzeResult -> acc.merge(analyzeResult) }
-                        emit(analyzeResult)
-                    }
-            }
-        }
-}
-
+/**
+ * Extension function allows for a CopyManager to easily load a [file][mdbFile] to each table using the linked sub
+ * tables.
+ *
+ * Creates a [CopyIn][org.postgresql.copy.CopyIn] instance for each sub table then utilizes the provided stream to write
+ * each record of the sub table to the Connection of the CopyManager.
+ */
 private suspend fun CopyManager.loadMdbFile(
     mdbFile: File,
     tableNames: List<String>,
@@ -505,6 +607,9 @@ private suspend fun CopyManager.loadMdbFile(
         }
 }
 
+/**
+ * Extract header details from a DBF [file][dbfFile] and return as pairs. Note: avoided a Map to preserve order
+ */
 private fun getDbfHeader(dbfFile: File): List<Pair<String, String>> {
     return dbfFile.inputStream().use { inputStream ->
         DBFReader(inputStream).use { reader ->
@@ -516,6 +621,9 @@ private fun getDbfHeader(dbfFile: File): List<Pair<String, String>> {
     }
 }
 
+/**
+ * Utility Function to extract records from a DBF [file][dbfFile] as a yielded sequence of String arrays
+ */
 private fun dbfFileRecords(dbfFile: File) = sequence {
     dbfFile.inputStream().use { inputStream ->
         DBFReader(inputStream).use { reader ->
@@ -532,6 +640,12 @@ private fun dbfFileRecords(dbfFile: File) = sequence {
     }
 }
 
+
+/**
+ * Extension function to analyze the provided [file][dbfFile].
+ *
+ * Generates a chunked sequence of 10000 records per chunk to analyze and reduce to a single [AnalyzeResult].
+ */
 private suspend fun analyzeDbfFile(
     dbfFile: File,
     tableName: String,
@@ -545,6 +659,12 @@ private suspend fun analyzeDbfFile(
         .reduce { acc, analyzeResult -> acc.merge(analyzeResult) }
 }
 
+/**
+ * Extension function allows for a CopyManager to easily load all record from a [file][dbfFile] into a give [tableName].
+ *
+ * Creates a [CopyIn][org.postgresql.copy.CopyIn] instance then utilizes the provided stream to write each record of the
+ * file to the Connection of the CopyManager.
+ */
 private suspend fun CopyManager.loadDbfFile(
     dbfFile: File,
     tableName: String,

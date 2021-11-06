@@ -13,6 +13,22 @@ import kotlin.collections.LinkedHashSet
 
 data class Connection(val session: DefaultWebSocketSession, val listenId: String)
 
+/**
+ * Base publisher for a given [path] and LISTEN [channel name][channelName] for the database.
+ *
+ * Publishers work with a 1 or more connections, using a [Mutex] lock to ensure shared state is handled properly. The
+ * main function of the publisher is to spawn a listener on the specified [channel name][channelName] when at least 1
+ * user is connected to the socket. All future connections do not spawn the listener. The listener uses a database
+ * connection to run a LISTEN command and wait for notifications to arrive. Upon arrival, the listener runs a callback
+ * that locks the connection set while the message is sent to all active connections.
+ *
+ * After connection to the WebSocket, the server listens to the user until the user closes the connection. When the
+ * connection is closed, the server locks the connection set while the closed connection is removed from the set.
+ *
+ * The listener is a simple launched coroutine so when no connections are currently active (ie connection set is empty),
+ * the listener job is cancelled and the listener reference is set to null so the server knows to create a new listener
+ * coroutine when future connections are initialized.
+ */
 fun Route.publisher(path: String, channelName: String) {
     route(path) {
         val connections = LinkedHashSet<Connection>()
@@ -35,7 +51,7 @@ fun Route.publisher(path: String, channelName: String) {
                 }
             }
             val listenerRunning = if (listener != null) "Listener is running" else "Listener is not running"
-            send("Connected to pipelineRunTasks socket. $listenerRunning".trim())
+            send("Connected to pipelineRunTasks socket. $listenerRunning")
             try {
                 for (frame in incoming) {
                     when (frame) {

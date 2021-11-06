@@ -3,7 +3,18 @@ package orm.tables
 import org.ktorm.schema.*
 import orm.entities.DataSource
 
-object DataSources: DbTable<DataSource>("data_sources") {
+/**
+ * Table used to store sources of data. Core backing of how data is grouped and moves through the system from collection
+ * to reporting.
+ *
+ * The records contain data about how the source is moved through the system, treated during reporting and other meta
+ * details about the source
+ *
+ * Future Changes
+ * --------------
+ * - implement API requirements for users to perform CRUD operations on this table
+ */
+object DataSources: DbTable<DataSource>("data_sources"), SequentialPrimaryKey {
     val dsId = long("ds_id").primaryKey().bindTo { it.dsId }
     val code = text("code").bindTo { it.code }
     val country = text("country").bindTo { it.country }
@@ -25,14 +36,6 @@ object DataSources: DbTable<DataSource>("data_sources") {
     val checkPipeline = long("check_pipeline").bindTo { it.checkPipeline }
     val qaPipeline = long("qa_pipeline").bindTo { it.qaPipeline }
 
-    val createSequence = """
-        CREATE SEQUENCE public.data_sources_ds_id_seq
-            INCREMENT 1
-            START 1
-            MINVALUE 1
-            MAXVALUE 9223372036854775807
-            CACHE 1;
-    """.trimIndent()
     override val createStatement = """
         CREATE TABLE IF NOT EXISTS public.data_sources
         (

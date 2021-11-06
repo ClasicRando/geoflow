@@ -6,10 +6,13 @@ import orm.entities.runFilesLocation
 import orm.enums.FileCollectType
 import orm.tables.PipelineRuns
 import orm.tables.SourceTables
-import web.ArcGisScraper
-import web.FileDownloader
-import web.ZipDownloader
+import web.*
 
+/**
+ * System task that downloads missing files that have a URL to reference.
+ *
+ * Finds all file names that were passed as a message to the task and attempts to download all the returned URLs
+ */
 class DownloadMissingFiles(pipelineRunTaskId: Long): SystemTask(pipelineRunTaskId) {
 
     companion object {
@@ -19,8 +22,7 @@ class DownloadMissingFiles(pipelineRunTaskId: Long): SystemTask(pipelineRunTaskI
     override val taskId: Long = 4
 
     override suspend fun run() {
-        if (task.taskMessage == null)
-            throw IllegalArgumentException("Task message must contain missing filenames")
+        requireNotNull(task.taskMessage) { "Task message must contain missing filenames" }
         val pipelineRun = PipelineRuns.getRun(task.runId) ?: throw Exception("Run cannot be null")
         val outputFolder = pipelineRun.runFilesLocation
         val filenames = task.taskMessage!!
@@ -41,22 +43,22 @@ class DownloadMissingFiles(pipelineRunTaskId: Long): SystemTask(pipelineRunTaskI
             .forEach { url ->
                 when {
                     url.contains("/arcgis/rest/", ignoreCase = true) -> {
-                        ArcGisScraper.fromUrl(
+                        scrapeArcGisService(
                             url = url,
                             outputPath = outputFolder
-                        ).scrape()
+                        )
                     }
                     url.endsWith(".zip") -> {
-                        ZipDownloader(
+                        downloadZip(
                             url = url,
                             outputPath = outputFolder
-                        ).request()
+                        )
                     }
                     else -> {
-                        FileDownloader(
+                        downloadFile(
                             url = url,
                             outputPath = outputFolder
-                        ).request()
+                        )
                     }
                 }
             }

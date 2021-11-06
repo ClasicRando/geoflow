@@ -29,11 +29,11 @@ class DownloadFileTest {
     fun `download file`(url: String) {
         val filename = "(?<=/)[^/]+$".toRegex().find(url)!!.value
         runBlocking {
-            FileDownloader(
+            downloadFile(
                 url,
                 outputPath,
                 filename
-            ).request()
+            )
             assertTrue {
                 File(outputPath, filename).exists()
             }
@@ -48,11 +48,10 @@ class DownloadFileTest {
     fun `download zip`(url: String) {
         val filename = "(?<=/)[^/]+$".toRegex().find(url)!!.value
         runBlocking {
-            FileDownloader(
+            downloadZip(
                 url,
                 outputPath,
-                filename
-            ).request()
+            )
             assertTrue {
                 File(outputPath, filename).exists()
             }

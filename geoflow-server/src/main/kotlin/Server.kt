@@ -17,9 +17,9 @@ import it.justwrote.kjob.job.JobExecutionType
 import it.justwrote.kjob.kjob
 import mu.KotlinLogging
 import orm.tables.InternalUsers
-import java.time.Instant
 
 val logger = KotlinLogging.logger {}
+/** Kjob instance used by the server to schedule jobs for the worker application */
 val kjob = kjob(Mongo) {
     nonBlockingMaxJobs = 1
     blockingMaxJobs = 1
@@ -39,21 +39,27 @@ val kjob = kjob(Mongo) {
     expireLockInMinutes = 5L
 }.start()
 
+/** Main entry of the server application. Initializes the server engine. */
 fun main(args: Array<String>): Unit = io.ktor.server.cio.EngineMain.main(args)
 
+/** Module describing server features and routing */
 @Suppress("unused")
 fun Application.module() {
+    /**
+     * Install form and session based authentication methods. Form used for initial login and session used in subsequent
+     * requests
+     */
     install(Authentication) {
         form("auth-form") {
             userParamName = "username"
             passwordParamName = "password"
             validate { credentials ->
-                val validateResult = InternalUsers.validateUser(credentials.name, credentials.password)
-                if (validateResult.isSuccess) {
-                    UserIdPrincipal(credentials.name)
-                } else {
-                    log.info(validateResult.message)
-                    null
+                when(val validateResult = InternalUsers.validateUser(credentials.name, credentials.password)) {
+                    is InternalUsers.ValidationResponse.Success -> UserIdPrincipal(credentials.name)
+                    is InternalUsers.ValidationResponse.Failure -> {
+                        log.info(validateResult.ERROR_MESSAGE)
+                        null
+                    }
                 }
             }
             challenge("/login?message=invalid")
@@ -77,18 +83,22 @@ fun Application.module() {
             }
         }
     }
+    /** Install session handling. Stores cookies in memory for now. Will change later in development */
     install(Sessions) {
         cookie<UserSession>("user_session", storage = SessionStorageMemory()) {
             cookie.path = "/"
             cookie.extensions["SameSite"] = "lax"
         }
     }
+    /** Install JSON serialization to API responses. */
     install(ContentNegotiation) {
         json()
     }
+    /** Install WebSockets for pub/sub pattern. */
     install(WebSockets) {
 
     }
+    /** Install exception handling to display standard status pages for defined exception and throwables. */
     install(StatusPages) {
         exception<MissingRequestParameterException> { cause ->
             call.respondHtml {
@@ -106,8 +116,11 @@ fun Application.module() {
             }
         }
     }
+    /** Base routing of application */
     routing {
+        /** Static Javascript assets. Does not require authentication */
         js()
+        /** Group all other non-login pages to require session authentication */
         authenticate("auth-session") {
             index()
             api()
@@ -115,6 +128,7 @@ fun Application.module() {
             pipelineTasks()
             sockets()
         }
+        /** Require form authentication while posting to '/login' end point. Collections username and creates session */
         authenticate("auth-form") {
             post("/login") {
                 val username = call.principal<UserIdPrincipal>()?.name ?: ""
@@ -126,7 +140,6 @@ fun Application.module() {
                             username = username,
                             name = user.name,
                             roles = user.roles.mapNotNull { it },
-                            expiration = Instant.now().plusSeconds(60L * 60).epochSecond
                         )
                     )
                     "/index"
@@ -137,6 +150,7 @@ fun Application.module() {
                 call.respondRedirect(redirect)
             }
         }
+        /** Open login to anyone and response with login page. */
         get("/login") {
             call.respondHtml {
                 val message = call.request.queryParameters["message"] ?: ""
@@ -151,6 +165,7 @@ fun Application.module() {
                 )
             }
         }
+        /** Upon logout request, remove current session and redirect to login. */
         get("/logout") {
             call.sessions.clear<UserSession>()
             call.respondRedirect("/login")

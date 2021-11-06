@@ -3,6 +3,9 @@ package orm.tables
 import org.ktorm.schema.text
 import orm.entities.Role
 
+/**
+ * Table used to store the available roles that a user can hold
+ */
 object Roles: DbTable<Role>("roles") {
     val name = text("name").primaryKey().bindTo { it.name }
     val description = text("description").bindTo { it.description }

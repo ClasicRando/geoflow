@@ -3,8 +3,18 @@ package orm.tables
 import org.ktorm.schema.*
 import orm.entities.Task
 import orm.enums.TaskRunType
+import tasks.PipelineTask
+import tasks.UserTask
+import tasks.SystemTask
 
-object Tasks: DbTable<Task>("tasks") {
+/**
+ * Table used to store generic tasks that link to a class name for execution in the worker application. Class name used
+ * must be a subclass of [PipelineTask] to be runnable
+ *
+ * Metadata stored describes the task intent, hints as to the workflow state the task is intended to work within, and
+ * defines the type of run operation the task entails (Simple [UserTask] or complex [SystemTask])
+ */
+object Tasks: DbTable<Task>("tasks"), SequentialPrimaryKey {
     val taskId = long("task_id").primaryKey().bindTo { it.taskId }
     val name = text("name").bindTo { it.name }
     val description = text("description").bindTo { it.description }
@@ -32,14 +42,5 @@ object Tasks: DbTable<Task>("tasks") {
         WITH (
             OIDS = FALSE
         );
-    """.trimIndent()
-
-    val createSequence = """
-        CREATE SEQUENCE public.tasks_task_id_seq
-            INCREMENT 1
-            START 1
-            MINVALUE 1
-            MAXVALUE 9223372036854775807
-            CACHE 1;
     """.trimIndent()
 }

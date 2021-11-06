@@ -4,7 +4,12 @@ import org.ktorm.schema.int
 import org.ktorm.schema.text
 import orm.entities.RecordWarehouseType
 
-object RecordWarehouseTypes: DbTable<RecordWarehouseType>("record_warehouse_types") {
+/**
+ * Table used to store variations of data warehousing options used for moving staging data into production
+ *
+ * Each record dictates how matching to and merging staging data into production data should be treated
+ */
+object RecordWarehouseTypes: DbTable<RecordWarehouseType>("record_warehouse_types"), SequentialPrimaryKey {
     val id = int("id").primaryKey().bindTo { it.id }
     val name = text("name").bindTo { it.name }
     val description = text("description").bindTo { it.description }
@@ -20,14 +25,5 @@ object RecordWarehouseTypes: DbTable<RecordWarehouseType>("record_warehouse_type
         WITH (
             OIDS = FALSE
         );
-    """.trimIndent()
-
-    val createSequence = """
-        CREATE SEQUENCE public.record_warehouse_types_id_seq
-            INCREMENT 1
-            START 1
-            MINVALUE 1
-            MAXVALUE 2147483647
-            CACHE 1;
     """.trimIndent()
 }

@@ -1,6 +1,6 @@
 code,href,role,name,workflow_order
-"collection","/pipeline-status?code=collection","collection","Data Collection",1
-"load","/pipeline-status?code=load","load","Data Loading",2
-"qa","/pipeline-status?code=qa","qa","Load QA",4
-"check","/pipeline-status?code=check","check","Load Checking",3
-"done",,,"Done",5
+"collection","/pipeline-status/collection","collection","Data Collection",1
+"load","/pipeline-status/load","load","Data Loading",2
+"qa","/pipeline-status?/qa","qa","Load QA",4
+"check","/pipeline-status/check","check","Load Checking",3
+"done","/pipeline-status/done","admin","Done",5

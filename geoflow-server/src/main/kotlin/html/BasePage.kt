@@ -3,29 +3,38 @@ package html
 import io.ktor.html.*
 import kotlinx.html.*
 
-open class BasePage: Template<HTML> {
+/**
+ * Base template for all standard pages in the application. Contains a links, scripts and placeholders for later
+ * additions when the page is created.
+ *
+ * Instances are created using static methods that fill in placeholder values by name. These methods return the instance
+ * itself so more placeholders can be filled after the initial fill.
+ */
+class BasePage private constructor (
+    val styles: Placeholder<STYLE> = Placeholder(),
+    val content: Placeholder<FlowContent> = Placeholder(),
+    val script: Placeholder<FlowContent> = Placeholder(),
+): Template<HTML> {
 
-    val styles = Placeholder<STYLE>()
-    val content = Placeholder<FlowContent>()
-    val script = Placeholder<FlowContent>()
-
-    fun setStyles(addStyles: STYLE.() -> Unit) {
-        styles {
-            this.addStyles()
-        }
+    /** Applies [block] to the [styles] Placeholder */
+    fun withStyles(block: STYLE.() -> Unit): BasePage {
+        styles { block() }
+        return this
     }
 
-    fun setContent(addContent: FlowContent.() -> Unit) {
-        content {
-            this.addContent()
-        }
-    }
-    fun setScript(addScript: FlowContent.() -> Unit) {
-        script {
-            this.addScript()
-        }
+    /** Applies [block] to the [content] Placeholder */
+    fun withContent(block: FlowContent.() -> Unit): BasePage {
+        content { block() }
+        return this
     }
 
+    /** Applies [block] to the [script] Placeholder */
+    fun withScript(block: FlowContent.() -> Unit): BasePage {
+        script { block() }
+        return this
+    }
+
+    /** Method from [Template] to create HTML document. Contains most of the layout with some placeholders */
     override fun HTML.apply() {
         lang = "en-US"
         head {
@@ -122,6 +131,21 @@ open class BasePage: Template<HTML> {
                 }
                 insert(script)
             }
+        }
+    }
+    
+    companion object {
+        /** Creates a [BasePage] instance, applies [block] to the [styles] Placeholder and returns the instance */
+        fun withStyles(block: STYLE.() -> Unit): BasePage {
+            return BasePage().apply { withStyles(block) }
+        }
+        /** Creates a [BasePage] instance, applies [block] to the [content] Placeholder and returns the instance */
+        fun withContent(block: FlowContent.() -> Unit): BasePage {
+            return BasePage().apply { withContent(block) }
+        }
+        /** Creates a [BasePage] instance, applies [block] to the [script] Placeholder and returns the instance */
+        fun withScript(block: FlowContent.() -> Unit): BasePage {
+            return BasePage().apply { withScript(block) }
         }
     }
 }

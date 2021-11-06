@@ -4,7 +4,12 @@ import org.ktorm.schema.long
 import org.ktorm.schema.text
 import orm.entities.Pipeline
 
-object Pipelines: DbTable<Pipeline>("pipelines") {
+/**
+ * Table used to store the top level information of generic data pipelines
+ *
+ * Named for easier access and categorized by workflow operation the pipeline is associated with
+ */
+object Pipelines: DbTable<Pipeline>("pipelines"), SequentialPrimaryKey {
     val pipelineId = long("pipeline_id").primaryKey().bindTo { it.pipelineId }
     val name = text("name").bindTo { it.name }
     val workflowOperation = text("workflow_operation").references(WorkflowOperations) { it.workflowOperation }
@@ -25,14 +30,5 @@ object Pipelines: DbTable<Pipeline>("pipelines") {
         WITH (
             OIDS = FALSE
         );
-    """.trimIndent()
-
-    val createSequence = """
-        CREATE SEQUENCE public.pipelines_pipeline_id_seq
-            INCREMENT 1
-            START 1
-            MINVALUE 1
-            MAXVALUE 9223372036854775807
-            CACHE 1;
     """.trimIndent()
 }

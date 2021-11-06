@@ -1,38 +1,30 @@
 package html
 
+import io.ktor.html.*
 import kotlinx.html.*
 
-fun HTML.index() {
-    with(Index()) {
-        apply()
-    }
+/** Utility function to apply any HTML template */
+fun HTML.applyTemplate(template: Template<HTML>) = with(template) {
+    apply()
 }
 
-fun HTML.pipelineStatus(workflowCode: String) {
-    with(PipelineStatus(workflowCode)) {
-        apply()
-    }
-}
+/** Base page applies static Index template */
+fun HTML.index() = applyTemplate(Index.page)
 
-fun HTML.pipelineTasks(runId: Long) {
-    with(PipelineTasks(runId)) {
-        apply()
-    }
-}
+/** PipelineStatus page with template created from [workflowCode] */
+fun HTML.pipelineStatus(workflowCode: String) = applyTemplate(PipelineStatus.withWorkflowCode(workflowCode))
 
-fun HTML.errorPage(message: String) {
-    with(BasePage()) {
-        setContent {
-            +message
-        }
-        apply()
-    }
-}
+/** PipelineTasks page with template created from [runId] */
+fun HTML.pipelineTasks(runId: Long) = applyTemplate(PipelineTasks.withRunId(runId))
 
-fun HTML.login(message: String) {
+/** BasePage template with simple message inserted */
+fun HTML.errorPage(message: String) = applyTemplate(BasePage.withContent { +message })
+
+/** Simple login form page with an optional message if session expired or past login attempt was unsuccessful */
+fun HTML.login(message: String = "") {
     lang = "en-US"
     head {
-        title("GeoFlow")
+        title(content = "GeoFlow")
         meta {
             charset = "utf-8"
         }
@@ -66,7 +58,7 @@ fun HTML.login(message: String) {
                     +message
                 }
             }
-            div("form-group") {
+            div(classes = "form-group") {
                 label {
                     htmlFor = "username"
                     +"Username"
@@ -77,7 +69,7 @@ fun HTML.login(message: String) {
                     required = true
                 }
             }
-            div("form-group") {
+            div(classes = "form-group") {
                 label {
                     htmlFor = "password"
                     +"Password"

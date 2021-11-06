@@ -8,6 +8,12 @@ import java.io.File
 import java.util.zip.ZipEntry
 import java.util.zip.ZipOutputStream
 
+/**
+ * System task that backs up the source files to a zip file.
+ *
+ * Uses the link to the folder containing the source files for the current pipeline run and copies all files to a
+ * single zip file for backup.
+ */
 class BackupFilesToZip(pipelineRunTaskId: Long): SystemTask(pipelineRunTaskId) {
 
     override val taskId: Long = 7

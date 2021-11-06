@@ -7,6 +7,10 @@ import org.apache.commons.dbcp2.BasicDataSource
 import org.ktorm.database.Database
 import java.io.File
 
+/**
+ * Singleton to hold the primary database connection as a [DataSource][javax.sql.DataSource] and anything else linked to
+ * that DataSource.
+ */
 object DatabaseConnection {
     @OptIn(ExperimentalSerializationApi::class)
     private val dataSource = BasicDataSource().apply {
