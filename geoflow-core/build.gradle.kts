@@ -19,6 +19,7 @@ val junitVersion: String by project
 val slf4Version: String by project
 val kotlinLoggingVersion: String by project
 val reflectionsVersion: String by project
+val coroutinesJdbc: String by project
 
 dependencies {
     testImplementation(kotlin("test", "1.5.30"))
@@ -61,6 +62,7 @@ dependencies {
     implementation("org.slf4j:slf4j-simple:$slf4Version")
     implementation("io.github.microutils:kotlin-logging-jvm:$kotlinLoggingVersion")
     implementation("org.reflections:reflections:$reflectionsVersion")
+    implementation("com.michael-bull.kotlin-coroutines-jdbc:kotlin-coroutines-jdbc:$coroutinesJdbc")
 }
 
 tasks.test {
