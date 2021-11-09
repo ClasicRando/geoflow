@@ -15,9 +15,8 @@ private val logger = KotlinLogging.logger {}
  *
  * Primarily used for web sockets and a pub/sub design to listen for table changes
  */
-@OptIn(ExperimentalCoroutinesApi::class)
 fun CoroutineScope.startListener(channelName: String, callback: suspend (String) -> Unit) = launch {
-    DatabaseConnection.database.useConnection { connection ->
+    DatabaseConnection.execute { connection ->
         val pgConnection: PGConnection = connection.unwrap(PGConnection::class.java)
         connection.prepareStatement("LISTEN $channelName").use {
             it.execute()
