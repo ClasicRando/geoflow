@@ -12,7 +12,7 @@ import kotlinx.serialization.decodeFromString
 import kotlinx.serialization.json.Json
 import org.apache.commons.dbcp2.BasicDataSource
 import org.ktorm.database.Database
-import rowToDataClass
+import rowToClass
 import java.io.File
 import java.sql.Connection
 
@@ -31,6 +31,7 @@ object DatabaseConnection {
             password = props.password
         }
     }
+
     val database by lazy { Database.connect(dataSource) }
     val scope = CoroutineScope(Dispatchers.IO + CoroutineDataSource(dataSource))
 
@@ -46,7 +47,7 @@ object DatabaseConnection {
             }.use { statement ->
                 statement.executeQuery().use { rs ->
                     generateSequence {
-                        if (rs.next()) rs.rowToDataClass<T>() else null
+                        if (rs.next()) rs.rowToClass<T>() else null
                     }.toList()
                 }
             }
@@ -73,8 +74,8 @@ object DatabaseConnection {
         }
     }
 
-    suspend inline fun execute(
-        crossinline func: suspend CoroutineScope.(Connection) -> Unit
+    suspend fun execute(
+        func: suspend CoroutineScope.(Connection) -> Unit
     ) {
         withContext(scope.coroutineContext) {
             withConnection {
