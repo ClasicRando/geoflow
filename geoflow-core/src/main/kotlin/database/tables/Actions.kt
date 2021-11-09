@@ -1,12 +1,9 @@
-package orm.tables
+package database.tables
 
 import database.DatabaseConnection
 import kotlinx.serialization.Serializable
-import org.ktorm.dsl.*
-import org.ktorm.schema.long
-import org.ktorm.schema.text
-import orm.entities.Action
-import kotlin.jvm.Throws
+import orm.tables.ApiExposed
+import orm.tables.SequentialPrimaryKey
 
 /**
  * Table used to store actions available to users with certain roles.
@@ -21,13 +18,7 @@ import kotlin.jvm.Throws
  * form interface for the current user to create another user. These endpoints should include role validation so that a
  * user without the required role is given an error status page.
  */
-object Actions: DbTable<Action>("actions"), ApiExposed, SequentialPrimaryKey {
-    val actionOid = long("action_oid").primaryKey().bindTo { it.actionOid }
-    val state = text("state").bindTo { it.state }
-    val role = text("role").bindTo { it.role }
-    val name = text("name").bindTo { it.name }
-    val description = text("description").bindTo { it.description }
-    val href = text("href").bindTo { it.href }
+object Actions: DbTable("actions"), ApiExposed, SequentialPrimaryKey {
 
     /**
      * Fields provided when this table is used in the server API to display in a bootstrap table.
@@ -66,22 +57,11 @@ object Actions: DbTable<Action>("actions"), ApiExposed, SequentialPrimaryKey {
      *
      * @throws IllegalStateException When any row item is null
      */
-    @Throws(IllegalStateException::class)
-    fun userActions(roles: List<String>): List<Record> {
-        return DatabaseConnection
-            .database
-            .from(this)
-            .select(name, description, href)
-            .whereWithConditions {
-                if (!roles.contains("admin"))
-                    it += role.inList(roles)
-            }
-            .map { row ->
-                Record(
-                    row[name] ?: throw IllegalStateException("name cannot be null"),
-                    row[description] ?: throw IllegalStateException("description cannot be null"),
-                    row[href] ?: throw IllegalStateException("href cannot be null")
-                )
-            }
+    suspend fun userActions(roles: List<String>): List<Record> {
+        val whereClause = if ("admin" !in roles) {
+            " WHERE $tableName.role in (${"?,".repeat(roles.size).trim(',')})"
+        } else ""
+        val sql = "SELECT $tableName.name, $tableName.description, $tableName.href FROM $tableName$whereClause"
+        return DatabaseConnection.submitQuery(sql = sql, parameters = roles.minus("admin"))
     }
 }

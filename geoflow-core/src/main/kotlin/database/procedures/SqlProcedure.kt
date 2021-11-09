@@ -48,4 +48,38 @@ abstract class SqlProcedure(
                     .execute()
             }
     }
+
+    /**
+     * Executes the procedure with the given params array
+     *
+     * Validates that the number of params and the type of the params match the [parameterTypes] definition. Allows for
+     * parameter definitions to include nullable types.
+     *
+     * @throws IllegalArgumentException when the params do not match the [parameterTypes] definition
+     */
+    protected suspend fun call2(vararg params: Any?) {
+        require(params.size == parameterTypes.size) {
+            "Expected ${parameterTypes.size} params, got ${params.size}"
+        }
+        val paramMismatch = params.zip(parameterTypes).firstOrNull { (param, pType) ->
+            if (param == null) {
+                !pType.isMarkedNullable
+            } else {
+                param::class.createType() != pType
+            }
+        }
+        if (paramMismatch != null) {
+            throw IllegalArgumentException("Expected param type ${paramMismatch.first}, got ${paramMismatch.second}")
+        }
+        DatabaseConnection.execute { connection ->
+            connection.prepareStatement("call $name(${"?".repeat(params.size)})")
+                .apply {
+                    params.forEachIndexed { index, obj ->
+                        setObject(index + 1, obj)
+                    }
+                }.use {
+                    it.execute()
+                }
+        }
+    }
 }

@@ -23,6 +23,11 @@ object UpdateFiles: SqlProcedure(
         super.call(runId)
     }
 
+    /** Call the stored procedure */
+    suspend fun call2(runId: Long) {
+        super.call2(runId)
+    }
+
     override val code = """
         CREATE OR REPLACE PROCEDURE public.update_files(
         	run_id bigint)

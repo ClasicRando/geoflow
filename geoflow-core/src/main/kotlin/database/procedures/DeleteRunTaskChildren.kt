@@ -18,6 +18,11 @@ object DeleteRunTaskChildren: SqlProcedure(
         super.call(pipelineRunTaskId)
     }
 
+    /** Call the stored procedure */
+    suspend fun call2(pipelineRunTaskId: Long) {
+        super.call2(pipelineRunTaskId)
+    }
+
     override val code = """
         CREATE OR REPLACE PROCEDURE public.delete_run_task_children(
         	pr_task_id bigint)

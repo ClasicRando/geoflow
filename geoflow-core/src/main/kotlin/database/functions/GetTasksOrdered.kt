@@ -51,6 +51,14 @@ object GetTasksOrdered: PlPgSqlTableFunction(
     fun call(runId: Long, workflowState: String? = null): List<Map<String, Any?>> {
         return super.call(runId, workflowState)
     }
+    /**
+     * Current scope 'call' function that uses the [runId] and [workflowState] to call the parent class scope 'call'
+     * function. Makes sure users of this object provide the correct parameters before calling the super function.
+     * Returns the list of ResultSet rows as a map
+     */
+    suspend inline fun <reified T> getTasks2(runId: Long, workflowState: String? = null): List<T> {
+        return call2(runId, workflowState)
+    }
 
     override val functionCode = """
         CREATE OR REPLACE FUNCTION public.get_tasks_ordered(

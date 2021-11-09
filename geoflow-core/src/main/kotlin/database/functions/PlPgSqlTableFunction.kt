@@ -1,10 +1,10 @@
 package database.functions
 
 import database.DatabaseConnection
+import rowToClass
 import kotlin.jvm.Throws
 import kotlin.reflect.KType
 import kotlin.reflect.full.createType
-
 
 /**
  * Base implementation of plpgsql table functions.
@@ -70,6 +70,45 @@ abstract class PlPgSqlTableFunction(
                         }.toList()
                     }
                 }
+        }
+    }
+
+    /**
+     * Executes the function and transforms the ResultSet to a list of maps for each row returns. Provides that list as
+     * the result.
+     *
+     * Validates that the number of params and the type of the params match the [parameterTypes] definition. Allows for
+     * parameter definitions to include nullable types.
+     *
+     * @throws IllegalArgumentException when the params do not match the [parameterTypes] definition
+     */
+    suspend inline fun <reified T> call2(vararg params: Any?): List<T> {
+        require(params.size == parameterTypes.size) {
+            "Expected ${parameterTypes.size} params, got ${params.size}"
+        }
+        val paramMismatch = params.zip(parameterTypes).firstOrNull { (param, pType) ->
+            if (param == null) {
+                !pType.isMarkedNullable
+            } else {
+                param::class.createType() != pType
+            }
+        }
+        if (paramMismatch != null) {
+            throw IllegalArgumentException("Expected param type ${paramMismatch.first}, got ${paramMismatch.second}")
+        }
+        val sql = "select * from $name(${"?,".repeat(params.size).trim(',')})"
+        return DatabaseConnection.queryConnection { connection ->
+            connection.prepareStatement(sql).apply {
+                for (parameter in params.withIndex()) {
+                    setObject(parameter.index + 1, parameter.value)
+                }
+            }.use { statement ->
+                statement.executeQuery().use { rs ->
+                    generateSequence {
+                        if (rs.next()) rs.rowToClass<T>() else null
+                    }.toList()
+                }
+            }
         }
     }
 }
