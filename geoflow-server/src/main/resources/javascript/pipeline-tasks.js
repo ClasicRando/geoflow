@@ -25,7 +25,7 @@ function clickRunTask() {
         showMessageBox('Error', 'No task to run');
         return;
     }
-    postValue(`/api/run-task/${getRunId()}/${row.pipeline_run_task_id}`);
+    postValue(`/api/run-task/${getRunId()}`);
 }
 
 function clickRunAllTasks() {
@@ -44,7 +44,7 @@ function clickRunAllTasks() {
         showMessageBox('Error', 'No task to run');
         return;
     }
-    postValue(`/api/run-all/${getRunId()}/${row.pipeline_run_task_id}`);
+    postValue(`/api/run-all/${getRunId()}`);
 }
 
 function statusFormatter(value, row) {

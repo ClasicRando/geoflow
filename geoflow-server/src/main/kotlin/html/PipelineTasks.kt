@@ -3,7 +3,7 @@ package html
 import io.ktor.html.*
 import kotlinx.html.*
 import orm.enums.FileCollectType
-import orm.tables.PipelineRunTasks
+import database.tables.PipelineRunTasks
 
 /** Page for pipeline task operations */
 object PipelineTasks {

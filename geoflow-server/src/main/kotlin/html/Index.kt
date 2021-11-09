@@ -1,8 +1,8 @@
 package html
 
 import kotlinx.html.*
-import orm.tables.Actions
-import orm.tables.WorkflowOperations
+import database.tables.Actions
+import database.tables.WorkflowOperations
 
 /** Page for initial page upon login */
 object Index {
