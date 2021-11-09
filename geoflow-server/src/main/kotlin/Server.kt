@@ -16,7 +16,7 @@ import it.justwrote.kjob.Mongo
 import it.justwrote.kjob.job.JobExecutionType
 import it.justwrote.kjob.kjob
 import mu.KotlinLogging
-import orm.tables.InternalUsers
+import database.tables.InternalUsers
 
 val logger = KotlinLogging.logger {}
 /** Kjob instance used by the server to schedule jobs for the worker application */
@@ -139,7 +139,7 @@ fun Application.module() {
                             userId = user.userOid,
                             username = username,
                             name = user.name,
-                            roles = user.roles.mapNotNull { it },
+                            roles = user.roles//.mapNotNull { it },
                         )
                     )
                     "/index"
