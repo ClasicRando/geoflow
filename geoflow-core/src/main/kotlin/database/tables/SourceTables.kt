@@ -1,5 +1,6 @@
 package database.tables
 
+import data_loader.AnalyzeResult
 import database.DatabaseConnection
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
@@ -9,6 +10,7 @@ import orm.tables.ApiExposed
 import orm.tables.SequentialPrimaryKey
 import orm.tables.SourceTables
 import useFirstOrNull
+import useMultipleStatements
 import java.sql.PreparedStatement
 import java.util.*
 
@@ -240,5 +242,113 @@ object SourceTables: DbTable("source_tables"), ApiExposed, SequentialPrimaryKey 
             }
         }
         return stOid
+    }
+
+    data class AnalyzeFiles(
+        val fileName: String,
+        val stOids: List<Long>,
+        val tableNames: List<String>,
+        val subTables: List<String>,
+        val delimiter: String?,
+        val qualified: Boolean,
+    )
+
+    suspend fun filesToAnalyze(runId: Long): List<AnalyzeFiles> {
+        return DatabaseConnection.queryConnection { connection ->
+            connection.prepareStatement("""
+                with t1 as (
+                    SELECT file_name,
+                           array_agg(st_oid order by st_oid) st_oids,
+                           array_agg(table_name order by st_oid) table_names,
+                           array_agg(sub_table order by st_oid) sub_Tables,
+                           array_agg(delimiter order by st_oid) "delimiter",
+                           array_agg(qualified order by st_oid) qualified
+                    FROM   $tableName
+                    WHERE  run_id = ?
+                    AND    "analyze"
+                    GROUP BY file_name
+                )
+                select file_name, st_oids, table_names, sub_Tables, delimiter[1] "delimiter", qualified[1] qualified
+                from   t1
+            """.trimIndent()).apply {
+                setLong(1, runId)
+            }.use { statement ->
+                statement.executeQuery().use { rs ->
+                    generateSequence {
+                        if (rs.next()) {
+                            AnalyzeFiles(
+                                rs.getString(1),
+                                (rs.getArray(2).array as Array<*>).mapNotNull {
+                                    if (it is Long) it else null
+                                },
+                                (rs.getArray(3).array as Array<*>).mapNotNull {
+                                    if (it is String) it else null
+                                },
+                                (rs.getArray(4).array as Array<*>).mapNotNull {
+                                    if (it is String) it else null
+                                },
+                                rs.getString(5),
+                                rs.getBoolean(6),
+                            )
+                        } else {
+                            null
+                        }
+                    }.toList()
+                }
+            }
+        }
+    }
+
+    suspend fun finishAnalyze(data: Map<Long, AnalyzeResult>) {
+        DatabaseConnection.execute { connection ->
+            val columnSql = """
+                INSERT INTO ${SourceTableColumns.tableName}(st_oid,name,type,max_length,min_length,label,column_index)
+                VALUES(?,?,?,?,?,'',?)
+                ON CONFLICT (st_oid, name) DO UPDATE SET type = ?,
+                                                         max_length = ?,
+                                                         min_length = ?,
+                                                         column_index = ?
+            """.trimIndent()
+            val tableSql = """
+                UPDATE $tableName
+                SET    $tableName."analyze" = false,
+                       record_count = ?
+                WHERE  st_oid = ?
+            """.trimIndent()
+            connection.useMultipleStatements(listOf(columnSql, tableSql)) { statements ->
+                val columnStatement = statements.getOrNull(0)
+                    ?: throw IllegalStateException("Column statement must exist")
+                val tableStatement = statements.getOrNull(1)
+                    ?: throw IllegalStateException("Table statement must exist")
+                for ((stOid, analyzeResult) in data) {
+                    val repeats = analyzeResult.columns
+                        .groupingBy { it.name }
+                        .eachCount()
+                        .filter { it.value > 1 }
+                        .toMutableMap()
+                    for (column in analyzeResult.columns) {
+                        val columnName = repeats[column.name]?.let { repeatCount ->
+                            repeats[column.name] = repeatCount - 1
+                            "${column.name}_${repeatCount}"
+                        } ?: column.name
+                        columnStatement.setLong(1, stOid)
+                        columnStatement.setString(2, columnName)
+                        columnStatement.setString(3, column.type)
+                        columnStatement.setInt(4, column.maxLength)
+                        columnStatement.setInt(5, column.minLength)
+                        columnStatement.setInt(6, column.index)
+                        columnStatement.setString(7, column.type)
+                        columnStatement.setInt(8, column.maxLength)
+                        columnStatement.setInt(9, column.minLength)
+                        columnStatement.addBatch()
+                    }
+                    tableStatement.setInt(1, analyzeResult.recordCount)
+                    tableStatement.setLong(2, stOid)
+                    tableStatement.addBatch()
+                }
+                columnStatement.executeBatch()
+                tableStatement.executeBatch()
+            }
+        }
     }
 }
