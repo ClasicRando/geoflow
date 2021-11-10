@@ -1,9 +1,14 @@
 import kotlinx.serialization.Serializable
 import tasks.UserTask
+import java.sql.Connection
+import java.sql.PreparedStatement
 import java.sql.ResultSet
 import java.sql.Timestamp
 import java.time.*
 import java.time.format.DateTimeFormatter
+import kotlin.contracts.ExperimentalContracts
+import kotlin.contracts.InvocationKind
+import kotlin.contracts.contract
 import kotlin.reflect.full.companionObject
 import kotlin.reflect.full.createType
 import kotlin.reflect.full.hasAnnotation
@@ -75,5 +80,31 @@ inline fun <T> ResultSet.useFirstOrNull(block: (ResultSet) -> T): T? = use {
         block(it)
     } else {
         null
+    }
+}
+
+inline fun Connection.useMultipleStatements(sql: List<String>, block: (List<PreparedStatement>) -> Unit) {
+    var exception: Throwable? = null
+    var statements: List<PreparedStatement>? = null
+    try {
+        statements = sql.map { prepareStatement(it) }
+        return block(statements)
+    } catch (e: Throwable) {
+        exception = e
+        throw e
+    } finally {
+        if (statements != null) {
+            for (statement in statements) {
+                if (exception == null) {
+                    statement.close()
+                } else {
+                    try {
+                        statement.close()
+                    } catch (e: Throwable) {
+                        exception.addSuppressed(e)
+                    }
+                }
+            }
+        }
     }
 }
