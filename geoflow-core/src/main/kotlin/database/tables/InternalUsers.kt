@@ -53,9 +53,8 @@ object InternalUsers: DbTable("internal_users"), SequentialPrimaryKey {
         return DatabaseConnection.queryConnectionSingle { connection ->
             connection.prepareStatement(
                 "SELECT password FROM $tableName WHERE username = ?"
-            ).apply {
-                setString(1, username)
-            }.use { statement ->
+            ).use { statement ->
+                statement.setString(1, username)
                 statement.executeQuery().use { rs ->
                     if (rs.next()) rs.getString(1) else null
                 }
@@ -78,9 +77,8 @@ object InternalUsers: DbTable("internal_users"), SequentialPrimaryKey {
         return DatabaseConnection.queryConnectionSingle { connection ->
             connection.prepareStatement(
                 "SELECT * FROM $tableName WHERE username = ?"
-            ).apply{
-                setString(1, username)
-            }.use { statement ->
+            ).use { statement ->
+                statement.setString(1, username)
                 statement.executeQuery().use { rs ->
                     if (rs.next()) {
                         InternalUser(

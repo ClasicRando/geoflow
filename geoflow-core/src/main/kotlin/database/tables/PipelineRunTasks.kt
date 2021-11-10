@@ -135,9 +135,8 @@ object PipelineRunTasks: DbTable("pipeline_run_tasks"), ApiExposed, SequentialPr
      * @throws IllegalArgumentException when the provided ID returns no records
      */
     fun Connection.getWithLock(pipelineRunTaskId: Long): PipelineRunTask {
-        return prepareStatement("$genericSql FOR UPDATE").apply {
-            setLong(1, pipelineRunTaskId)
-        }.use { statement ->
+        return prepareStatement("$genericSql FOR UPDATE").use { statement ->
+            statement.setLong(1, pipelineRunTaskId)
             statement.executeQuery().useFirstOrNull { rs ->
                 PipelineRunTask.fromResultSet(rs)
             }
@@ -147,9 +146,8 @@ object PipelineRunTasks: DbTable("pipeline_run_tasks"), ApiExposed, SequentialPr
     /** Returns the [PipelineRunTask] specified by the provided [pipelineRunTaskId] or null if no record can be found */
     suspend fun getRecord(pipelineRunTaskId: Long): PipelineRunTask? {
         return DatabaseConnection.queryConnectionSingle { connection ->
-            connection.prepareStatement(genericSql).apply {
-                setLong(1, pipelineRunTaskId)
-            }.use { statement ->
+            connection.prepareStatement(genericSql).use { statement ->
+                statement.setLong(1, pipelineRunTaskId)
                 statement.executeQuery().useFirstOrNull { rs ->
                     PipelineRunTask.fromResultSet(rs)
                 }
@@ -191,12 +189,11 @@ object PipelineRunTasks: DbTable("pipeline_run_tasks"), ApiExposed, SequentialPr
                 WHERE  pr_task_id = ?
                 AND    task_status != ?
                 AND    run_id = ?
-            """.trimIndent()).apply {
-                setObject(1, TaskStatus.Waiting.pgObject)
-                setLong(2, pipelineRunTaskId)
-                setObject(3, TaskStatus.Waiting.pgObject)
-                setLong(4, runId)
-            }.use { statement ->
+            """.trimIndent()).use { statement ->
+                statement.setObject(1, TaskStatus.Waiting.pgObject)
+                statement.setLong(2, pipelineRunTaskId)
+                statement.setObject(3, TaskStatus.Waiting.pgObject)
+                statement.setLong(4, runId)
                 if (statement.executeUpdate() == 1) {
                     DeleteRunTaskChildren.call(pipelineRunTaskId)
                 } else {
@@ -222,12 +219,11 @@ object PipelineRunTasks: DbTable("pipeline_run_tasks"), ApiExposed, SequentialPr
                 LEFT JOIN $tableName t2 on t1.pr_task_id = t2.parent_task_id
                 WHERE  t1.pr_task_id = ?
                 RETURNING pr_task_id
-            """.trimIndent()).apply {
-                setLong(1, pipelineRunTaskId)
-                setObject(2, TaskStatus.Waiting.pgObject)
-                setLong(3, taskId)
-                setLong(4, pipelineRunTaskId)
-            }.use { statement ->
+            """.trimIndent()).use { statement ->
+                statement.setLong(1, pipelineRunTaskId)
+                statement.setObject(2, TaskStatus.Waiting.pgObject)
+                statement.setLong(3, taskId)
+                statement.setLong(4, pipelineRunTaskId)
                 statement.execute()
                 statement.resultSet.useFirstOrNull { rs ->
                     rs.getLong(1)
@@ -296,11 +292,10 @@ object PipelineRunTasks: DbTable("pipeline_run_tasks"), ApiExposed, SequentialPr
         val running = DatabaseConnection.queryConnectionSingle { connection ->
             connection.prepareStatement(
                 "SELECT task_id FROM $tableName WHERE run_id = ? AND task_status in (?,?) LIMIT 1"
-            ).apply {
-                setLong(1, runId)
-                setObject(2, TaskStatus.Scheduled.pgObject)
-                setObject(3, TaskStatus.Running.pgObject)
-            }.use { statement ->
+            ).use { statement ->
+                statement.setLong(1, runId)
+                statement.setObject(2, TaskStatus.Scheduled.pgObject)
+                statement.setObject(3, TaskStatus.Running.pgObject)
                 statement.executeQuery().useFirstOrNull { rs -> rs.getLong(1) }
             }
         }
@@ -322,10 +317,9 @@ object PipelineRunTasks: DbTable("pipeline_run_tasks"), ApiExposed, SequentialPr
         DatabaseConnection.execute { connection ->
             connection.prepareStatement(
                 "UPDATE $tableName SET task_status = ? WHERE pr_Task_id = ?"
-            ).apply {
-                setObject(1, status.pgObject)
-                setLong(2, pipelineRunTaskId)
-            }.use { statement ->
+            ).use { statement ->
+                statement.setObject(1, status.pgObject)
+                statement.setLong(2, pipelineRunTaskId)
                 statement.execute()
             }
         }

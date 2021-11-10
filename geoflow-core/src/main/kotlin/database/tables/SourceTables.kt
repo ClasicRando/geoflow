@@ -179,9 +179,10 @@ object SourceTables: DbTable("source_tables"), ApiExposed, SequentialPrimaryKey 
                 UPDATE $tableName
                 SET    ${sortedMap.keys.joinToString { key -> "$key = ?" }}
                 WHERE  st_oid = ?
-            """.trimIndent())
-                .apply { setParameters(sortedMap) }
-                .use { statement -> stOid to statement.executeUpdate() }
+            """.trimIndent()).use { statement ->
+                statement.setParameters(sortedMap)
+                stOid to statement.executeUpdate()
+            }
         }
     }
 
@@ -205,14 +206,13 @@ object SourceTables: DbTable("source_tables"), ApiExposed, SequentialPrimaryKey 
                 INSERT INTO $tableName (${sortedMap.keys.joinToString()})
                 VALUES (${"?,".repeat(sortedMap.size).trim(',')})
                 RETURNING st_oid
-            """.trimIndent())
-                .apply { setParameters(sortedMap) }
-                .use { statement ->
-                    statement.execute()
-                    statement.resultSet.useFirstOrNull { rs ->
-                        rs.getLong(1)
-                    } ?: throw IllegalArgumentException("Error while trying to insert record. Null returned")
-                }
+            """.trimIndent()).use { statement ->
+                statement.setParameters(sortedMap)
+                statement.execute()
+                statement.resultSet.useFirstOrNull { rs ->
+                    rs.getLong(1)
+                } ?: throw IllegalArgumentException("Error while trying to insert record. Null returned")
+            }
         }
     }
 
@@ -235,9 +235,8 @@ object SourceTables: DbTable("source_tables"), ApiExposed, SequentialPrimaryKey 
             ?: throw IllegalArgumentException("stOid must be a non-null parameter in the url")
         require(PipelineRuns.checkUserRun(runId, username)) { "Username does not own the runId" }
         DatabaseConnection.execute { connection ->
-            connection.prepareStatement("DELETE FROM $tableName WHERE st_oid = ?").apply {
-                setLong(1, stOid)
-            }.use { statement ->
+            connection.prepareStatement("DELETE FROM $tableName WHERE st_oid = ?").use { statement ->
+                statement.setLong(1, stOid)
                 statement.execute()
             }
         }
@@ -270,9 +269,8 @@ object SourceTables: DbTable("source_tables"), ApiExposed, SequentialPrimaryKey 
                 )
                 select file_name, st_oids, table_names, sub_Tables, delimiter[1] "delimiter", qualified[1] qualified
                 from   t1
-            """.trimIndent()).apply {
-                setLong(1, runId)
-            }.use { statement ->
+            """.trimIndent()).use { statement ->
+                statement.setLong(1, runId)
                 statement.executeQuery().use { rs ->
                     generateSequence {
                         if (rs.next()) {

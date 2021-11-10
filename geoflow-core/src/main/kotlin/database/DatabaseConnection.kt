@@ -40,11 +40,10 @@ object DatabaseConnection {
         parameters: List<Any?> = listOf(),
     ): List<T> {
         return queryConnection { connection ->
-            connection.prepareStatement(sql).apply {
+            connection.prepareStatement(sql).use { statement ->
                 for (parameter in parameters.withIndex()) {
-                    setObject(parameter.index + 1, parameter.value)
+                    statement.setObject(parameter.index + 1, parameter.value)
                 }
-            }.use { statement ->
                 statement.executeQuery().use { rs ->
                     generateSequence {
                         if (rs.next()) rs.rowToClass<T>() else null

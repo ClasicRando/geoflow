@@ -183,16 +183,13 @@ fun Connection.checkTableExists(tableName: String, schema: String = "public"): B
         from   information_schema.tables
         where  table_schema = ?
         and    table_name = ?
-    """.trimIndent())
-        .apply {
-            setString(1, schema)
-            setString(2, tableName.lowercase())
+    """.trimIndent()).use { statement ->
+        statement.setString(1, schema)
+        statement.setString(2, tableName.lowercase())
+        statement.executeQuery().use { rs ->
+            rs.next()
         }
-        .use { statement ->
-            statement.executeQuery().use { rs ->
-                rs.next()
-            }
-        }
+    }
 }
 
 fun Connection.loadDefaultData(tableName: String, inputStream: InputStream): Long {

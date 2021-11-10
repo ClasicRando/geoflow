@@ -188,10 +188,9 @@ object PipelineRuns: DbTable("pipeline_runs"), SequentialPrimaryKey, ApiExposed,
                 ON     'admin' = ANY(t6.roles)
                 WHERE  t1.run_id = ?
                 AND    COALESCE(t2.user_oid,t3.user_oid,t4.user_oid,t5.user_oid,t6.user_oid) IS NOT NULL
-            """.trimIndent()).apply {
-                setString(1, username)
-                setLong(2, runId)
-            }.use { statement ->
+            """.trimIndent()).use { statement ->
+                statement.setString(1, username)
+                statement.setLong(2, runId)
                 statement.executeQuery().use { rs ->
                     rs.next()
                 }
@@ -270,9 +269,8 @@ object PipelineRuns: DbTable("pipeline_runs"), SequentialPrimaryKey, ApiExposed,
                 WHERE  t2.pr_task_id = ?
                 ORDER BY 1 DESC
                 LIMIT  1 OFFSET 1
-            """.trimIndent()).apply {
-                setLong(1, pipelineRunTaskId)
-            }.use { statement ->
+            """.trimIndent()).use { statement ->
+                statement.setLong(1, pipelineRunTaskId)
                 statement.executeQuery().use { rs ->
                     if (rs.next()) rs.getLong(1) else null
                 }
@@ -303,9 +301,8 @@ object PipelineRuns: DbTable("pipeline_runs"), SequentialPrimaryKey, ApiExposed,
                 LEFT JOIN ${InternalUsers.tableName} t6
                 ON     t1.qa_user_oid = t6.user_oid
                 WHERE  t1.run_id = ?
-            """.trimIndent()).apply {
-                setLong(1, runId)
-            }.use { statement ->
+            """.trimIndent()).use { statement ->
+                statement.setLong(1, runId)
                 statement.executeQuery().useFirstOrNull { rs ->
                     PipelineRun.fromResultSet(rs)
                 }
@@ -322,9 +319,8 @@ object PipelineRuns: DbTable("pipeline_runs"), SequentialPrimaryKey, ApiExposed,
         DatabaseConnection.useTransaction { connection ->
             val workflowOperation = connection.prepareStatement(
                 "SELECT workflow_operation FROM $tableName WHERE run_id = ? FOR UPDATE"
-            ).apply {
-                setLong(1, runId)
-            }.use { statement ->
+            ).use { statement ->
+                statement.setLong(1, runId)
                 statement.executeQuery().use { rs ->
                     if (rs.next()) rs.getString(1) else null
                 }
@@ -334,11 +330,10 @@ object PipelineRuns: DbTable("pipeline_runs"), SequentialPrimaryKey, ApiExposed,
                 SET    operation_state = ?,
                        ${workflowOperation}_user_oid = ?
                 WHERE  run_id = ?
-            """.trimIndent()).apply {
-                setObject(1, OperationState.Active.pgObject)
-                setLong(2, userId)
-                setLong(3, runId)
-            }.use { statement ->
+            """.trimIndent()).use { statement ->
+                statement.setObject(1, OperationState.Active.pgObject)
+                statement.setLong(2, userId)
+                statement.setLong(3, runId)
                 statement.execute()
             }
         }

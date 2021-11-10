@@ -54,11 +54,10 @@ abstract class PlPgSqlTableFunction(
         return DatabaseConnection.database.useConnection { connection ->
             connection
                 .prepareStatement("select * from $name(${"?,".repeat(params.size).trim(',')})")
-                .apply {
-                   params.forEachIndexed { index, obj ->
-                       setObject(index + 1, obj)
-                   }
-                }.use { statement ->
+                .use { statement ->
+                    for ((i, param) in params.withIndex()) {
+                        statement.setObject(i + 1, param)
+                    }
                     statement.executeQuery().use { rs ->
                         val columnNames = (1..rs.metaData.columnCount).map { rs.metaData.getColumnName(it) }
                         generateSequence {
@@ -98,11 +97,10 @@ abstract class PlPgSqlTableFunction(
         }
         val sql = "select * from $name(${"?,".repeat(params.size).trim(',')})"
         return DatabaseConnection.queryConnection { connection ->
-            connection.prepareStatement(sql).apply {
-                for (parameter in params.withIndex()) {
-                    setObject(parameter.index + 1, parameter.value)
+            connection.prepareStatement(sql).use { statement ->
+                for ((i, param) in params.withIndex()) {
+                    statement.setObject(i + 1, param)
                 }
-            }.use { statement ->
                 statement.executeQuery().use { rs ->
                     generateSequence {
                         if (rs.next()) rs.rowToClass<T>() else null
