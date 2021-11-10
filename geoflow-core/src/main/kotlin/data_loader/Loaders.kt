@@ -30,7 +30,7 @@ private val logger = KotlinLogging.logger {}
 private val jdbcTypeNames = Types::class.java.fields.associate { (it.get(null) as Int) to it.name  }
 
 /** Container for column metadata and stats. Obtained during file analysis */
-data class ColumnStats(val name: String, val minLength: Int, val maxLength: Int, val type: String = "")
+data class ColumnStats(val name: String, val minLength: Int, val maxLength: Int, val type: String = "", val index: Int)
 
 /** Result container for file analysis. Holds table stats and metadata required for schema */
 data class AnalyzeResult(
@@ -48,11 +48,12 @@ data class AnalyzeResult(
             tableName = tableName,
             recordCount = recordCount + analyzeResult.recordCount,
             columns = columns.map { columnStats ->
-                val currentStats = analyzeResult.columns.first { columnStats.name == it.name }
+                val currentStats = analyzeResult.columns.first { columnStats.index == it.index }
                 ColumnStats(
                     name = columnStats.name,
                     maxLength = max(columnStats.maxLength, currentStats.maxLength),
                     minLength = min(columnStats.minLength, currentStats.minLength),
+                    index = columnStats.index,
                 )
             },
         )
@@ -169,6 +170,7 @@ private fun analyzeRecords(
             maxLength = lengths.last(),
             minLength = lengths.first(),
             type = type,
+            index = index,
         )
     }
     return AnalyzeResult(tableName, recordCount, stats)
