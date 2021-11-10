@@ -1,19 +1,14 @@
 package tasks
 
+import data_loader.AnalyzeResult
 import data_loader.analyzeFile
-import database.DatabaseConnection
-import database.sourceTables
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.buffer
 import kotlinx.coroutines.flow.collect
-import org.ktorm.dsl.eq
-import org.ktorm.dsl.update
-import org.ktorm.entity.filter
-import org.ktorm.entity.groupBy
-import org.ktorm.support.postgresql.insertOrUpdate
-import orm.entities.runFilesLocation
-import orm.tables.PipelineRuns
-import orm.tables.SourceTableColumns
-import orm.tables.SourceTables
+import kotlinx.coroutines.flow.flowOn
+import database.tables.PipelineRuns
+import database.tables.SourceTableColumns
+import database.tables.SourceTables
 import java.io.File
 
 /**
@@ -29,58 +24,20 @@ class AnalyzeFiles(pipelineRunTaskId: Long): SystemTask(pipelineRunTaskId) {
     override val taskId: Long = 12
     override suspend fun run() {
         val pipelineRun = PipelineRuns.getRun(task.runId) ?: throw IllegalArgumentException("Run ID must not be null")
-        DatabaseConnection.database.run {
-            sourceTables
-                .filter { it.runId eq  task.runId }
-                .filter { it.analyze }
-                .groupBy { it.fileName }
-                .forEach { (fileName, sourceTables) ->
-                    val file = File(pipelineRun.runFilesLocation, fileName)
-                    val (tableNames, subTables) = sourceTables.map { Pair(it.tableName, it.subTable) }.unzip()
-                    val (delimiter, qualified) = sourceTables.first().let { sourceTable ->
-                        sourceTable.delimiter?.first() to sourceTable.qualified
-                    }
-                    analyzeFile(
-                        file = file,
-                        tableNames = tableNames,
-                        subTableNames = subTables.filterNotNull(),
-                        delimiter = delimiter ?: ',',
-                        qualified = qualified
-                    ).buffer().collect { analyzeResult ->
-                        val sourceTable = sourceTables.first { it.tableName == analyzeResult.tableName }
-                        val repeats = analyzeResult.columns
-                            .groupingBy { it.name }
-                            .eachCount()
-                            .filter { it.value > 1 }
-                            .toMutableMap()
-                        analyzeResult.columns.forEachIndexed { i, column ->
-                            val columnName = repeats[column.name]?.let { repeatCount ->
-                                repeats[column.name] = repeatCount - 1
-                                "${column.name}_${repeatCount}"
-                            } ?: column.name
-                            insertOrUpdate(SourceTableColumns) {
-                                set(it.name, columnName)
-                                set(it.type, column.type)
-                                set(it.maxLength, column.maxLength)
-                                set(it.minLength, column.minLength)
-                                set(it.label, "")
-                                set(it.stOid, sourceTable.stOid)
-                                set(it.columnIndex, i)
-                                onConflict(it.stOid, it.name) {
-                                    set(it.type, column.type)
-                                    set(it.maxLength, column.maxLength)
-                                    set(it.minLength, column.minLength)
-                                }
-                            }
-                        }
-                        update(SourceTables) {
-                            set(it.analyze, false)
-                            set(it.recordCount, sourceTable.recordCount)
-                            where { it.stOid eq sourceTable.stOid }
-                        }
-                    }
-                }
-
+        val results = mutableMapOf<Long, AnalyzeResult>()
+        for (fileInfo in SourceTables.filesToAnalyze(pipelineRun.runId)) {
+            val file = File(pipelineRun.runFilesLocation, fileInfo.fileName)
+            analyzeFile(
+                file = file,
+                tableNames = fileInfo.tableNames,
+                subTableNames = fileInfo.subTables,
+                delimiter = fileInfo.delimiter?.get(0) ?: ',',
+                qualified = fileInfo.qualified,
+            ).buffer().flowOn(Dispatchers.IO).collect { analyzeResult ->
+                val stOid = fileInfo.stOids[fileInfo.tableNames.indexOf(analyzeResult.tableName)]
+                results[stOid] = analyzeResult
+            }
         }
+        SourceTables.finishAnalyze(results)
     }
 }
