@@ -9,7 +9,7 @@ import mu.KotlinLogging
 import org.apache.poi.ss.usermodel.*
 import org.postgresql.copy.CopyManager
 import org.postgresql.jdbc.PgConnection
-import orm.enums.LoaderType
+import database.enums.LoaderType
 import requireNotEmpty
 import java.io.File
 import java.io.InputStream

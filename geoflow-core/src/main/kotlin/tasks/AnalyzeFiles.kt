@@ -2,6 +2,7 @@ package tasks
 
 import data_loader.AnalyzeResult
 import data_loader.analyzeFile
+import database.tables.PipelineRunTasks
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.buffer
 import kotlinx.coroutines.flow.collect
@@ -22,7 +23,7 @@ import java.io.File
 class AnalyzeFiles(pipelineRunTaskId: Long): SystemTask(pipelineRunTaskId) {
 
     override val taskId: Long = 12
-    override suspend fun run() {
+    override suspend fun run(task: PipelineRunTasks.PipelineRunTask) {
         val pipelineRun = PipelineRuns.getRun(task.runId) ?: throw IllegalArgumentException("Run ID must not be null")
         val results = mutableMapOf<Long, AnalyzeResult>()
         for (fileInfo in SourceTables.filesToAnalyze(pipelineRun.runId)) {

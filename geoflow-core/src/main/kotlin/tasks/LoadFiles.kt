@@ -3,18 +3,9 @@ package tasks
 import data_loader.checkTableExists
 import data_loader.loadFile
 import database.DatabaseConnection
-import database.sourceTableColumns
-import database.sourceTables
-import org.ktorm.dsl.and
-import org.ktorm.dsl.eq
-import org.ktorm.dsl.update
-import org.ktorm.entity.filter
-import org.ktorm.entity.groupBy
-import org.ktorm.entity.joinToString
-import orm.entities.runFilesLocation
-import orm.tables.PipelineRuns
-import orm.tables.SourceTableColumns
-import orm.tables.SourceTables
+import database.tables.PipelineRunTasks
+import database.tables.PipelineRuns
+import database.tables.SourceTables
 import java.io.File
 
 /**
@@ -27,56 +18,38 @@ import java.io.File
 class LoadFiles(pipelineRunTaskId: Long): SystemTask(pipelineRunTaskId) {
 
     override val taskId: Long = 13
-    override suspend fun run() {
+    override suspend fun run(task: PipelineRunTasks.PipelineRunTask) {
         val pipelineRun = PipelineRuns.getRun(task.runId) ?: throw IllegalArgumentException("Run ID must not be null")
-        DatabaseConnection.database.let { database ->
-            database.useConnection { connection ->
-                database
-                    .sourceTables
-                    .filter { it.runId eq  task.runId }
-                    .filter { it.load }
-                    .groupBy { it.fileName }
-                    .forEach { (fileName, sourceTables) ->
-                        val file = File(pipelineRun.runFilesLocation, fileName)
-                        val (tableNames, subTables) = sourceTables.map { Pair(it.tableName, it.subTable) }.unzip()
-                        val (delimiter, qualified) = sourceTables.first().let { sourceTable ->
-                            sourceTable.delimiter?.first() to sourceTable.qualified
-                        }
-                        for (sourceTable in sourceTables) {
-                            val createStatement = database
-                                .sourceTableColumns
-                                .filter { it.stOid eq sourceTable.stOid }
-                                .joinToString(
-                                    separator = " text,",
-                                    prefix = "create table ${sourceTable.tableName} (",
-                                    postfix = " text)"
-                                ) {
-                                    it.name
-                                }
-                            if (connection.checkTableExists(sourceTable.tableName)) {
-                                logger.info("Dropping ${sourceTable.tableName} to load")
-                                connection
-                                    .prepareStatement("drop table ${sourceTable.tableName}")
-                                    .use { statement ->
-                                        statement.execute()
-                                    }
-                            }
-                            connection.prepareStatement(createStatement).use { statement ->
-                                statement.execute()
-                            }
-                        }
-                        connection.loadFile(
-                            file = file,
-                            tableNames = tableNames,
-                            subTableNames = subTables.filterNotNull(),
-                            delimiter = delimiter ?: ',',
-                            qualified = qualified
-                        )
-                        database.update(SourceTables) {
-                            set(it.load, false)
-                            where { it.runId eq pipelineRun.runId and (it.fileName eq fileName) }
+        val filesToLoad = SourceTables.filesToLoad(task.runId)
+        DatabaseConnection.execute { connection ->
+            for (file in filesToLoad) {
+                for ((tableName, createStatement) in file.tableNames zip file.createStatements) {
+                    if (connection.checkTableExists(tableName)) {
+                        logger.info("Dropping $tableName to load")
+                        connection.prepareStatement("drop table $tableName").use { statement ->
+                            statement.execute()
                         }
                     }
+                    connection.prepareStatement(createStatement).use { statement ->
+                        statement.execute()
+                    }
+                }
+                connection.loadFile(
+                    file = File(pipelineRun.runFilesLocation, file.fileName),
+                    tableNames = file.tableNames,
+                    subTableNames = file.subTables,
+                    delimiter = file.delimiter?.get(0) ?: ',',
+                    qualified = file.qualified
+                )
+                connection.prepareStatement(
+                    "UPDATE ${SourceTables.tableName} SET load = false WHERE st_oid = ?"
+                ).use { statement ->
+                    for (stOid in file.stOids) {
+                        statement.setLong(1, stOid)
+                        statement.addBatch()
+                    }
+                    statement.executeBatch()
+                }
             }
         }
     }

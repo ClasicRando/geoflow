@@ -1,6 +1,6 @@
 package database.functions
 
-import orm.enums.TaskStatus
+import database.enums.TaskStatus
 import kotlin.reflect.full.createType
 
 /**

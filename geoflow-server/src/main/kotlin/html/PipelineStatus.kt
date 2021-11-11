@@ -2,7 +2,7 @@ package html
 
 import io.ktor.html.*
 import kotlinx.html.*
-import orm.tables.PipelineRuns
+import database.tables.PipelineRuns
 
 /** Page for pipeline status operations */
 object PipelineStatus {

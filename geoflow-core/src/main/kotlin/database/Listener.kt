@@ -1,10 +1,15 @@
 package database
 
+import com.github.michaelbull.jdbc.context.CoroutineConnection
+import com.github.michaelbull.jdbc.context.connection
+import database.DatabaseConnection.useConnection
 import kotlinx.coroutines.*
 import mu.KotlinLogging
 import org.postgresql.PGConnection
 import org.postgresql.PGNotification
+import java.sql.Connection
 import java.sql.SQLException
+import kotlin.coroutines.CoroutineContext
 
 private val logger = KotlinLogging.logger {}
 
@@ -15,33 +20,35 @@ private val logger = KotlinLogging.logger {}
  *
  * Primarily used for web sockets and a pub/sub design to listen for table changes
  */
-fun CoroutineScope.startListener(channelName: String, callback: suspend (String) -> Unit) = launch {
-    DatabaseConnection.execute { connection ->
-        val pgConnection: PGConnection = connection.unwrap(PGConnection::class.java)
-        connection.prepareStatement("LISTEN $channelName").use {
-            it.execute()
-        }
-        try {
-            while (isActive) {
-                pgConnection.notifications?.let { notifications ->
-                    for (notification: PGNotification in notifications) {
-                        callback(notification.parameter)
-                    }
-                }
-                delay(1000)
+fun CoroutineScope.startListener(channelName: String, callback: suspend (String) -> Unit): Job {
+    return launch(DatabaseConnection.scope.coroutineContext) {
+        useConnection { connection ->
+            val pgConnection: PGConnection = connection.unwrap(PGConnection::class.java)
+            connection.prepareStatement("LISTEN $channelName").use {
+                it.execute()
             }
-        } catch (e: SQLException) {
-            logger.info("SQL error that has caused the '$channelName' listener to close", e)
-        } catch(c: CancellationException) {
-            logger.info("'$channelName' listener Job has been cancelled by parent scope")
-        } catch (t: Throwable) {
-            logger.info("Generic error that has caused the '$channelName' listener to close", t)
-        } finally {
-            withContext(NonCancellable) {
-                if (!connection.isClosed) {
-                    logger.info("Setting connection to unlisten to '$channelName'")
-                    connection.prepareStatement("UNLISTEN $channelName").use {
-                        it.execute()
+            try {
+                while (isActive) {
+                    pgConnection.notifications?.let { notifications ->
+                        for (notification: PGNotification in notifications) {
+                            callback(notification.parameter)
+                        }
+                    }
+                    delay(1000)
+                }
+            } catch (e: SQLException) {
+                logger.info("SQL error that has caused the '$channelName' listener to close", e)
+            } catch(c: CancellationException) {
+                logger.info("'$channelName' listener Job has been cancelled by parent scope")
+            } catch (t: Throwable) {
+                logger.info("Generic error that has caused the '$channelName' listener to close", t)
+            } finally {
+                withContext(NonCancellable) {
+                    if (!connection.isClosed) {
+                        logger.info("Setting connection to unlisten to '$channelName'")
+                        connection.prepareStatement("UNLISTEN $channelName").use {
+                            it.execute()
+                        }
                     }
                 }
             }

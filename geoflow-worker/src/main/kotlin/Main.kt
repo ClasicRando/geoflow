@@ -1,17 +1,13 @@
-import database.DatabaseConnection
 import it.justwrote.kjob.*
 import it.justwrote.kjob.dsl.JobContextWithProps
-import it.justwrote.kjob.dsl.KJobFunctions
 import it.justwrote.kjob.job.JobExecutionType
 import jobs.SystemJob
 import kotlinx.coroutines.NonCancellable
 import kotlinx.coroutines.withContext
 import mu.KotlinLogging
-import org.ktorm.dsl.eq
-import org.ktorm.dsl.update
-import orm.enums.TaskRunType
-import orm.enums.TaskStatus
-import orm.tables.PipelineRunTasks
+import database.enums.TaskRunType
+import database.enums.TaskStatus
+import database.tables.PipelineRunTasks
 import tasks.SystemTask
 import tasks.TaskResult
 import java.time.Instant
@@ -76,13 +72,13 @@ suspend fun JobContextWithProps<SystemJob>.executeSystemJob(kJob: KJob) {
             .newInstance(props[SystemJob.pipelineRunTaskId]) as SystemTask
         when(val result = task.runTask()) {
             is TaskResult.Success -> {
-                DatabaseConnection.database.update(PipelineRunTasks) {
-                    set(it.taskMessage, result.message)
-                    set(it.taskStatus, TaskStatus.Complete)
-                    set(it.taskCompleted, Instant.now())
-                    set(it.taskStackTrace, null)
-                    where { it.pipelineRunTaskId eq pipelineRunTaskId }
-                }
+                PipelineRunTasks.update(
+                    pipelineRunTaskId,
+                    taskMessage = result.message,
+                    taskStatus = TaskStatus.Complete,
+                    taskCompleted = Instant.now(),
+                    taskStackTrace = null
+                )
                 if (props[SystemJob.runNext]) {
                     PipelineRunTasks.getNextTask(props[SystemJob.runId])?.let { nextTask ->
                         if (nextTask.taskRunType == TaskRunType.System) {
@@ -97,25 +93,25 @@ suspend fun JobContextWithProps<SystemJob>.executeSystemJob(kJob: KJob) {
                 }
             }
             is TaskResult.Error -> {
-                DatabaseConnection.database.update(PipelineRunTasks) {
-                    set(it.taskMessage, result.message)
-                    set(it.taskStatus, TaskStatus.Failed)
-                    set(it.taskCompleted, null)
-                    set(it.taskStackTrace, result.throwable.stackTraceToString())
-                    where { it.pipelineRunTaskId eq pipelineRunTaskId }
-                }
+                PipelineRunTasks.update(
+                    pipelineRunTaskId,
+                    taskMessage = result.message,
+                    taskStatus = TaskStatus.Failed,
+                    taskCompleted = null,
+                    taskStackTrace = result.throwable.stackTraceToString()
+                )
             }
         }
     } catch (t: Throwable) {
         withContext(NonCancellable) {
             val pipelineRunTaskId = props[SystemJob.pipelineRunTaskId]
-            DatabaseConnection.database.update(PipelineRunTasks) {
-                set(it.taskMessage, "ERROR in Job: ${t.message}")
-                set(it.taskStatus, TaskStatus.Failed)
-                set(it.taskCompleted, null)
-                set(it.taskStackTrace, t.stackTraceToString())
-                where { it.pipelineRunTaskId eq pipelineRunTaskId }
-            }
+            PipelineRunTasks.update(
+                pipelineRunTaskId,
+                taskMessage = "ERROR in Job: ${t.message}",
+                taskStatus = TaskStatus.Failed,
+                taskCompleted = null,
+                taskStackTrace = t.stackTraceToString()
+            )
         }
     }
 }

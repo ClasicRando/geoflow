@@ -1,4 +1,4 @@
-package orm.enums
+package database.enums
 
 /**
  * Enum type found in DB denoting run type of task

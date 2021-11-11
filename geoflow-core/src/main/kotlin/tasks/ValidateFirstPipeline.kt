@@ -1,6 +1,7 @@
 package tasks
 
 import database.DatabaseConnection
+import database.tables.PipelineRunTasks
 import database.tables.SourceTables
 
 /**
@@ -10,7 +11,7 @@ class ValidateFirstPipeline(pipelineRunTaskId: Long): SystemTask(pipelineRunTask
 
     override val taskId: Long = 11
 
-    override suspend fun run() {
+    override suspend fun run(task: PipelineRunTasks.PipelineRunTask) {
         val sourceTableCount = DatabaseConnection.queryConnectionSingle { connection ->
             connection.prepareStatement(
                 "SELECT COUNT(0) FROM ${SourceTables.tableName} WHERE run_id = ?"

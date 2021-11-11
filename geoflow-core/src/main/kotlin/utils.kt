@@ -6,9 +6,6 @@ import java.sql.ResultSet
 import java.sql.Timestamp
 import java.time.*
 import java.time.format.DateTimeFormatter
-import kotlin.contracts.ExperimentalContracts
-import kotlin.contracts.InvocationKind
-import kotlin.contracts.contract
 import kotlin.reflect.full.companionObject
 import kotlin.reflect.full.createType
 import kotlin.reflect.full.hasAnnotation
@@ -41,7 +38,7 @@ inline fun <T> requireNotEmpty(collection: Collection<T>, lazyMessage: () -> Any
 inline fun <reified T> ResultSet.rowToClass(): T {
     require(!isClosed) { "ResultSet is closed" }
     require(!isAfterLast) { "ResultSet has no more rows to return" }
-    return if (T::class.isData) {
+    if (T::class.isData) {
         val constructor = T::class.constructors.first()
         val row = 0.until(metaData.columnCount).map {
             when (val current = getObject(it + 1)) {
@@ -50,7 +47,7 @@ inline fun <reified T> ResultSet.rowToClass(): T {
                 else -> current
             }
         }.toTypedArray()
-        if (T::class.hasAnnotation<Serializable>()) {
+        return if (T::class.hasAnnotation<Serializable>()) {
             require(row.size == constructor.parameters.size - 2) {
                 "Row size must match number of required constructor parameters"
             }
@@ -61,18 +58,23 @@ inline fun <reified T> ResultSet.rowToClass(): T {
             }
             constructor.call(*row)
         }
-    } else {
-        requireNotNull(T::class.companionObject) { "Type must have a companion object" }
-        val resultSetType = ResultSet::class.createType()
-        val genericType = T::class.createType()
-        val companion = T::class.companionObject!!
-        val function = companion.members.firstOrNull {
-            it.parameters.size == 1 && it.parameters[0].type == resultSetType && it.returnType == genericType
-        } ?: throw IllegalArgumentException(
-            "Type's companion object must have a function that accepts a ResultSet and returns an instance of the Type"
-        )
-        function.call(this) as T
     }
+    if (T::class.companionObject == null) {
+        throw IllegalArgumentException("Type must have a companion object")
+    }
+    val resultSetType = ResultSet::class.createType()
+    val genericType = T::class.createType()
+    val companion = T::class.companionObject!!
+    val function = companion.members.firstOrNull {
+        it.parameters.size == 1 && it.parameters[0].type == resultSetType && it.returnType == genericType
+    }
+    if (function != null) {
+        return function.call(this) as T
+    }
+    if (metaData.columnCount != 1) {
+        throw IllegalArgumentException("Fallback to extract single value from result set failed since columnCount != 1")
+    }
+    return getObject(1) as T
 }
 
 inline fun <T> ResultSet.useFirstOrNull(block: (ResultSet) -> T): T? = use {

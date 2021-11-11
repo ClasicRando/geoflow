@@ -4,7 +4,8 @@ import io.ktor.auth.*
 import java.time.Instant
 
 /**
- * Container for session data for the current user. Shares a lot of data with [InternalUsers][orm.tables.InternalUsers].
+ * Container for session data for the current user. Shares a lot of data with
+ * [InternalUsers][database.tables.InternalUsers].
  *
  * **Future Changes**
  * - Decide more appropriate expiration or change to new auth method
