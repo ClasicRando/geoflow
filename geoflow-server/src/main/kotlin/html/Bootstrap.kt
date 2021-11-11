@@ -1,7 +1,7 @@
 package html
 
 import kotlinx.html.*
-import orm.enums.FileCollectType
+import database.enums.FileCollectType
 import database.tables.SourceTables
 
 const val messageBoxId = "msgBox"
