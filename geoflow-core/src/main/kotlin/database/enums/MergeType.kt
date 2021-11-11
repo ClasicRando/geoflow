@@ -1,4 +1,4 @@
-package orm.enums
+package database.enums
 
 /**
  * Enum type found in DB denoting the type of merge of source files

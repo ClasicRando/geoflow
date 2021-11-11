@@ -1,7 +1,5 @@
 package database.tables
 
-import orm.tables.SequentialPrimaryKey
-
 /**
  * Table used to store contacts of a DataSource
  *

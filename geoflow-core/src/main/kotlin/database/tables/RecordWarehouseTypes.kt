@@ -1,7 +1,5 @@
 package database.tables
 
-import orm.tables.SequentialPrimaryKey
-
 /**
  * Table used to store variations of data warehousing options used for moving staging data into production
  *

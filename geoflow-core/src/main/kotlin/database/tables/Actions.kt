@@ -2,8 +2,6 @@ package database.tables
 
 import database.DatabaseConnection
 import kotlinx.serialization.Serializable
-import orm.tables.ApiExposed
-import orm.tables.SequentialPrimaryKey
 
 /**
  * Table used to store actions available to users with certain roles.

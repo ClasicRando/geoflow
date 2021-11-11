@@ -1,7 +1,5 @@
 package database.tables
 
-import orm.tables.SequentialPrimaryKey
-
 /**
  * Table used to store the metadata of the columns found in the files/tables from [SourceTables]
  *

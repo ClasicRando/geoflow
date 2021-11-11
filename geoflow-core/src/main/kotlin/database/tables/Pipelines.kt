@@ -5,7 +5,7 @@ package database.tables
  *
  * Named for easier access and categorized by workflow operation the pipeline is associated with
  */
-object Pipelines: DbTable("pipelines") {
+object Pipelines: DbTable("pipelines"), SequentialPrimaryKey {
 
     override val createStatement = """
         CREATE TABLE IF NOT EXISTS public.pipelines

@@ -1,4 +1,4 @@
-package orm.enums
+package database.enums
 
 import org.postgresql.util.PGobject
 

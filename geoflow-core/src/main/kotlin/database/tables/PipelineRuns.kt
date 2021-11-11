@@ -7,12 +7,8 @@ import kotlinx.serialization.Serializable
 import kotlinx.serialization.decodeFromString
 import kotlinx.serialization.json.Json
 import org.postgresql.util.PGobject
-import orm.enums.MergeType
-import orm.enums.OperationState
-import orm.tables.ApiExposed
-import orm.tables.SequentialPrimaryKey
-import orm.tables.Trigger
-import orm.tables.Triggers
+import database.enums.MergeType
+import database.enums.OperationState
 import useFirstOrNull
 import java.sql.Date
 import java.sql.ResultSet
@@ -109,6 +105,7 @@ object PipelineRuns: DbTable("pipeline_runs"), SequentialPrimaryKey, ApiExposed,
     class PipelineRun private constructor(
         val runId: Long,
         val dsId: Long,
+        val dsCode: String,
         filesLocation: String,
         recordDate: Date,
         val workflowOperation: String,
@@ -131,6 +128,7 @@ object PipelineRuns: DbTable("pipeline_runs"), SequentialPrimaryKey, ApiExposed,
         val mergeType = MergeType.valueOf(mergeType)
         val runFilesLocation = "$filesLocation/${formatLocalDateDefault(this.recordDate)}/files"
         val runZipLocation = "$filesLocation/${formatLocalDateDefault(this.recordDate)}/zip"
+        val backupZip = "${dsCode}_${formatLocalDateDefault(this.recordDate)}"
 
         companion object {
             fun fromResultSet(rs: ResultSet): PipelineRun {
@@ -140,21 +138,22 @@ object PipelineRuns: DbTable("pipeline_runs"), SequentialPrimaryKey, ApiExposed,
                 return PipelineRun(
                     runId = rs.getLong(1),
                     dsId = rs.getLong(2),
-                    filesLocation = rs.getString(3),
-                    recordDate = rs.getDate(4),
-                    workflowOperation = rs.getString(5),
-                    operationState = rs.getString(6),
-                    collectionUserOid = rs.getLong(7),
-                    loadUserOid = rs.getLong(8),
-                    checkUserOid = rs.getLong(9),
-                    qaUserOid = rs.getLong(10),
-                    productionCount = rs.getInt(11),
-                    stagingCount = rs.getInt(12),
-                    matchCount = rs.getInt(13),
-                    newCount = rs.getInt(14),
-                    plottingStats = rs.getObject(15) as PGobject,
-                    hasChildTables = rs.getBoolean(16),
-                    mergeType = rs.getString(17),
+                    dsCode = rs.getString(3),
+                    filesLocation = rs.getString(4),
+                    recordDate = rs.getDate(5),
+                    workflowOperation = rs.getString(6),
+                    operationState = rs.getString(7),
+                    collectionUserOid = rs.getLong(8),
+                    loadUserOid = rs.getLong(9),
+                    checkUserOid = rs.getLong(10),
+                    qaUserOid = rs.getLong(11),
+                    productionCount = rs.getInt(12),
+                    stagingCount = rs.getInt(13),
+                    matchCount = rs.getInt(14),
+                    newCount = rs.getInt(15),
+                    plottingStats = rs.getObject(16) as PGobject,
+                    hasChildTables = rs.getBoolean(17),
+                    mergeType = rs.getString(18),
                 )
             }
         }
@@ -285,10 +284,10 @@ object PipelineRuns: DbTable("pipeline_runs"), SequentialPrimaryKey, ApiExposed,
     suspend fun getRun(runId: Long): PipelineRun? {
         return DatabaseConnection.queryConnectionSingle { connection ->
             connection.prepareStatement("""
-                SELECT t1.run_id, t1.ds_id, t2.files_location, t1.record_Date, t1.workflow_operation,
-                       t1.collection_user_oid, t1.load_user_oid, t1.check_user_oid, t1.qa_user_oid, t1.production_count,
-                       t1.staging_count, t1.match_count, t1.new_count, t1.plotting_stats, t1.has_child_tables,
-                       t1.merge_type
+                SELECT t1.run_id, t1.ds_id, t2.code, t2.files_location, t1.record_Date, t1.workflow_operation,
+                       t1.operation_state, t1.collection_user_oid, t1.load_user_oid, t1.check_user_oid, t1.qa_user_oid,
+                       t1.production_count, t1.staging_count, t1.match_count, t1.new_count, t1.plotting_stats,
+                       t1.has_child_tables, t1.merge_type
                 FROM   $tableName t1
                 JOIN   ${DataSources.tableName} t2
                 ON     t1.ds_id = t2.ds_id

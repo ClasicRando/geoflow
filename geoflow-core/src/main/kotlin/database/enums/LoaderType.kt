@@ -1,4 +1,6 @@
-package orm.enums
+package database.enums
+
+import org.postgresql.util.PGobject
 
 /**
  * Enum type found in DB denoting the type of loader required for given file. Each enum value has extensions associated
@@ -12,6 +14,11 @@ enum class LoaderType(val extensions: List<String>) {
     DBF(listOf("dbf")),
     MDB(listOf("mdb", "accdb")),
     ;
+
+    val pgObject = PGobject().apply {
+        type = "loader_type"
+        value = name
+    }
 
     companion object {
         /**

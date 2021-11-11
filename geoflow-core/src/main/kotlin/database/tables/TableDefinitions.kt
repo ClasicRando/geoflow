@@ -1,4 +1,4 @@
-package orm.tables
+package database.tables
 
 import java.io.InputStream
 

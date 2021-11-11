@@ -2,7 +2,7 @@ package html
 
 import io.ktor.html.*
 import kotlinx.html.*
-import orm.enums.FileCollectType
+import database.enums.FileCollectType
 import database.tables.PipelineRunTasks
 
 /** Page for pipeline task operations */

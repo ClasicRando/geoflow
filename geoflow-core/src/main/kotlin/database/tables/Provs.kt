@@ -1,7 +1,5 @@
 package database.tables
 
-import orm.tables.DefaultData
-
 /**
  * Table used to store the province/state codes that can be used to define prov/state level [DataSources]
  */

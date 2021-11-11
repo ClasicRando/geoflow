@@ -1,7 +1,5 @@
 package database.tables
 
-import orm.tables.SequentialPrimaryKey
-
 /**
  * Table has yet to be finalized and should not be used until then
  */

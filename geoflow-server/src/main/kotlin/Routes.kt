@@ -10,8 +10,8 @@ import io.ktor.routing.*
 import io.ktor.sessions.*
 import io.ktor.util.*
 import jobs.SystemJob
-import orm.enums.TaskRunType
-import orm.enums.TaskStatus
+import database.enums.TaskRunType
+import database.enums.TaskStatus
 
 /** Entry route that handles empty an empty path or the index route. Empty routes are redirected to index. */
 fun Route.index() {

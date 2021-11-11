@@ -1,7 +1,5 @@
 package database.tables
 
-import orm.tables.DefaultData
-
 object FileTypes: DbTable("file_types"), DefaultData {
 
     override val createStatement: String = """

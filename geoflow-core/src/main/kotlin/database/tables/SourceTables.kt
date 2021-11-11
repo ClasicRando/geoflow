@@ -4,11 +4,8 @@ import data_loader.AnalyzeResult
 import database.DatabaseConnection
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
-import orm.enums.FileCollectType
-import orm.enums.LoaderType
-import orm.tables.ApiExposed
-import orm.tables.SequentialPrimaryKey
-import orm.tables.SourceTables
+import database.enums.FileCollectType
+import database.enums.LoaderType
 import useFirstOrNull
 import useMultipleStatements
 import java.sql.PreparedStatement
@@ -309,7 +306,7 @@ object SourceTables: DbTable("source_tables"), ApiExposed, SequentialPrimaryKey 
             """.trimIndent()
             val tableSql = """
                 UPDATE $tableName
-                SET    $tableName."analyze" = false,
+                SET    "analyze" = false,
                        record_count = ?
                 WHERE  st_oid = ?
             """.trimIndent()
@@ -338,6 +335,7 @@ object SourceTables: DbTable("source_tables"), ApiExposed, SequentialPrimaryKey 
                         columnStatement.setString(7, column.type)
                         columnStatement.setInt(8, column.maxLength)
                         columnStatement.setInt(9, column.minLength)
+                        columnStatement.setInt(10, column.index)
                         columnStatement.addBatch()
                     }
                     tableStatement.setInt(1, analyzeResult.recordCount)
@@ -346,6 +344,77 @@ object SourceTables: DbTable("source_tables"), ApiExposed, SequentialPrimaryKey 
                 }
                 columnStatement.executeBatch()
                 tableStatement.executeBatch()
+            }
+        }
+    }
+
+    data class LoadFiles(
+        val fileName: String,
+        val stOids: List<Long>,
+        val tableNames: List<String>,
+        val subTables: List<String>,
+        val delimiter: String?,
+        val qualified: Boolean,
+        val createStatements: List<String>,
+    )
+
+    suspend fun filesToLoad(runId: Long): List<LoadFiles> {
+        return DatabaseConnection.queryConnection { connection ->
+            connection.prepareStatement("""
+                with t1 as (
+                    SELECT DISTINCT t1.st_oid,
+                           'CREATE table '||t1.table_name||' ('||
+                           STRING_AGG(t2.name::text,' text,'::text order by t2.column_index)||
+                           ' text)' create_statement
+                    FROM   source_tables t1
+                    JOIN   source_table_columns t2
+                    ON     t1.st_oid = t2.st_oid
+                    WHERE  t1.run_id = ?
+                    AND    t1.load
+                    GROUP BY t1.st_oid
+                ), t2 as (
+                    SELECT t2.file_name,
+                           array_agg(t1.st_oid order by t1.st_oid) st_oids,
+                           array_agg(t2.table_name order by t1.st_oid) table_names,
+                           array_agg(t2.sub_table order by t1.st_oid) sub_Tables,
+                           array_agg(t2.delimiter order by t1.st_oid) "delimiter",
+                           array_agg(t2.qualified order by t1.st_oid) qualified,
+                           array_agg(t1.create_statement order by t1.st_oid) create_statements
+                    FROM   t1
+                    JOIN   source_tables t2
+                    ON     t1.st_oid = t2.st_oid
+                    GROUP BY file_name
+                )
+                SELECT file_name, st_oids, table_names, sub_Tables, delimiter[1] "delimiter", qualified[1] qualified,
+                       create_statements
+                FROM   t2;
+            """.trimIndent()).use { statement ->
+                statement.setLong(1, runId)
+                statement.executeQuery().use { rs ->
+                    generateSequence {
+                        if (rs.next()) {
+                            LoadFiles(
+                                rs.getString(1),
+                                (rs.getArray(2).array as Array<*>).mapNotNull {
+                                    if (it is Long) it else null
+                                },
+                                (rs.getArray(3).array as Array<*>).mapNotNull {
+                                    if (it is String) it else null
+                                },
+                                (rs.getArray(4).array as Array<*>).mapNotNull {
+                                    if (it is String) it else null
+                                },
+                                rs.getString(5),
+                                rs.getBoolean(6),
+                                (rs.getArray(7).array as Array<*>).mapNotNull {
+                                    if (it is String) it else null
+                                },
+                            )
+                        } else {
+                            null
+                        }
+                    }.toList()
+                }
             }
         }
     }

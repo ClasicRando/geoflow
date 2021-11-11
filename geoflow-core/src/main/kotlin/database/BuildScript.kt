@@ -7,7 +7,7 @@ import database.procedures.SqlProcedure
 import mu.KotlinLogging
 import org.reflections.Reflections
 import org.reflections.scanners.Scanners.*
-import orm.tables.*
+import database.tables.*
 import java.sql.Connection
 
 /** Container for an enum translation to a PostgreSQL enum creation */
@@ -26,7 +26,7 @@ data class PostgresEnumType(val name: String, val constantValues: List<String>) 
 
 /** Lazy list of table build interfaces. Uses reflection to get all interface classes that are used to build tables */
 private val tableInterfaces by lazy {
-    Reflections("orm.tables")
+    Reflections("database.tables")
         .get(SubTypes.of(TableBuildRequirement::class.java))
         .map { className -> ClassLoader.getSystemClassLoader().loadClass(className) }
 }
@@ -37,7 +37,7 @@ private val tableInterfaces by lazy {
  * Uses reflection to find all Enum classes and maps the class to a PostgresEnumType.
  */
 private val enums by lazy {
-    Reflections("orm.enums")
+    Reflections("database.enums")
         .get(SubTypes.of(Enum::class.java).asClass<Enum<*>>())
         .asSequence()
         .map { enum ->
@@ -47,12 +47,12 @@ private val enums by lazy {
 
 /** Lazy list of tables declared in the 'orm.tables' package. List items are the Object instances themselves. */
 private val tables by lazy {
-    Reflections("orm.tables")
-        .get(SubTypes.of(DbTable::class.java).asClass<DbTable<*>>())
+    Reflections("database.tables")
+        .get(SubTypes.of(DbTable::class.java).asClass<DbTable>())
         .asSequence()
         .map { table -> table.getDeclaredField("INSTANCE").get(null)::class }
         .filter { !it.isAbstract }
-        .map { kClass -> kClass.objectInstance!! as DbTable<*> }
+        .map { kClass -> kClass.objectInstance!! as DbTable }
         .toList()
 }
 
@@ -96,7 +96,7 @@ private val logger = KotlinLogging.logger {}
  * [InputStream][java.io.InputStream] to COPY the file to the current table. When the load is done, set the sequence
  * value to the current max value in the table if the table has a sequential primary key.
  */
-private fun Connection.createTable(table: DbTable<*>) {
+private fun Connection.createTable(table: DbTable) {
     logger.info("Starting ${table.tableName}")
     require(!checkTableExists(table.tableName)) { "${table.tableName} already exists" }
     val interfaces = table::class.java.interfaces.filter { it in tableInterfaces }
@@ -180,7 +180,7 @@ private fun Connection.createTable(table: DbTable<*>) {
  * The process exits the recursion when the passed list of tables to create is empty.
  */
 private fun Connection.createTables(
-    tables: List<DbTable<*>>,
+    tables: List<DbTable>,
     createdTables: Set<String> = setOf()
 ) {
     if (tables.isEmpty()) {

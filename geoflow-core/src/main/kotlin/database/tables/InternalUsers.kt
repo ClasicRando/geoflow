@@ -2,7 +2,6 @@ package database.tables
 
 import at.favre.lib.crypto.bcrypt.BCrypt
 import database.DatabaseConnection
-import orm.tables.SequentialPrimaryKey
 
 /**
  * Table used to store users of the web server interface of the application

@@ -5,14 +5,13 @@ import database.functions.GetTasksOrdered
 import database.procedures.DeleteRunTaskChildren
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
-import orm.enums.TaskRunType
-import orm.enums.TaskStatus
-import orm.tables.ApiExposed
-import orm.tables.SequentialPrimaryKey
+import database.enums.TaskRunType
+import database.enums.TaskStatus
 import useFirstOrNull
 import java.sql.Connection
 import java.sql.ResultSet
 import java.sql.Timestamp
+import java.time.Instant
 
 /**
  * Table used to store tasks that are associated with a specified run
@@ -65,7 +64,7 @@ object PipelineRunTasks: DbTable("pipeline_run_tasks"), ApiExposed, SequentialPr
     private val genericSql = """
         SELECT t1.pr_task_id, t1.run_id, t1.task_start, t1.task_completed, t1.task_id, t2.name, t2.description,
                t2.state, t2.task_run_type, t2.task_class_name, t1.task_message, t1.parent_task_id,
-               t2.parent_task_order, t2.task_status, t2.workflow_operation, t2.task_stack_trace
+               t1.parent_task_order, t1.task_status, t1.workflow_operation, t1.task_stack_trace
         FROM   $tableName t1
         JOIN   tasks t2
         ON     t1.task_id = t2.task_id
@@ -195,7 +194,7 @@ object PipelineRunTasks: DbTable("pipeline_run_tasks"), ApiExposed, SequentialPr
                 statement.setObject(3, TaskStatus.Waiting.pgObject)
                 statement.setLong(4, runId)
                 if (statement.executeUpdate() == 1) {
-                    DeleteRunTaskChildren.call(pipelineRunTaskId)
+                    DeleteRunTaskChildren.call2(pipelineRunTaskId)
                 } else {
                     throw IllegalArgumentException(
                         "No records were reset. Make sure the provided run_id matches the task and the task is Waiting"
@@ -213,17 +212,19 @@ object PipelineRunTasks: DbTable("pipeline_run_tasks"), ApiExposed, SequentialPr
             connection.prepareStatement("""
                 INSERT INTO $tableName (run_id,task_status,task_id,parent_task_id,parent_task_order,workflow_operation) 
                 SELECT distinct t1.run_id, ?, ?, t1.pr_task_id,
-                       COALESCE(MAX(t2.parent_task_order) OVER (PARTITION BY t2.parent_task_id) + 1, 1),
+                       COALESCE(
+                          MAX(t2.parent_task_order) OVER (PARTITION BY t2.parent_task_id ) + 1,
+                          1
+                        ),
                        t1.workflow_operation
                 FROM   $tableName t1
                 LEFT JOIN $tableName t2 on t1.pr_task_id = t2.parent_task_id
                 WHERE  t1.pr_task_id = ?
                 RETURNING pr_task_id
             """.trimIndent()).use { statement ->
-                statement.setLong(1, pipelineRunTaskId)
-                statement.setObject(2, TaskStatus.Waiting.pgObject)
-                statement.setLong(3, taskId)
-                statement.setLong(4, pipelineRunTaskId)
+                statement.setObject(1, TaskStatus.Waiting.pgObject)
+                statement.setLong(2, taskId)
+                statement.setLong(3, pipelineRunTaskId)
                 statement.execute()
                 statement.resultSet.useFirstOrNull { rs ->
                     rs.getLong(1)
@@ -300,7 +301,9 @@ object PipelineRunTasks: DbTable("pipeline_run_tasks"), ApiExposed, SequentialPr
             }
         }
         require(running == null) { "Task currently scheduled/running (id = $running)" }
-        return getOrderedTasks(runId).firstOrNull()?.let { record ->
+        return getOrderedTasks(runId).firstOrNull{
+            it.taskStatus == TaskStatus.Waiting.name
+        }?.let { record ->
             NextTask(
                 record.pipelineRunTaskId,
                 record.taskId,
@@ -321,6 +324,68 @@ object PipelineRunTasks: DbTable("pipeline_run_tasks"), ApiExposed, SequentialPr
                 statement.setObject(1, status.pgObject)
                 statement.setLong(2, pipelineRunTaskId)
                 statement.execute()
+            }
+        }
+    }
+
+    private object NonUpdatedField
+
+    suspend fun update(
+        pipelineRunTaskId: Long,
+        taskStatus: Any = NonUpdatedField,
+        taskStart: Any? = NonUpdatedField,
+        taskCompleted: Any? = NonUpdatedField,
+        taskMessage: Any? = NonUpdatedField,
+        taskStackTrace: Any? = NonUpdatedField,
+    ) {
+        val updates = mutableMapOf<String, Any?>()
+        if (taskStatus !== NonUpdatedField) {
+            updates["task_status"] = if(taskStatus is TaskStatus) {
+                taskStatus.pgObject
+            } else {
+                throw IllegalArgumentException("taskStatus must be a TaskStatus")
+            }
+        }
+        if (taskStart !== NonUpdatedField) {
+            updates["task_start"] = when(taskStart) {
+                is Timestamp? -> taskStart
+                is Instant? -> taskStart?.let { Timestamp(it.toEpochMilli()) }
+                else -> throw IllegalArgumentException("taskStart must be an Instant or Timestamp")
+            }
+        }
+        if (taskCompleted !== NonUpdatedField) {
+            updates["task_completed"] = when(taskCompleted) {
+                is Timestamp? -> taskCompleted
+                is Instant? -> taskCompleted?.let { Timestamp(it.toEpochMilli()) }
+                else -> throw IllegalArgumentException("taskCompleted must be an Instant or Timestamp")
+            }
+        }
+        if (taskMessage !== NonUpdatedField) {
+            updates["task_message"] = if(taskMessage is String?) {
+                taskMessage
+            } else {
+                throw IllegalArgumentException("taskMessage must be a String")
+            }
+        }
+        if (taskStackTrace !== NonUpdatedField) {
+            updates["task_stack_trace"] = if(taskStackTrace is String?) {
+                taskStackTrace
+            } else {
+                throw IllegalArgumentException("taskStackTrace must be a String")
+            }
+        }
+        val sortedMap = updates.toSortedMap()
+        DatabaseConnection.execute { connection ->
+            connection.prepareStatement("""
+                UPDATE $tableName
+                SET    ${sortedMap.entries.joinToString { "${it.key} = ?" }}
+                WHERE  pr_task_id = ?
+            """.trimIndent()).use { statement ->
+                for ((i, value) in sortedMap.values.withIndex()) {
+                    statement.setObject(i + 1, value)
+                }
+                statement.setLong(sortedMap.size + 1, pipelineRunTaskId)
+                statement.executeUpdate()
             }
         }
     }

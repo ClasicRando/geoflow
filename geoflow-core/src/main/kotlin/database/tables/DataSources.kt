@@ -1,7 +1,5 @@
 package database.tables
 
-import orm.tables.SequentialPrimaryKey
-
 /**
  * Table used to store sources of data. Core backing of how data is grouped and moves through the system from collection
  * to reporting.

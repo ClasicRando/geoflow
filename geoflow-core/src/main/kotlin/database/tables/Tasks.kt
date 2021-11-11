@@ -1,7 +1,6 @@
 package database.tables
 
-import orm.enums.TaskRunType
-import orm.tables.SequentialPrimaryKey
+import database.enums.TaskRunType
 import tasks.PipelineTask
 import tasks.SystemTask
 import tasks.UserTask
