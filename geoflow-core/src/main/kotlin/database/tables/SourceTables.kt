@@ -1,16 +1,12 @@
 package database.tables
 
 import data_loader.AnalyzeResult
-import kotlinx.serialization.SerialName
-import kotlinx.serialization.Serializable
+import database.*
 import database.enums.FileCollectType
 import database.enums.LoaderType
-import database.executeNoReturn
-import database.submitQuery
-import database.useFirstOrNull
-import database.useMultipleStatements
+import kotlinx.serialization.SerialName
+import kotlinx.serialization.Serializable
 import java.sql.Connection
-import java.sql.PreparedStatement
 import java.util.*
 
 object SourceTables: DbTable("source_tables"), ApiExposed, SequentialPrimaryKey {
@@ -149,12 +145,6 @@ object SourceTables: DbTable("source_tables"), ApiExposed, SequentialPrimaryKey 
         }.toMap().toSortedMap()
     }
 
-    private fun PreparedStatement.setParameters(map: SortedMap<String, Any?>) {
-        map.entries.forEachIndexed { index, (_, value) ->
-            setObject(index + 1, value)
-        }
-    }
-
     /**
      * Uses [params] map to update a given record specified by the stOid provided in the map and return the stOid
      *
@@ -177,15 +167,13 @@ object SourceTables: DbTable("source_tables"), ApiExposed, SequentialPrimaryKey 
             ?: throw IllegalArgumentException("stOid must be a non-null parameter in the url")
         require(PipelineRuns.checkUserRun(connection, runId, username)) { "Username does not own the runId" }
         val sortedMap = getStatementArguments(params)
-        return connection.prepareStatement("""
+        val sql = """
             UPDATE $tableName
             SET    ${sortedMap.keys.joinToString { key -> "$key = ?" }}
             WHERE  st_oid = ?
-        """.trimIndent()).use { statement ->
-            statement.setParameters(sortedMap)
-            statement.setLong(sortedMap.size + 1, stOid)
-            stOid to statement.executeUpdate()
-        }
+        """.trimIndent()
+        val updateCount = connection.runUpdate(sql = sql, *sortedMap.values.toTypedArray(), stOid)
+        return stOid to updateCount
     }
 
     /**
@@ -203,17 +191,13 @@ object SourceTables: DbTable("source_tables"), ApiExposed, SequentialPrimaryKey 
             ?: throw IllegalArgumentException("runId must be a non-null parameter in the url")
         require(PipelineRuns.checkUserRun(connection, runId, username)) { "Username does not own the runId" }
         val sortedMap = getStatementArguments(params)
-        return connection.prepareStatement("""
-            INSERT INTO $tableName (${sortedMap.keys.joinToString()})
-            VALUES (${"?,".repeat(sortedMap.size).trim(',')})
+        val sql = """
+            INSERT INTO $tableName (run_id,${sortedMap.keys.joinToString()})
+            VALUES (?,${"?,".repeat(sortedMap.size).trim(',')})
             RETURNING st_oid
-        """.trimIndent()).use { statement ->
-            statement.setParameters(sortedMap)
-            statement.execute()
-            statement.resultSet.useFirstOrNull { rs ->
-                rs.getLong(1)
-            } ?: throw IllegalArgumentException("Error while trying to insert record. Null returned")
-        }
+        """.trimIndent()
+        return connection.runReturningFirstOrNull(sql = sql, runId, *sortedMap.values.toTypedArray())
+            ?: throw IllegalArgumentException("Error while trying to insert record. Null returned")
     }
 
 
