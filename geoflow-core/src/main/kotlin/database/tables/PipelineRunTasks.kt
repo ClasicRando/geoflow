@@ -1,13 +1,14 @@
 package database.tables
 
-import database.DatabaseConnection
 import database.functions.GetTasksOrdered
 import database.procedures.DeleteRunTaskChildren
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 import database.enums.TaskRunType
 import database.enums.TaskStatus
-import useFirstOrNull
+import database.queryFirstOrNull
+import database.runReturningFirstOrNull
+import database.runUpdate
 import java.sql.Connection
 import java.sql.ResultSet
 import java.sql.Timestamp
@@ -133,25 +134,19 @@ object PipelineRunTasks: DbTable("pipeline_run_tasks"), ApiExposed, SequentialPr
      *
      * @throws IllegalArgumentException when the provided ID returns no records
      */
-    fun Connection.getWithLock(pipelineRunTaskId: Long): PipelineRunTask {
-        return prepareStatement("$genericSql FOR UPDATE").use { statement ->
-            statement.setLong(1, pipelineRunTaskId)
-            statement.executeQuery().useFirstOrNull { rs ->
-                PipelineRunTask.fromResultSet(rs)
-            }
-        } ?: throw IllegalArgumentException("ID provided did not match a record in the database")
+    fun getWithLock(connection: Connection, pipelineRunTaskId: Long): PipelineRunTask {
+        return connection.queryFirstOrNull(
+            sql = "$genericSql FOR UPDATE",
+            pipelineRunTaskId
+        ) ?: throw IllegalArgumentException("ID provided did not match a record in the database")
     }
 
     /** Returns the [PipelineRunTask] specified by the provided [pipelineRunTaskId] or null if no record can be found */
-    suspend fun getRecord(pipelineRunTaskId: Long): PipelineRunTask? {
-        return DatabaseConnection.queryConnectionSingle { connection ->
-            connection.prepareStatement(genericSql).use { statement ->
-                statement.setLong(1, pipelineRunTaskId)
-                statement.executeQuery().useFirstOrNull { rs ->
-                    PipelineRunTask.fromResultSet(rs)
-                }
-            }
-        }
+    fun getRecord(connection: Connection, pipelineRunTaskId: Long): PipelineRunTask? {
+        return connection.queryFirstOrNull(
+            sql = genericSql,
+            pipelineRunTaskId,
+        )
     }
 
     /**
@@ -161,9 +156,11 @@ object PipelineRunTasks: DbTable("pipeline_run_tasks"), ApiExposed, SequentialPr
      * @throws IllegalArgumentException when the user is not able to run tasks for the run or the next task to run
      * cannot be found
      */
-    suspend fun getRecordForRun(username: String, runId: Long): NextTask {
-        require(PipelineRuns.checkUserRun(runId, username)) { "User provided cannot run tasks for this pipeline run" }
-        return getNextTask(runId) ?: throw IllegalArgumentException("Cannot find next task")
+    fun getRecordForRun(connection: Connection, username: String, runId: Long): NextTask {
+        require(PipelineRuns.checkUserRun(connection, runId, username)) {
+            "User provided cannot run tasks for this pipeline run"
+        }
+        return getNextTask(connection, runId) ?: throw IllegalArgumentException("Cannot find next task")
     }
 
     /**
@@ -175,62 +172,60 @@ object PipelineRunTasks: DbTable("pipeline_run_tasks"), ApiExposed, SequentialPr
      * - the record obtained has a different runId
      * - the record obtained is waiting to be scheduled
      */
-    suspend fun resetRecord(username: String, runId: Long, pipelineRunTaskId: Long) {
-        require(PipelineRuns.checkUserRun(runId, username)) { "User provided cannot run tasks for this pipeline run" }
-        DatabaseConnection.execute { connection ->
-            connection.prepareStatement("""
-                UPDATE $tableName
-                SET    task_status = ?,
-                       task_completed = null,
-                       task_start = null,
-                       task_message = null,
-                       task_stack_trace = null
-                WHERE  pr_task_id = ?
-                AND    task_status != ?
-                AND    run_id = ?
-            """.trimIndent()).use { statement ->
-                statement.setObject(1, TaskStatus.Waiting.pgObject)
-                statement.setLong(2, pipelineRunTaskId)
-                statement.setObject(3, TaskStatus.Waiting.pgObject)
-                statement.setLong(4, runId)
-                if (statement.executeUpdate() == 1) {
-                    DeleteRunTaskChildren.call2(pipelineRunTaskId)
-                } else {
-                    throw IllegalArgumentException(
-                        "No records were reset. Make sure the provided run_id matches the task and the task is Waiting"
-                    )
-                }
-            }
+    fun resetRecord(connection: Connection, username: String, runId: Long, pipelineRunTaskId: Long) {
+        require(PipelineRuns.checkUserRun(connection, runId, username)) {
+            "User provided cannot run tasks for this pipeline run"
+        }
+        val sql = """
+            UPDATE $tableName
+            SET    task_status = ?,
+                   task_completed = null,
+                   task_start = null,
+                   task_message = null,
+                   task_stack_trace = null
+            WHERE  pr_task_id = ?
+            AND    task_status != ?
+            AND    run_id = ?
+        """.trimIndent()
+        val updateCount = connection.runUpdate(
+            sql = sql,
+            TaskStatus.Waiting.pgObject,
+            pipelineRunTaskId,
+            TaskStatus.Waiting.pgObject,
+            runId
+        )
+        if (updateCount == 1) {
+            DeleteRunTaskChildren.call(connection, pipelineRunTaskId)
+        } else {
+            throw IllegalArgumentException(
+                "No records were reset. Make sure the provided run_id matches the task and the task is Waiting"
+            )
         }
     }
 
     /**
      * Adds the desired generic task as the last child of the [pipelineRunTaskId]
      */
-    suspend fun addTask(pipelineRunTaskId: Long, taskId: Long): Long? {
-        return DatabaseConnection.queryConnectionSingle { connection ->
-            connection.prepareStatement("""
-                INSERT INTO $tableName (run_id,task_status,task_id,parent_task_id,parent_task_order,workflow_operation) 
-                SELECT distinct t1.run_id, ?, ?, t1.pr_task_id,
-                       COALESCE(
-                          MAX(t2.parent_task_order) OVER (PARTITION BY t2.parent_task_id ) + 1,
-                          1
-                        ),
-                       t1.workflow_operation
-                FROM   $tableName t1
-                LEFT JOIN $tableName t2 on t1.pr_task_id = t2.parent_task_id
-                WHERE  t1.pr_task_id = ?
-                RETURNING pr_task_id
-            """.trimIndent()).use { statement ->
-                statement.setObject(1, TaskStatus.Waiting.pgObject)
-                statement.setLong(2, taskId)
-                statement.setLong(3, pipelineRunTaskId)
-                statement.execute()
-                statement.resultSet.useFirstOrNull { rs ->
-                    rs.getLong(1)
-                }
-            }
-        }
+    fun addTask(connection: Connection, pipelineRunTaskId: Long, taskId: Long): Long? {
+        val sql = """
+            INSERT INTO $tableName (run_id,task_status,task_id,parent_task_id,parent_task_order,workflow_operation) 
+            SELECT distinct t1.run_id, ?, ?, t1.pr_task_id,
+                   COALESCE(
+                      MAX(t2.parent_task_order) OVER (PARTITION BY t2.parent_task_id ) + 1,
+                      1
+                    ),
+                   t1.workflow_operation
+            FROM   $tableName t1
+            LEFT JOIN $tableName t2 on t1.pr_task_id = t2.parent_task_id
+            WHERE  t1.pr_task_id = ?
+            RETURNING pr_task_id
+        """.trimIndent()
+        return connection.runReturningFirstOrNull(
+            sql = sql,
+            TaskStatus.Waiting.pgObject,
+            taskId,
+            pipelineRunTaskId,
+        )
     }
 
     /** API response data class for JSON serialization */
@@ -274,7 +269,9 @@ object PipelineRunTasks: DbTable("pipeline_run_tasks"), ApiExposed, SequentialPr
      * Returns all the tasks associated with the provided [runId], ordered by the parent child relationships and
      * relative ordering within those relationships
      */
-    suspend fun getOrderedTasks(runId: Long): List<Record> = GetTasksOrdered.getTasks2(runId)
+    fun getOrderedTasks(connection: Connection, runId: Long): List<Record> {
+        return GetTasksOrdered.getTasks(connection, runId)
+    }
 
     /** Holds minimal details of the next available task to run */
     data class NextTask(
@@ -289,19 +286,15 @@ object PipelineRunTasks: DbTable("pipeline_run_tasks"), ApiExposed, SequentialPr
      *
      * @throws IllegalArgumentException when a task in the run is currently running or scheduled
      */
-    suspend fun getNextTask(runId: Long): NextTask? {
-        val running = DatabaseConnection.queryConnectionSingle { connection ->
-            connection.prepareStatement(
-                "SELECT task_id FROM $tableName WHERE run_id = ? AND task_status in (?,?) LIMIT 1"
-            ).use { statement ->
-                statement.setLong(1, runId)
-                statement.setObject(2, TaskStatus.Scheduled.pgObject)
-                statement.setObject(3, TaskStatus.Running.pgObject)
-                statement.executeQuery().useFirstOrNull { rs -> rs.getLong(1) }
-            }
-        }
+    fun getNextTask(connection: Connection, runId: Long): NextTask? {
+        val running = connection.queryFirstOrNull<Long?>(
+            sql = "SELECT task_id FROM $tableName WHERE run_id = ? AND task_status in (?,?) LIMIT 1",
+            runId,
+            TaskStatus.Scheduled.pgObject,
+            TaskStatus.Running.pgObject,
+        )
         require(running == null) { "Task currently scheduled/running (id = $running)" }
-        return getOrderedTasks(runId).firstOrNull{
+        return getOrderedTasks(connection, runId).firstOrNull{
             it.taskStatus == TaskStatus.Waiting.name
         }?.let { record ->
             NextTask(
@@ -316,21 +309,18 @@ object PipelineRunTasks: DbTable("pipeline_run_tasks"), ApiExposed, SequentialPr
     /**
      * Updates the status for the given record
      */
-    suspend fun setStatus(pipelineRunTaskId: Long, status: TaskStatus) {
-        DatabaseConnection.execute { connection ->
-            connection.prepareStatement(
-                "UPDATE $tableName SET task_status = ? WHERE pr_Task_id = ?"
-            ).use { statement ->
-                statement.setObject(1, status.pgObject)
-                statement.setLong(2, pipelineRunTaskId)
-                statement.execute()
-            }
-        }
+    fun setStatus(connection: Connection, pipelineRunTaskId: Long, status: TaskStatus) {
+        connection.runUpdate(
+            sql = "UPDATE $tableName SET task_status = ? WHERE pr_Task_id = ?",
+            status.pgObject,
+            pipelineRunTaskId,
+        )
     }
 
     private object NonUpdatedField
 
-    suspend fun update(
+    fun update(
+        connection: Connection,
         pipelineRunTaskId: Long,
         taskStatus: Any = NonUpdatedField,
         taskStart: Any? = NonUpdatedField,
@@ -375,18 +365,11 @@ object PipelineRunTasks: DbTable("pipeline_run_tasks"), ApiExposed, SequentialPr
             }
         }
         val sortedMap = updates.toSortedMap()
-        DatabaseConnection.execute { connection ->
-            connection.prepareStatement("""
-                UPDATE $tableName
-                SET    ${sortedMap.entries.joinToString { "${it.key} = ?" }}
-                WHERE  pr_task_id = ?
-            """.trimIndent()).use { statement ->
-                for ((i, value) in sortedMap.values.withIndex()) {
-                    statement.setObject(i + 1, value)
-                }
-                statement.setLong(sortedMap.size + 1, pipelineRunTaskId)
-                statement.executeUpdate()
-            }
-        }
+        val sql = """
+            UPDATE $tableName
+            SET    ${sortedMap.entries.joinToString { "${it.key} = ?" }}
+            WHERE  pr_task_id = ?
+        """.trimIndent()
+        connection.runUpdate(sql = sql, *sortedMap.values.toTypedArray(), pipelineRunTaskId)
     }
 }

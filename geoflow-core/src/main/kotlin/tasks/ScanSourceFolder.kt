@@ -1,11 +1,11 @@
 package tasks
 
-import database.DatabaseConnection
 import database.enums.FileCollectType
 import database.tables.PipelineRunTasks
 import database.tables.PipelineRuns
 import database.tables.SourceTables
 import java.io.File
+import java.sql.Connection
 
 /**
  * System task that scans the source folder to find any missing or extra files in the 'files' folder.
@@ -22,31 +22,30 @@ class ScanSourceFolder(pipelineTaskId: Long): SystemTask(pipelineTaskId) {
 
     private val downloadTypes = listOf(FileCollectType.REST.name, FileCollectType.Download.name)
 
-    override suspend fun run(task: PipelineRunTasks.PipelineRunTask) {
-        val pipelineRun = PipelineRuns.getRun(task.runId) ?: throw Exception("Run cannot be null")
+    override suspend fun run(connection: Connection, task: PipelineRunTasks.PipelineRunTask) {
+        val pipelineRun = PipelineRuns.getRun(connection, task.runId) ?: throw Exception("Run cannot be null")
         val folder = File(pipelineRun.runFilesLocation)
         require(folder.exists()) {
             "Files location specified by data source does not exist or the system does not have access"
         }
         require(folder.isDirectory) { "Files location specified by data source is not a directory" }
-        val hasScanned = DatabaseConnection.queryConnectionSingle { connection ->
-            connection.prepareStatement("""
-                SELECT *
-                FROM   ${PipelineRunTasks.tableName}
-                WHERE  run_id = ?
-                AND    task_id = ?
-                AND    pr_task_id != ?
-                LIMIT 1
-            """.trimIndent()).use { statement ->
-                statement.setLong(1, task.runId)
-                statement.setLong(2, taskId)
-                statement.setLong(3, pipelineRunTaskId)
-                statement.executeQuery().use {
-                    it.next()
-                }
+        val hasScannedSql = """
+            SELECT *
+            FROM   ${PipelineRunTasks.tableName}
+            WHERE  run_id = ?
+            AND    task_id = ?
+            AND    pr_task_id != ?
+            LIMIT 1
+        """.trimIndent()
+        val hasScanned = connection.prepareStatement(hasScannedSql).use { statement ->
+            statement.setLong(1, task.runId)
+            statement.setLong(2, taskId)
+            statement.setLong(3, pipelineRunTaskId)
+            statement.executeQuery().use {
+                it.next()
             }
         }
-        val sourceFiles = SourceTables.getRunSourceTables(task.runId)
+        val sourceFiles = SourceTables.getRunSourceTables(connection, task.runId)
         val files = folder
             .walk()
             .filter { it.isFile }
@@ -62,9 +61,10 @@ class ScanSourceFolder(pipelineTaskId: Long): SystemTask(pipelineTaskId) {
                 .distinct()
                 .let { downloadFiles ->
                     if (downloadFiles.isNotEmpty()) {
-                        PipelineRunTasks.addTask(pipelineRunTaskId, DownloadMissingFiles.taskId)
+                        PipelineRunTasks.addTask(connection, pipelineRunTaskId, DownloadMissingFiles.taskId)
                             ?.also { downloadTaskId ->
                                 PipelineRunTasks.update(
+                                    connection,
                                     downloadTaskId,
                                     taskMessage = missingFiles.joinToString(
                                         separator = "','",
@@ -85,9 +85,10 @@ class ScanSourceFolder(pipelineTaskId: Long): SystemTask(pipelineTaskId) {
                 .distinct()
                 .let { collectFiles ->
                     if (collectFiles.isNotEmpty()) {
-                        PipelineRunTasks.addTask(pipelineRunTaskId, CollectMissingFiles.taskId)
+                        PipelineRunTasks.addTask(connection, pipelineRunTaskId, CollectMissingFiles.taskId)
                             ?.also { collectTaskId ->
                                 PipelineRunTasks.update(
+                                    connection,
                                     collectTaskId,
                                     taskMessage = missingFiles.joinToString(
                                         separator = "','",
@@ -103,7 +104,7 @@ class ScanSourceFolder(pipelineTaskId: Long): SystemTask(pipelineTaskId) {
                     }
                 }
             if (downloadTaskId != null || collectFilesTaskId != null) {
-                PipelineRunTasks.addTask(pipelineRunTaskId, taskId)
+                PipelineRunTasks.addTask(connection, pipelineRunTaskId, taskId)
             }
         }
         if (extraFiles.isNotEmpty()) {

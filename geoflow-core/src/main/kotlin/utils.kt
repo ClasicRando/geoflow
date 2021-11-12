@@ -1,14 +1,6 @@
-import kotlinx.serialization.Serializable
 import tasks.UserTask
-import java.sql.Connection
-import java.sql.PreparedStatement
-import java.sql.ResultSet
-import java.sql.Timestamp
 import java.time.*
 import java.time.format.DateTimeFormatter
-import kotlin.reflect.full.companionObject
-import kotlin.reflect.full.createType
-import kotlin.reflect.full.hasAnnotation
 
 fun formatLocalDateDefault(date: LocalDate): String = date.format(DateTimeFormatter.ISO_LOCAL_DATE)
 
@@ -32,81 +24,5 @@ inline fun <T> requireNotEmpty(collection: Collection<T>, lazyMessage: () -> Any
     if (collection.isEmpty()) {
         val message = lazyMessage()
         throw IllegalArgumentException(message.toString())
-    }
-}
-
-inline fun <reified T> ResultSet.rowToClass(): T {
-    require(!isClosed) { "ResultSet is closed" }
-    require(!isAfterLast) { "ResultSet has no more rows to return" }
-    if (T::class.isData) {
-        val constructor = T::class.constructors.first()
-        val row = 0.until(metaData.columnCount).map {
-            when (val current = getObject(it + 1)) {
-                null -> current
-                is Timestamp -> formatInstantDateTime(current.toInstant())
-                else -> current
-            }
-        }.toTypedArray()
-        return if (T::class.hasAnnotation<Serializable>()) {
-            require(row.size == constructor.parameters.size - 2) {
-                "Row size must match number of required constructor parameters"
-            }
-            constructor.call(Int.MAX_VALUE, *row, null)
-        } else {
-            require(row.size == constructor.parameters.size) {
-                "Row size must match number of required constructor parameters"
-            }
-            constructor.call(*row)
-        }
-    }
-    if (T::class.companionObject == null) {
-        throw IllegalArgumentException("Type must have a companion object")
-    }
-    val resultSetType = ResultSet::class.createType()
-    val genericType = T::class.createType()
-    val companion = T::class.companionObject!!
-    val function = companion.members.firstOrNull {
-        it.parameters.size == 1 && it.parameters[0].type == resultSetType && it.returnType == genericType
-    }
-    if (function != null) {
-        return function.call(this) as T
-    }
-    if (metaData.columnCount != 1) {
-        throw IllegalArgumentException("Fallback to extract single value from result set failed since columnCount != 1")
-    }
-    return getObject(1) as T
-}
-
-inline fun <T> ResultSet.useFirstOrNull(block: (ResultSet) -> T): T? = use {
-    if (next()) {
-        block(it)
-    } else {
-        null
-    }
-}
-
-inline fun Connection.useMultipleStatements(sql: List<String>, block: (List<PreparedStatement>) -> Unit) {
-    var exception: Throwable? = null
-    var statements: List<PreparedStatement>? = null
-    try {
-        statements = sql.map { prepareStatement(it) }
-        return block(statements)
-    } catch (e: Throwable) {
-        exception = e
-        throw e
-    } finally {
-        if (statements != null) {
-            for (statement in statements) {
-                if (exception == null) {
-                    statement.close()
-                } else {
-                    try {
-                        statement.close()
-                    } catch (e: Throwable) {
-                        exception.addSuppressed(e)
-                    }
-                }
-            }
-        }
     }
 }

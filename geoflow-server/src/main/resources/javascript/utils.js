@@ -79,7 +79,7 @@ var sourceTableRecordLabelId = 'sourceTableRecordLabel';
 var deleteSourceTableConfirmId = 'deleteSourceTable';
 
 function postSourceTableChanges(method) {
-    const runId = new URLSearchParams(window.location.href.replace(/^[^?]+/g, '')).get('runId');
+    const runId = window.location.href.match(/(?<=\/)\d+$/g)[0]
     const params = $(`#${sourceTableModalId}EditRowBody`).serialize();
     requestMethods[method](
         `/api/source-tables?stOid=${stOid}&runId=${runId}&${params}`,

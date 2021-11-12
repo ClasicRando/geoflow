@@ -1,8 +1,10 @@
 package tasks
 
 import database.DatabaseConnection
+import database.queryFirstOrNull
 import database.tables.PipelineRunTasks
 import database.tables.SourceTables
+import java.sql.Connection
 
 /**
  * System task to validate the pipeline run has at least 1 [SourceTables] record entry
@@ -11,18 +13,12 @@ class ValidateFirstPipeline(pipelineRunTaskId: Long): SystemTask(pipelineRunTask
 
     override val taskId: Long = 11
 
-    override suspend fun run(task: PipelineRunTasks.PipelineRunTask) {
-        val sourceTableCount = DatabaseConnection.queryConnectionSingle { connection ->
-            connection.prepareStatement(
-                "SELECT COUNT(0) FROM ${SourceTables.tableName} WHERE run_id = ?"
-            ).use { statement ->
-                statement.setLong(1, task.runId)
-                statement.executeQuery().use { rs ->
-                    if (rs.next()) rs.getInt(1) else 0
-                }
-            }
-        }
-        if (sourceTableCount == 0) {
+    override suspend fun run(connection: Connection, task: PipelineRunTasks.PipelineRunTask) {
+        val sourceTableCount = connection.queryFirstOrNull<Long>(
+            sql = "SELECT COUNT(0) FROM ${SourceTables.tableName} WHERE run_id = ?",
+            task.runId,
+        ) ?: 0
+        if (sourceTableCount == 0L) {
             error("Source must have at least 1 file")
         }
     }

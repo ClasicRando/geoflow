@@ -11,6 +11,7 @@ import database.tables.PipelineRuns
 import database.tables.SourceTableColumns
 import database.tables.SourceTables
 import java.io.File
+import java.sql.Connection
 
 /**
  * System task to analyze all the source files for a pipeline run that are marked to be analyzed.
@@ -23,10 +24,11 @@ import java.io.File
 class AnalyzeFiles(pipelineRunTaskId: Long): SystemTask(pipelineRunTaskId) {
 
     override val taskId: Long = 12
-    override suspend fun run(task: PipelineRunTasks.PipelineRunTask) {
-        val pipelineRun = PipelineRuns.getRun(task.runId) ?: throw IllegalArgumentException("Run ID must not be null")
+    override suspend fun run(connection: Connection, task: PipelineRunTasks.PipelineRunTask) {
+        val pipelineRun = PipelineRuns.getRun(connection, task.runId)
+            ?: throw IllegalArgumentException("Run ID must not be null")
         val results = mutableMapOf<Long, AnalyzeResult>()
-        for (fileInfo in SourceTables.filesToAnalyze(pipelineRun.runId)) {
+        for (fileInfo in SourceTables.filesToAnalyze(connection, pipelineRun.runId)) {
             val file = File(pipelineRun.runFilesLocation, fileInfo.fileName)
             analyzeFile(
                 file = file,
@@ -39,6 +41,6 @@ class AnalyzeFiles(pipelineRunTaskId: Long): SystemTask(pipelineRunTaskId) {
                 results[stOid] = analyzeResult
             }
         }
-        SourceTables.finishAnalyze(results)
+        SourceTables.finishAnalyze(connection, results)
     }
 }

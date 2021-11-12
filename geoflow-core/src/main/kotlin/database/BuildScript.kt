@@ -200,9 +200,9 @@ private fun Connection.createTables(
 /**
  * Uses the database connection to create all required objects, tables, procedures, and table functions for application.
  */
-fun buildDatabase() {
+suspend fun buildDatabase() {
     try {
-        DatabaseConnection.database.useConnection { connection ->
+        DatabaseConnection.runWithConnection { connection ->
             for (enum in enums) {
                 logger.info("Creating ${enum.postgresName}")
                 connection.prepareStatement(enum.create).execute()

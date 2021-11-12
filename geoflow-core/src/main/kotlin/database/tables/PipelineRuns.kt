@@ -9,7 +9,10 @@ import kotlinx.serialization.json.Json
 import org.postgresql.util.PGobject
 import database.enums.MergeType
 import database.enums.OperationState
-import useFirstOrNull
+import database.queryFirstOrNull
+import database.runUpdate
+import database.submitQuery
+import java.sql.Connection
 import java.sql.Date
 import java.sql.ResultSet
 import java.time.LocalDate
@@ -165,34 +168,32 @@ object PipelineRuns: DbTable("pipeline_runs"), SequentialPrimaryKey, ApiExposed,
      *
      * @throws IllegalArgumentException when the username does not link to a user in [InternalUsers]
      */
-    suspend fun checkUserRun(runId: Long, username: String): Boolean {
-        return DatabaseConnection.queryConnectionSingle { connection ->
-            connection.prepareStatement("""
-                WITH user_record as (
-                    SELECT *
-                    FROM   ${InternalUsers.tableName}
-                    WHERE  username = ?
-                )
-                SELECT 1
-                FROM   $tableName t1
-                LEFT JOIN user_record t2
-                ON     t1.collection_user_oid = t2.user_oid
-                LEFT JOIN user_record t3
-                ON     t1.load_user_oid = t3.user_oid
-                LEFT JOIN user_record t4
-                ON     t1.check_user_oid = t4.user_oid
-                LEFT JOIN user_record t5
-                ON     t1.qa_user_oid = t5.user_oid
-                LEFT JOIN user_record t6
-                ON     'admin' = ANY(t6.roles)
-                WHERE  t1.run_id = ?
-                AND    COALESCE(t2.user_oid,t3.user_oid,t4.user_oid,t5.user_oid,t6.user_oid) IS NOT NULL
-            """.trimIndent()).use { statement ->
-                statement.setString(1, username)
-                statement.setLong(2, runId)
-                statement.executeQuery().use { rs ->
-                    rs.next()
-                }
+    fun checkUserRun(connection: Connection, runId: Long, username: String): Boolean {
+        return connection.prepareStatement("""
+            WITH user_record as (
+                SELECT *
+                FROM   ${InternalUsers.tableName}
+                WHERE  username = ?
+            )
+            SELECT 1
+            FROM   $tableName t1
+            LEFT JOIN user_record t2
+            ON     t1.collection_user_oid = t2.user_oid
+            LEFT JOIN user_record t3
+            ON     t1.load_user_oid = t3.user_oid
+            LEFT JOIN user_record t4
+            ON     t1.check_user_oid = t4.user_oid
+            LEFT JOIN user_record t5
+            ON     t1.qa_user_oid = t5.user_oid
+            LEFT JOIN user_record t6
+            ON     'admin' = ANY(t6.roles)
+            WHERE  t1.run_id = ?
+            AND    COALESCE(t2.user_oid,t3.user_oid,t4.user_oid,t5.user_oid,t6.user_oid) IS NOT NULL
+        """.trimIndent()).use { statement ->
+            statement.setString(1, username)
+            statement.setLong(2, runId)
+            statement.executeQuery().use { rs ->
+                rs.next()
             }
         }
     }
@@ -229,7 +230,7 @@ object PipelineRuns: DbTable("pipeline_runs"), SequentialPrimaryKey, ApiExposed,
      *
      * @throws IllegalArgumentException when the state provided does not match the required values
      */
-    suspend fun userRuns(userId: Long, state: String): List<Record> {
+    fun userRuns(connection: Connection, userId: Long, state: String): List<Record> {
         require(state in listOf("collection", "load", "check", "qa")) {
             "state provided does not point to anything"
         }
@@ -249,64 +250,52 @@ object PipelineRuns: DbTable("pipeline_runs"), SequentialPrimaryKey, ApiExposed,
             ON     t1.qa_user_oid = t6.user_oid
             WHERE  COALESCE(t1.${state}_user_oid, ?) = ?
         """.trimIndent()
-        return DatabaseConnection.submitQuery(sql = sql, parameters = listOf(userId, userId))
+        return connection.submitQuery(sql = sql, userId, userId)
     }
 
     /**
      * Returns the last runId for the data source linked to the pipeline run task. If a past run cannot be found, null
      * is returned
      */
-    suspend fun lastRun(pipelineRunTaskId: Long): Long? {
-        return DatabaseConnection.queryConnectionSingle { connection ->
-            connection.prepareStatement("""
-                SELECT t3.ds_id
-                FROM   $tableName t1
-                JOIN   ${PipelineRunTasks.tableName} t2
-                ON     t1.run_id = t2.run_id
-                LEFT JOIN $tableName t3
-                ON     t1.ds_id = t3.ds_id
-                WHERE  t2.pr_task_id = ?
-                ORDER BY 1 DESC
-                LIMIT  1 OFFSET 1
-            """.trimIndent()).use { statement ->
-                statement.setLong(1, pipelineRunTaskId)
-                statement.executeQuery().use { rs ->
-                    if (rs.next()) rs.getLong(1) else null
-                }
-            }
-        }
+    fun lastRun(connection: Connection, pipelineRunTaskId: Long): Long? {
+        val sql = """
+            SELECT t3.ds_id
+            FROM   $tableName t1
+            JOIN   ${PipelineRunTasks.tableName} t2
+            ON     t1.run_id = t2.run_id
+            LEFT JOIN $tableName t3
+            ON     t1.ds_id = t3.ds_id
+            WHERE  t2.pr_task_id = ?
+            ORDER BY 1 DESC
+            LIMIT  1 OFFSET 1
+        """.trimIndent()
+        return connection.queryFirstOrNull(sql = sql, pipelineRunTaskId)
     }
 
     /**
      * Attempts to return a PipelineRun entity from the provided runId. Returns null if the runId does not match any
      * records
      */
-    suspend fun getRun(runId: Long): PipelineRun? {
-        return DatabaseConnection.queryConnectionSingle { connection ->
-            connection.prepareStatement("""
-                SELECT t1.run_id, t1.ds_id, t2.code, t2.files_location, t1.record_Date, t1.workflow_operation,
-                       t1.operation_state, t1.collection_user_oid, t1.load_user_oid, t1.check_user_oid, t1.qa_user_oid,
-                       t1.production_count, t1.staging_count, t1.match_count, t1.new_count, t1.plotting_stats,
-                       t1.has_child_tables, t1.merge_type
-                FROM   $tableName t1
-                JOIN   ${DataSources.tableName} t2
-                ON     t1.ds_id = t2.ds_id
-                LEFT JOIN ${InternalUsers.tableName} t3
-                ON     t1.collection_user_oid = t3.user_oid
-                LEFT JOIN ${InternalUsers.tableName} t4
-                ON     t1.load_user_oid = t4.user_oid
-                LEFT JOIN ${InternalUsers.tableName} t5
-                ON     t1.check_user_oid = t5.user_oid
-                LEFT JOIN ${InternalUsers.tableName} t6
-                ON     t1.qa_user_oid = t6.user_oid
-                WHERE  t1.run_id = ?
-            """.trimIndent()).use { statement ->
-                statement.setLong(1, runId)
-                statement.executeQuery().useFirstOrNull { rs ->
-                    PipelineRun.fromResultSet(rs)
-                }
-            }
-        }
+    fun getRun(connection: Connection, runId: Long): PipelineRun? {
+        val sql = """
+            SELECT t1.run_id, t1.ds_id, t2.code, t2.files_location, t1.record_Date, t1.workflow_operation,
+                   t1.operation_state, t1.collection_user_oid, t1.load_user_oid, t1.check_user_oid, t1.qa_user_oid,
+                   t1.production_count, t1.staging_count, t1.match_count, t1.new_count, t1.plotting_stats,
+                   t1.has_child_tables, t1.merge_type
+            FROM   $tableName t1
+            JOIN   ${DataSources.tableName} t2
+            ON     t1.ds_id = t2.ds_id
+            LEFT JOIN ${InternalUsers.tableName} t3
+            ON     t1.collection_user_oid = t3.user_oid
+            LEFT JOIN ${InternalUsers.tableName} t4
+            ON     t1.load_user_oid = t4.user_oid
+            LEFT JOIN ${InternalUsers.tableName} t5
+            ON     t1.check_user_oid = t5.user_oid
+            LEFT JOIN ${InternalUsers.tableName} t6
+            ON     t1.qa_user_oid = t6.user_oid
+            WHERE  t1.run_id = ?
+        """.trimIndent()
+        return connection.queryFirstOrNull(sql = sql, runId)
     }
 
     /**
@@ -314,27 +303,23 @@ object PipelineRuns: DbTable("pipeline_runs"), SequentialPrimaryKey, ApiExposed,
      *
      * @throws IllegalArgumentException when the runId provided does not link to a record
      */
-    suspend fun pickupRun(runId: Long, userId: Long) {
-        DatabaseConnection.useTransaction { connection ->
-            val workflowOperation = connection.prepareStatement(
-                "SELECT workflow_operation FROM $tableName WHERE run_id = ? FOR UPDATE"
-            ).use { statement ->
-                statement.setLong(1, runId)
-                statement.executeQuery().use { rs ->
-                    if (rs.next()) rs.getString(1) else null
-                }
-            } ?: throw IllegalArgumentException("RunId provided could does not link to a record")
-            connection.prepareStatement("""
-                UPDATE $tableName
-                SET    operation_state = ?,
-                       ${workflowOperation}_user_oid = ?
-                WHERE  run_id = ?
-            """.trimIndent()).use { statement ->
-                statement.setObject(1, OperationState.Active.pgObject)
-                statement.setLong(2, userId)
-                statement.setLong(3, runId)
-                statement.execute()
-            }
-        }
+    fun pickupRun(connection: Connection, runId: Long, userId: Long) {
+        val workflowSql = "SELECT workflow_operation FROM $tableName WHERE run_id = ? FOR UPDATE"
+        val workflowOperation = connection.queryFirstOrNull<String>(
+            sql = workflowSql,
+            runId
+        ) ?: throw IllegalArgumentException("RunId provided could does not link to a record")
+        val updateSql = """
+            UPDATE $tableName
+            SET    operation_state = ?,
+                   ${workflowOperation}_user_oid = ?
+            WHERE  run_id = ?
+        """.trimIndent()
+        connection.runUpdate(
+            sql = updateSql,
+            OperationState.Active.pgObject,
+            userId,
+            runId,
+        )
     }
 }

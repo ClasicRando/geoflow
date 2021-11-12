@@ -1,8 +1,7 @@
 package database.functions
 
-import database.DatabaseConnection
-import rowToClass
-import kotlin.jvm.Throws
+import database.submitQuery
+import java.sql.Connection
 import kotlin.reflect.KType
 import kotlin.reflect.full.createType
 
@@ -36,52 +35,7 @@ abstract class PlPgSqlTableFunction(
      *
      * @throws IllegalArgumentException when the params do not match the [parameterTypes] definition
      */
-    @Throws(IllegalArgumentException::class)
-    protected fun call(vararg params: Any?): List<Map<String, Any?>> {
-        require(params.size == parameterTypes.size) {
-            "Expected ${parameterTypes.size} params, got ${params.size}"
-        }
-        val paramMismatch = params.zip(parameterTypes).firstOrNull { (param, pType) ->
-            if (param == null) {
-                !pType.isMarkedNullable
-            } else {
-                param::class.createType() != pType
-            }
-        }
-        if (paramMismatch != null) {
-            throw IllegalArgumentException("Expected param type ${paramMismatch.first}, got ${paramMismatch.second}")
-        }
-        return DatabaseConnection.database.useConnection { connection ->
-            connection
-                .prepareStatement("select * from $name(${"?,".repeat(params.size).trim(',')})")
-                .use { statement ->
-                    for ((i, param) in params.withIndex()) {
-                        statement.setObject(i + 1, param)
-                    }
-                    statement.executeQuery().use { rs ->
-                        val columnNames = (1..rs.metaData.columnCount).map { rs.metaData.getColumnName(it) }
-                        generateSequence {
-                            if (rs.next()) {
-                                columnNames.associateWith { name -> rs.getObject(name) }
-                            } else {
-                                null
-                            }
-                        }.toList()
-                    }
-                }
-        }
-    }
-
-    /**
-     * Executes the function and transforms the ResultSet to a list of maps for each row returns. Provides that list as
-     * the result.
-     *
-     * Validates that the number of params and the type of the params match the [parameterTypes] definition. Allows for
-     * parameter definitions to include nullable types.
-     *
-     * @throws IllegalArgumentException when the params do not match the [parameterTypes] definition
-     */
-    suspend inline fun <reified T> call2(vararg params: Any?): List<T> {
+    inline fun <reified T> call(connection: Connection, vararg params: Any?): List<T> {
         require(params.size == parameterTypes.size) {
             "Expected ${parameterTypes.size} params, got ${params.size}"
         }
@@ -96,17 +50,6 @@ abstract class PlPgSqlTableFunction(
             throw IllegalArgumentException("Expected param type ${paramMismatch.first}, got ${paramMismatch.second}")
         }
         val sql = "select * from $name(${"?,".repeat(params.size).trim(',')})"
-        return DatabaseConnection.queryConnection { connection ->
-            connection.prepareStatement(sql).use { statement ->
-                for ((i, param) in params.withIndex()) {
-                    statement.setObject(i + 1, param)
-                }
-                statement.executeQuery().use { rs ->
-                    generateSequence {
-                        if (rs.next()) rs.rowToClass<T>() else null
-                    }.toList()
-                }
-            }
-        }
+        return connection.submitQuery(sql = sql, *params)
     }
 }

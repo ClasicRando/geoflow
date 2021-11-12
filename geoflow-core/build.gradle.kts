@@ -3,7 +3,7 @@ plugins {
 }
 
 version = "0.1"
-val ktormVersion: String by project
+val kotlinVersion: String by project
 val postgresqlVersion: String by project
 val kjobVersion: String by project
 val dbfVersion: String by project
@@ -28,12 +28,8 @@ dependencies {
     testRuntimeOnly("org.junit.jupiter:junit-jupiter-engine:$junitVersion")
     // https://mvnrepository.com/artifact/org.jetbrains.kotlinx/kotlinx-serialization-json-jvm
     implementation("org.jetbrains.kotlinx:kotlinx-serialization-json:$kotlinxJsonVersion")
-    // https://mvnrepository.com/artifact/org.ktorm/ktorm-core
-    implementation("org.ktorm:ktorm-core:$ktormVersion")
-    // https://mvnrepository.com/artifact/org.ktorm/ktorm-jackson
-    implementation("org.ktorm:ktorm-jackson:$ktormVersion")
-    // https://mvnrepository.com/artifact/org.ktorm/ktorm-support-postgresql
-    implementation("org.ktorm:ktorm-support-postgresql:$ktormVersion")
+    // https://mvnrepository.com/artifact/org.jetbrains.kotlin/kotlin-reflect
+    implementation("org.jetbrains.kotlin:kotlin-reflect:$kotlinVersion")
     // https://mvnrepository.com/artifact/org.postgresql/postgresql
     implementation("org.postgresql","postgresql", postgresqlVersion)
     // https://mvnrepository.com/artifact/it.justwrote/kjob-core

@@ -1,7 +1,8 @@
 package database.tables
 
-import database.DatabaseConnection
+import database.submitQuery
 import kotlinx.serialization.Serializable
+import java.sql.Connection
 
 /**
  * Table used to store actions available to users with certain roles.
@@ -55,11 +56,11 @@ object Actions: DbTable("actions"), ApiExposed, SequentialPrimaryKey {
      *
      * @throws IllegalStateException When any row item is null
      */
-    suspend fun userActions(roles: List<String>): List<Record> {
+    fun userActions(connection: Connection, roles: List<String>): List<Record> {
         val whereClause = if ("admin" !in roles) {
             " WHERE $tableName.role in (${"?,".repeat(roles.size).trim(',')})"
         } else ""
         val sql = "SELECT $tableName.name, $tableName.description, $tableName.href FROM $tableName$whereClause"
-        return DatabaseConnection.submitQuery(sql = sql, parameters = roles.minus("admin"))
+        return connection.submitQuery(sql = sql, *roles.minus("admin").toTypedArray())
     }
 }

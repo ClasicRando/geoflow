@@ -1,6 +1,7 @@
 @file:Suppress("unused")
 
 import auth.UserSession
+import database.DatabaseConnection
 import html.errorPage
 import html.login
 import io.ktor.application.*
@@ -54,7 +55,10 @@ fun Application.module() {
             userParamName = "username"
             passwordParamName = "password"
             validate { credentials ->
-                when(val validateResult = InternalUsers.validateUser(credentials.name, credentials.password)) {
+                val validateResult = DatabaseConnection.runWithConnection {
+                    InternalUsers.validateUser(it, credentials.name, credentials.password)
+                }
+                when (validateResult) {
                     is InternalUsers.ValidationResponse.Success -> UserIdPrincipal(credentials.name)
                     is InternalUsers.ValidationResponse.Failure -> {
                         log.info(validateResult.ERROR_MESSAGE)
@@ -133,7 +137,9 @@ fun Application.module() {
             post("/login") {
                 val username = call.principal<UserIdPrincipal>()?.name ?: ""
                 val redirect = runCatching {
-                    val user = InternalUsers.getUser(username)
+                    val user = DatabaseConnection.runWithConnection {
+                        InternalUsers.getUser(it, username)
+                    }
                     call.sessions.set(
                         UserSession(
                             userId = user.userOid,

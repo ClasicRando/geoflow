@@ -5,7 +5,6 @@ import com.github.michaelbull.jdbc.context.CoroutineDataSource
 import com.github.michaelbull.jdbc.context.connection
 import com.github.michaelbull.jdbc.context.dataSource
 import com.github.michaelbull.jdbc.transaction
-import com.github.michaelbull.jdbc.withConnection
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
@@ -14,9 +13,6 @@ import kotlinx.serialization.decodeFromString
 import kotlinx.serialization.json.Json
 import mu.KotlinLogging
 import org.apache.commons.dbcp2.BasicDataSource
-import org.ktorm.database.Database
-import org.postgresql.PGConnection
-import rowToClass
 import java.io.File
 import java.sql.Connection
 import java.sql.SQLException
@@ -39,65 +35,44 @@ object DatabaseConnection {
         defaultAutoCommit = true
     }
 
-    val logger = KotlinLogging.logger {}
-    val database by lazy { Database.connect(dataSource) }
+    private val logger = KotlinLogging.logger {}
     val scope = CoroutineScope(Dispatchers.IO + CoroutineDataSource(dataSource))
 
-    inline fun CoroutineScope.useConnection(block: CoroutineScope.(Connection) -> Unit) {
+    inline fun <reified T> CoroutineScope.useConnectionAsync(block: CoroutineScope.(Connection) -> T): T {
         val connection = if (coroutineContext.hasOpenConnection()) {
             coroutineContext.connection
         } else {
             coroutineContext.dataSource.connection
         }
-        connection.use {
+        return connection.use {
             block(it)
         }
     }
 
-    suspend inline fun <reified T> submitQuery(
-        sql: String,
-        parameters: List<Any?> = listOf(),
-    ): List<T> {
-        return queryConnection { connection ->
-            connection.prepareStatement(sql).use { statement ->
-                for (parameter in parameters.withIndex()) {
-                    statement.setObject(parameter.index + 1, parameter.value)
-                }
-                statement.executeQuery().use { rs ->
-                    generateSequence {
-                        if (rs.next()) rs.rowToClass<T>() else null
-                    }.toList()
-                }
-            }
+    inline fun <reified T> CoroutineScope.useConnection(block: CoroutineScope.(Connection) -> T): T {
+        val connection = if (coroutineContext.hasOpenConnection()) {
+            coroutineContext.connection
+        } else {
+            coroutineContext.dataSource.connection
+        }
+        return connection.use {
+            block(it)
         }
     }
 
-    suspend inline fun <T> queryConnection(
-        crossinline func: suspend CoroutineScope.(Connection) -> List<T>,
-    ): List<T> {
+    suspend inline fun <reified T> runWithConnection(crossinline func: (Connection) -> T): T {
         return withContext(scope.coroutineContext) {
-            withConnection {
-                func(coroutineContext.connection)
+            useConnection {
+                func(it)
             }
         }
     }
 
-    suspend inline fun <T> queryConnectionSingle(
-        crossinline func: suspend CoroutineScope.(Connection) -> T,
-    ): T {
+
+    suspend inline fun <reified T> runWithConnectionAsync(crossinline func: suspend (Connection) -> T): T {
         return withContext(scope.coroutineContext) {
-            withConnection {
-                func(coroutineContext.connection)
-            }
-        }
-    }
-
-    suspend fun execute(
-        func: suspend CoroutineScope.(Connection) -> Unit
-    ) {
-        withContext(scope.coroutineContext) {
-            withConnection {
-                func(coroutineContext.connection)
+            useConnection {
+                func(it)
             }
         }
     }
@@ -115,17 +90,6 @@ object DatabaseConnection {
     fun CoroutineContext.hasOpenConnection(): Boolean {
         val connection = get(CoroutineConnection)?.connection
         return connection != null && !connection.isClosedCatching()
-    }
-
-    /**
-     * Calls [close][Connection.close] on this [Connection], catching any [SQLException] that was thrown and logging it.
-     */
-    private fun Connection.closeCatching() {
-        try {
-            close()
-        } catch (ex: SQLException) {
-            logger.warn(ex) { "Failed to close database connection cleanly:" }
-        }
     }
 
     /**

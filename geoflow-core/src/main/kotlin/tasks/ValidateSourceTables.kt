@@ -1,10 +1,10 @@
 package tasks
 
-import database.DatabaseConnection
 import database.procedures.UpdateFiles
 import database.tables.PipelineRunTasks
 import database.tables.SourceTables
 import database.enums.LoaderType
+import java.sql.Connection
 
 /**
  * System task to validate the source table options are correct.
@@ -20,28 +20,27 @@ class ValidateSourceTables(pipelineRunTaskId: Long): SystemTask(pipelineRunTaskI
 
     override val taskId: Long = 8
 
-    override suspend fun run(task: PipelineRunTasks.PipelineRunTask) {
-        UpdateFiles.call2(task.runId)
-        val issues = DatabaseConnection.queryConnection { connection ->
-            connection.prepareStatement("""
-                SELECT loader_type, file_name
-                FROM   ${SourceTables.tableName}
-                WHERE  run_id = ?
-                AND    loader_type in (?,?)
-                AND    TRIM(sub_table) IS NULL
-            """.trimIndent()).use { statement ->
-                statement.setLong(1, task.runId)
-                statement.setObject(2, LoaderType.Excel.pgObject)
-                statement.setObject(3, LoaderType.MDB.pgObject)
-                statement.executeQuery().use { rs ->
-                    generateSequence {
-                        if (rs.next()) {
-                            rs.getString(1) to rs.getString(2)
-                        } else {
-                            null
-                        }
-                    }.toList()
-                }
+    override suspend fun run(connection: Connection, task: PipelineRunTasks.PipelineRunTask) {
+        UpdateFiles.call(connection, task.runId)
+        val sql = """
+            SELECT loader_type, file_name
+            FROM   ${SourceTables.tableName}
+            WHERE  run_id = ?
+            AND    loader_type in (?,?)
+            AND    TRIM(sub_table) IS NULL
+        """.trimIndent()
+        val issues = connection.prepareStatement(sql).use { statement ->
+            statement.setLong(1, task.runId)
+            statement.setObject(2, LoaderType.Excel.pgObject)
+            statement.setObject(3, LoaderType.MDB.pgObject)
+            statement.executeQuery().use { rs ->
+                generateSequence {
+                    if (rs.next()) {
+                        rs.getString(1) to rs.getString(2)
+                    } else {
+                        null
+                    }
+                }.toList()
             }
         }
         if (issues.isNotEmpty()) {

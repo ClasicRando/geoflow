@@ -1,9 +1,12 @@
 package tasks
 
 import database.DatabaseConnection
+import database.executeNoReturn
+import database.runUpdate
 import database.tables.PipelineRunTasks
 import database.tables.PipelineRuns
 import database.tables.SourceTables
+import java.sql.Connection
 
 /**
  * System task to build the initial pipeline run state.
@@ -17,32 +20,29 @@ class BuildPipelineRun(pipelineRunTaskId: Long): SystemTask(pipelineRunTaskId) {
 
     override val taskId: Long = 1
 
-    override suspend fun run(task: PipelineRunTasks.PipelineRunTask) {
-        val lastRun = PipelineRuns.lastRun(task.pipelineRunTaskId)
+    override suspend fun run(connection: Connection, task: PipelineRunTasks.PipelineRunTask) {
+        val lastRun = PipelineRuns.lastRun(connection, task.pipelineRunTaskId)
         if (lastRun == null) {
-            PipelineRunTasks.addTask(pipelineRunTaskId, FirstPipelineDetected.taskId)
-            PipelineRunTasks.addTask(pipelineRunTaskId, ValidateFirstPipeline.taskId)
+            PipelineRunTasks.addTask(connection, pipelineRunTaskId, FirstPipelineDetected.taskId)
+            PipelineRunTasks.addTask(connection, pipelineRunTaskId, ValidateFirstPipeline.taskId)
         } else {
-            DatabaseConnection.execute { connection ->
-                connection.prepareStatement(
-                    "DELETE FROM ${SourceTables.tableName} WHERE run_id = ?"
-                ).use { statement ->
-                    statement.setLong(1, task.runId)
-                    statement.executeUpdate()
-                }
-                connection.prepareStatement("""
-                    INSERT INTO ${SourceTables.tableName}(run_id,table_name,file_name,loader_type,qualified,encoding,
-                                                          sub_table,file_id,url,comments,collect_type,delimiter)
-                    SELECT ?,table_name,file_name,loader_type,qualified,encoding,sub_table,file_id,url,comments,
-                           collect_type,delimiter
-                    FROM   ${SourceTables.tableName}
-                    WHERE  run_id = ?
-                """.trimIndent()).use { statement ->
-                    statement.setLong(1, task.runId)
-                    statement.setLong(2, lastRun)
-                    statement.executeUpdate()
-                }
-            }
+            connection.executeNoReturn(
+                sql = "DELETE FROM ${SourceTables.tableName} WHERE run_id = ?",
+                task.runId,
+            )
+            val insertSql = """
+                INSERT INTO ${SourceTables.tableName}(run_id,table_name,file_name,loader_type,qualified,encoding,
+                                                      sub_table,file_id,url,comments,collect_type,delimiter)
+                SELECT ?,table_name,file_name,loader_type,qualified,encoding,sub_table,file_id,url,comments,
+                       collect_type,delimiter
+                FROM   ${SourceTables.tableName}
+                WHERE  run_id = ?
+            """.trimIndent()
+            connection.executeNoReturn(
+                sql = insertSql,
+                task.runId,
+                lastRun,
+            )
         }
     }
 

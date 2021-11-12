@@ -1,8 +1,9 @@
 package database.tables
 
-import database.DatabaseConnection
 import kotlinx.serialization.Serializable
-import rowToClass
+import database.rowToClass
+import database.submitQuery
+import java.sql.Connection
 
 /**
  * Table used to store the types of workflow states used in generic data pipelines.
@@ -39,27 +40,16 @@ object WorkflowOperations: DbTable("workflow_operations"), DefaultData, ApiExpos
      *
      * @throws IllegalStateException when either QueryRowSet value is null
      */
-    suspend fun userOperations(roles: List<String>): List<Record> = DatabaseConnection.queryConnection { connection ->
+    fun userOperations(connection: Connection, roles: List<String>): List<Record> {
         val whereClause = if ("admin" !in roles) {
             " WHERE $tableName.role in (${"?,".repeat(roles.size).trim(',')})"
         } else ""
-        val statement = connection.prepareStatement(
-            """
-                SELECT $tableName.name, $tableName.href
-                FROM $tableName
-                $whereClause
-                ORDER BY $tableName.workflow_order
-            """.trimIndent()
-        )
-        for (role in roles.minus("admin").withIndex()) {
-            statement.setString(role.index + 1, role.value)
-        }
-        statement.use {
-            it.executeQuery().use { rs ->
-                generateSequence {
-                    if (rs.next()) rs.rowToClass<Record>() else null
-                }.toList()
-            }
-        }
+        val sql = """
+            SELECT $tableName.name, $tableName.href
+            FROM $tableName
+            $whereClause
+            ORDER BY $tableName.workflow_order
+        """.trimIndent()
+        return connection.submitQuery(sql = sql, *roles.minus("admin").toTypedArray())
     }
 }

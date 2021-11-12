@@ -1,15 +1,11 @@
 package database
 
-import com.github.michaelbull.jdbc.context.CoroutineConnection
-import com.github.michaelbull.jdbc.context.connection
 import database.DatabaseConnection.useConnection
 import kotlinx.coroutines.*
 import mu.KotlinLogging
 import org.postgresql.PGConnection
 import org.postgresql.PGNotification
-import java.sql.Connection
 import java.sql.SQLException
-import kotlin.coroutines.CoroutineContext
 
 private val logger = KotlinLogging.logger {}
 

@@ -1,3 +1,4 @@
+import database.DatabaseConnection
 import it.justwrote.kjob.*
 import it.justwrote.kjob.dsl.JobContextWithProps
 import it.justwrote.kjob.job.JobExecutionType
@@ -62,50 +63,53 @@ fun startKjob(isMongo: Boolean): KJob {
  * task result is an [error][TaskResult.Error], the database record is updated with the message and stacktrace.
  */
 suspend fun JobContextWithProps<SystemJob>.executeSystemJob(kJob: KJob) {
-    try {
-        val pipelineRunTaskId = props[SystemJob.pipelineRunTaskId]
-        val runId = props[SystemJob.runId]
-        val task = ClassLoader
-            .getSystemClassLoader()
-            .loadClass("tasks.${props[SystemJob.taskClassName]}")
-            .getConstructor(Long::class.java)
-            .newInstance(props[SystemJob.pipelineRunTaskId]) as SystemTask
-        when(val result = task.runTask()) {
-            is TaskResult.Success -> {
-                PipelineRunTasks.update(
-                    pipelineRunTaskId,
-                    taskMessage = result.message,
-                    taskStatus = TaskStatus.Complete,
-                    taskCompleted = Instant.now(),
-                    taskStackTrace = null
-                )
-                if (props[SystemJob.runNext]) {
-                    PipelineRunTasks.getNextTask(props[SystemJob.runId])?.let { nextTask ->
-                        if (nextTask.taskRunType == TaskRunType.System) {
-                            kJob.schedule(SystemJob) {
-                                props[it.runId] = runId
-                                props[it.pipelineRunTaskId] = nextTask.taskId
-                                props[it.taskClassName] = nextTask.taskClassName
-                                props[it.runNext] = true
+    DatabaseConnection.runWithConnectionAsync { connection ->
+        try {
+            val pipelineRunTaskId = props[SystemJob.pipelineRunTaskId]
+            val runId = props[SystemJob.runId]
+            val task = ClassLoader
+                .getSystemClassLoader()
+                .loadClass("tasks.${props[SystemJob.taskClassName]}")
+                .getConstructor(Long::class.java)
+                .newInstance(props[SystemJob.pipelineRunTaskId]) as SystemTask
+            when(val result = task.runTask()) {
+                is TaskResult.Success -> {
+                    PipelineRunTasks.update(
+                        connection,
+                        pipelineRunTaskId,
+                        taskMessage = result.message,
+                        taskStatus = TaskStatus.Complete,
+                        taskCompleted = Instant.now(),
+                        taskStackTrace = null
+                    )
+                    if (props[SystemJob.runNext]) {
+                        PipelineRunTasks.getNextTask(connection, props[SystemJob.runId])?.let { nextTask ->
+                            if (nextTask.taskRunType == TaskRunType.System) {
+                                kJob.schedule(SystemJob) {
+                                    props[it.runId] = runId
+                                    props[it.pipelineRunTaskId] = nextTask.taskId
+                                    props[it.taskClassName] = nextTask.taskClassName
+                                    props[it.runNext] = true
+                                }
                             }
                         }
                     }
                 }
+                is TaskResult.Error -> {
+                    PipelineRunTasks.update(
+                        connection,
+                        pipelineRunTaskId,
+                        taskMessage = result.message,
+                        taskStatus = TaskStatus.Failed,
+                        taskCompleted = null,
+                        taskStackTrace = result.throwable.stackTraceToString()
+                    )
+                }
             }
-            is TaskResult.Error -> {
-                PipelineRunTasks.update(
-                    pipelineRunTaskId,
-                    taskMessage = result.message,
-                    taskStatus = TaskStatus.Failed,
-                    taskCompleted = null,
-                    taskStackTrace = result.throwable.stackTraceToString()
-                )
-            }
-        }
-    } catch (t: Throwable) {
-        withContext(NonCancellable) {
+        } catch (t: Throwable) {
             val pipelineRunTaskId = props[SystemJob.pipelineRunTaskId]
             PipelineRunTasks.update(
+                connection,
                 pipelineRunTaskId,
                 taskMessage = "ERROR in Job: ${t.message}",
                 taskStatus = TaskStatus.Failed,

@@ -1,13 +1,15 @@
 package database.tables
 
 import data_loader.AnalyzeResult
-import database.DatabaseConnection
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 import database.enums.FileCollectType
 import database.enums.LoaderType
-import useFirstOrNull
-import useMultipleStatements
+import database.executeNoReturn
+import database.submitQuery
+import database.useFirstOrNull
+import database.useMultipleStatements
+import java.sql.Connection
 import java.sql.PreparedStatement
 import java.util.*
 
@@ -99,14 +101,14 @@ object SourceTables: DbTable("source_tables"), ApiExposed, SequentialPrimaryKey 
      * Returns JSON serializable response of all source tables linked to a given [runId]. Returns an empty list when
      * no source tables are linked to the [runId]
      */
-    suspend fun getRunSourceTables(runId: Long): List<Record> {
+    fun getRunSourceTables(connection: Connection, runId: Long): List<Record> {
         val sql = """
             SELECT st_oid, table_name, file_id, file_name, sub_table, loader_type, delimiter, qualified, encoding, url,
                    comments, record_count, collect_type, $tableName."analyze", load
             FROM   $tableName
             WHERE  run_id = ?
         """.trimIndent()
-        return DatabaseConnection.submitQuery(sql, listOf(runId))
+        return connection.submitQuery(sql = sql, runId)
     }
 
     private fun getStatementArguments(map: Map<String, String?>): SortedMap<String, Any?> {
@@ -131,7 +133,7 @@ object SourceTables: DbTable("source_tables"), ApiExposed, SequentialPrimaryKey 
                             yield("sub_table" to subTable)
                         }
                         yield(key to fileName)
-                        yield("loader_type" to loaderType)
+                        yield("loader_type" to loaderType.pgObject)
                     }
                     "delimiter" -> yield(key to value)
                     "url" -> yield(key to value)
@@ -149,7 +151,7 @@ object SourceTables: DbTable("source_tables"), ApiExposed, SequentialPrimaryKey 
 
     private fun PreparedStatement.setParameters(map: SortedMap<String, Any?>) {
         map.entries.forEachIndexed { index, (_, value) ->
-            setObject(index, value)
+            setObject(index + 1, value)
         }
     }
 
@@ -162,24 +164,27 @@ object SourceTables: DbTable("source_tables"), ApiExposed, SequentialPrimaryKey 
      * - the username passed does not have access to update the source tables associated with the runId
      * @throws NumberFormatException when the runId or stOid are not Long strings
      */
-    suspend fun updateSourceTable(username: String, params: Map<String, String?>): Pair<Long, Int> {
+    fun updateSourceTable(
+        connection: Connection,
+        username: String,
+        params: Map<String, String?>
+    ): Pair<Long, Int> {
         val runId = params["runId"]
             ?.toLong()
             ?: throw IllegalArgumentException("runId must be a non-null parameter in the url")
         val stOid = params["stOid"]
             ?.toLong()
             ?: throw IllegalArgumentException("stOid must be a non-null parameter in the url")
-        require(PipelineRuns.checkUserRun(runId, username)) { "Username does not own the runId" }
+        require(PipelineRuns.checkUserRun(connection, runId, username)) { "Username does not own the runId" }
         val sortedMap = getStatementArguments(params)
-        return DatabaseConnection.queryConnectionSingle { connection ->
-            connection.prepareStatement("""
-                UPDATE $tableName
-                SET    ${sortedMap.keys.joinToString { key -> "$key = ?" }}
-                WHERE  st_oid = ?
-            """.trimIndent()).use { statement ->
-                statement.setParameters(sortedMap)
-                stOid to statement.executeUpdate()
-            }
+        return connection.prepareStatement("""
+            UPDATE $tableName
+            SET    ${sortedMap.keys.joinToString { key -> "$key = ?" }}
+            WHERE  st_oid = ?
+        """.trimIndent()).use { statement ->
+            statement.setParameters(sortedMap)
+            statement.setLong(sortedMap.size + 1, stOid)
+            stOid to statement.executeUpdate()
         }
     }
 
@@ -192,24 +197,22 @@ object SourceTables: DbTable("source_tables"), ApiExposed, SequentialPrimaryKey 
      * - the insert command returns null meaning a record was not inserted
      * @throws NumberFormatException when the runId or stOid are not Long strings
      */
-    suspend fun insertSourceTable(username: String, params: Map<String, String?>): Long {
+    fun insertSourceTable(connection: Connection, username: String, params: Map<String, String?>): Long {
         val runId = params["runId"]
             ?.toLong()
             ?: throw IllegalArgumentException("runId must be a non-null parameter in the url")
-        require(PipelineRuns.checkUserRun(runId, username)) { "Username does not own the runId" }
+        require(PipelineRuns.checkUserRun(connection, runId, username)) { "Username does not own the runId" }
         val sortedMap = getStatementArguments(params)
-        return DatabaseConnection.queryConnectionSingle { connection ->
-            connection.prepareStatement("""
-                INSERT INTO $tableName (${sortedMap.keys.joinToString()})
-                VALUES (${"?,".repeat(sortedMap.size).trim(',')})
-                RETURNING st_oid
-            """.trimIndent()).use { statement ->
-                statement.setParameters(sortedMap)
-                statement.execute()
-                statement.resultSet.useFirstOrNull { rs ->
-                    rs.getLong(1)
-                } ?: throw IllegalArgumentException("Error while trying to insert record. Null returned")
-            }
+        return connection.prepareStatement("""
+            INSERT INTO $tableName (${sortedMap.keys.joinToString()})
+            VALUES (${"?,".repeat(sortedMap.size).trim(',')})
+            RETURNING st_oid
+        """.trimIndent()).use { statement ->
+            statement.setParameters(sortedMap)
+            statement.execute()
+            statement.resultSet.useFirstOrNull { rs ->
+                rs.getLong(1)
+            } ?: throw IllegalArgumentException("Error while trying to insert record. Null returned")
         }
     }
 
@@ -223,20 +226,15 @@ object SourceTables: DbTable("source_tables"), ApiExposed, SequentialPrimaryKey 
      * - the username passed does not have access to update the source tables associated with the runId
      * @throws NumberFormatException when the runId or stOid are not Long strings
      */
-    suspend fun deleteSourceTable(username: String, params: Map<String, String?>): Long {
+    fun deleteSourceTable(connection: Connection, username: String, params: Map<String, String?>): Long {
         val runId = params["runId"]
             ?.toLong()
             ?: throw IllegalArgumentException("runId must be a non-null parameter in the url")
         val stOid = params["stOid"]
             ?.toLong()
             ?: throw IllegalArgumentException("stOid must be a non-null parameter in the url")
-        require(PipelineRuns.checkUserRun(runId, username)) { "Username does not own the runId" }
-        DatabaseConnection.execute { connection ->
-            connection.prepareStatement("DELETE FROM $tableName WHERE st_oid = ?").use { statement ->
-                statement.setLong(1, stOid)
-                statement.execute()
-            }
-        }
+        require(PipelineRuns.checkUserRun(connection, runId, username)) { "Username does not own the runId" }
+        connection.executeNoReturn(sql = "DELETE FROM $tableName WHERE st_oid = ?", stOid)
         return stOid
     }
 
@@ -249,102 +247,98 @@ object SourceTables: DbTable("source_tables"), ApiExposed, SequentialPrimaryKey 
         val qualified: Boolean,
     )
 
-    suspend fun filesToAnalyze(runId: Long): List<AnalyzeFiles> {
-        return DatabaseConnection.queryConnection { connection ->
-            connection.prepareStatement("""
-                with t1 as (
-                    SELECT file_name,
-                           array_agg(st_oid order by st_oid) st_oids,
-                           array_agg(table_name order by st_oid) table_names,
-                           array_agg(sub_table order by st_oid) sub_Tables,
-                           array_agg(delimiter order by st_oid) "delimiter",
-                           array_agg(qualified order by st_oid) qualified
-                    FROM   $tableName
-                    WHERE  run_id = ?
-                    AND    "analyze"
-                    GROUP BY file_name
-                )
-                select file_name, st_oids, table_names, sub_Tables, delimiter[1] "delimiter", qualified[1] qualified
-                from   t1
-            """.trimIndent()).use { statement ->
-                statement.setLong(1, runId)
-                statement.executeQuery().use { rs ->
-                    generateSequence {
-                        if (rs.next()) {
-                            AnalyzeFiles(
-                                rs.getString(1),
-                                (rs.getArray(2).array as Array<*>).mapNotNull {
-                                    if (it is Long) it else null
-                                },
-                                (rs.getArray(3).array as Array<*>).mapNotNull {
-                                    if (it is String) it else null
-                                },
-                                (rs.getArray(4).array as Array<*>).mapNotNull {
-                                    if (it is String) it else null
-                                },
-                                rs.getString(5),
-                                rs.getBoolean(6),
-                            )
-                        } else {
-                            null
-                        }
-                    }.toList()
-                }
+    fun filesToAnalyze(connection: Connection, runId: Long): List<AnalyzeFiles> {
+        return connection.prepareStatement("""
+            with t1 as (
+                SELECT file_name,
+                       array_agg(st_oid order by st_oid) st_oids,
+                       array_agg(table_name order by st_oid) table_names,
+                       array_agg(sub_table order by st_oid) sub_Tables,
+                       array_agg(delimiter order by st_oid) "delimiter",
+                       array_agg(qualified order by st_oid) qualified
+                FROM   $tableName
+                WHERE  run_id = ?
+                AND    "analyze"
+                GROUP BY file_name
+            )
+            select file_name, st_oids, table_names, sub_Tables, delimiter[1] "delimiter", qualified[1] qualified
+            from   t1
+        """.trimIndent()).use { statement ->
+            statement.setLong(1, runId)
+            statement.executeQuery().use { rs ->
+                generateSequence {
+                    if (rs.next()) {
+                        AnalyzeFiles(
+                            rs.getString(1),
+                            (rs.getArray(2).array as Array<*>).mapNotNull {
+                                if (it is Long) it else null
+                            },
+                            (rs.getArray(3).array as Array<*>).mapNotNull {
+                                if (it is String) it else null
+                            },
+                            (rs.getArray(4).array as Array<*>).mapNotNull {
+                                if (it is String) it else null
+                            },
+                            rs.getString(5),
+                            rs.getBoolean(6),
+                        )
+                    } else {
+                        null
+                    }
+                }.toList()
             }
         }
     }
 
-    suspend fun finishAnalyze(data: Map<Long, AnalyzeResult>) {
-        DatabaseConnection.execute { connection ->
-            val columnSql = """
-                INSERT INTO ${SourceTableColumns.tableName}(st_oid,name,type,max_length,min_length,label,column_index)
-                VALUES(?,?,?,?,?,'',?)
-                ON CONFLICT (st_oid, name) DO UPDATE SET type = ?,
-                                                         max_length = ?,
-                                                         min_length = ?,
-                                                         column_index = ?
-            """.trimIndent()
-            val tableSql = """
-                UPDATE $tableName
-                SET    "analyze" = false,
-                       record_count = ?
-                WHERE  st_oid = ?
-            """.trimIndent()
-            connection.useMultipleStatements(listOf(columnSql, tableSql)) { statements ->
-                val columnStatement = statements.getOrNull(0)
-                    ?: throw IllegalStateException("Column statement must exist")
-                val tableStatement = statements.getOrNull(1)
-                    ?: throw IllegalStateException("Table statement must exist")
-                for ((stOid, analyzeResult) in data) {
-                    val repeats = analyzeResult.columns
-                        .groupingBy { it.name }
-                        .eachCount()
-                        .filter { it.value > 1 }
-                        .toMutableMap()
-                    for (column in analyzeResult.columns) {
-                        val columnName = repeats[column.name]?.let { repeatCount ->
-                            repeats[column.name] = repeatCount - 1
-                            "${column.name}_${repeatCount}"
-                        } ?: column.name
-                        columnStatement.setLong(1, stOid)
-                        columnStatement.setString(2, columnName)
-                        columnStatement.setString(3, column.type)
-                        columnStatement.setInt(4, column.maxLength)
-                        columnStatement.setInt(5, column.minLength)
-                        columnStatement.setInt(6, column.index)
-                        columnStatement.setString(7, column.type)
-                        columnStatement.setInt(8, column.maxLength)
-                        columnStatement.setInt(9, column.minLength)
-                        columnStatement.setInt(10, column.index)
-                        columnStatement.addBatch()
-                    }
-                    tableStatement.setInt(1, analyzeResult.recordCount)
-                    tableStatement.setLong(2, stOid)
-                    tableStatement.addBatch()
+    fun finishAnalyze(connection: Connection, data: Map<Long, AnalyzeResult>) {
+        val columnSql = """
+            INSERT INTO ${SourceTableColumns.tableName}(st_oid,name,type,max_length,min_length,label,column_index)
+            VALUES(?,?,?,?,?,'',?)
+            ON CONFLICT (st_oid, name) DO UPDATE SET type = ?,
+                                                     max_length = ?,
+                                                     min_length = ?,
+                                                     column_index = ?
+        """.trimIndent()
+        val tableSql = """
+            UPDATE $tableName
+            SET    "analyze" = false,
+                   record_count = ?
+            WHERE  st_oid = ?
+        """.trimIndent()
+        connection.useMultipleStatements(listOf(columnSql, tableSql)) { statements ->
+            val columnStatement = statements.getOrNull(0)
+                ?: throw IllegalStateException("Column statement must exist")
+            val tableStatement = statements.getOrNull(1)
+                ?: throw IllegalStateException("Table statement must exist")
+            for ((stOid, analyzeResult) in data) {
+                val repeats = analyzeResult.columns
+                    .groupingBy { it.name }
+                    .eachCount()
+                    .filter { it.value > 1 }
+                    .toMutableMap()
+                for (column in analyzeResult.columns) {
+                    val columnName = repeats[column.name]?.let { repeatCount ->
+                        repeats[column.name] = repeatCount - 1
+                        "${column.name}_${repeatCount}"
+                    } ?: column.name
+                    columnStatement.setLong(1, stOid)
+                    columnStatement.setString(2, columnName)
+                    columnStatement.setString(3, column.type)
+                    columnStatement.setInt(4, column.maxLength)
+                    columnStatement.setInt(5, column.minLength)
+                    columnStatement.setInt(6, column.index)
+                    columnStatement.setString(7, column.type)
+                    columnStatement.setInt(8, column.maxLength)
+                    columnStatement.setInt(9, column.minLength)
+                    columnStatement.setInt(10, column.index)
+                    columnStatement.addBatch()
                 }
-                columnStatement.executeBatch()
-                tableStatement.executeBatch()
+                tableStatement.setInt(1, analyzeResult.recordCount)
+                tableStatement.setLong(2, stOid)
+                tableStatement.addBatch()
             }
+            columnStatement.executeBatch()
+            tableStatement.executeBatch()
         }
     }
 
@@ -358,63 +352,61 @@ object SourceTables: DbTable("source_tables"), ApiExposed, SequentialPrimaryKey 
         val createStatements: List<String>,
     )
 
-    suspend fun filesToLoad(runId: Long): List<LoadFiles> {
-        return DatabaseConnection.queryConnection { connection ->
-            connection.prepareStatement("""
-                with t1 as (
-                    SELECT DISTINCT t1.st_oid,
-                           'CREATE table '||t1.table_name||' ('||
-                           STRING_AGG(t2.name::text,' text,'::text order by t2.column_index)||
-                           ' text)' create_statement
-                    FROM   source_tables t1
-                    JOIN   source_table_columns t2
-                    ON     t1.st_oid = t2.st_oid
-                    WHERE  t1.run_id = ?
-                    AND    t1.load
-                    GROUP BY t1.st_oid
-                ), t2 as (
-                    SELECT t2.file_name,
-                           array_agg(t1.st_oid order by t1.st_oid) st_oids,
-                           array_agg(t2.table_name order by t1.st_oid) table_names,
-                           array_agg(t2.sub_table order by t1.st_oid) sub_Tables,
-                           array_agg(t2.delimiter order by t1.st_oid) "delimiter",
-                           array_agg(t2.qualified order by t1.st_oid) qualified,
-                           array_agg(t1.create_statement order by t1.st_oid) create_statements
-                    FROM   t1
-                    JOIN   source_tables t2
-                    ON     t1.st_oid = t2.st_oid
-                    GROUP BY file_name
-                )
-                SELECT file_name, st_oids, table_names, sub_Tables, delimiter[1] "delimiter", qualified[1] qualified,
-                       create_statements
-                FROM   t2;
-            """.trimIndent()).use { statement ->
-                statement.setLong(1, runId)
-                statement.executeQuery().use { rs ->
-                    generateSequence {
-                        if (rs.next()) {
-                            LoadFiles(
-                                rs.getString(1),
-                                (rs.getArray(2).array as Array<*>).mapNotNull {
-                                    if (it is Long) it else null
-                                },
-                                (rs.getArray(3).array as Array<*>).mapNotNull {
-                                    if (it is String) it else null
-                                },
-                                (rs.getArray(4).array as Array<*>).mapNotNull {
-                                    if (it is String) it else null
-                                },
-                                rs.getString(5),
-                                rs.getBoolean(6),
-                                (rs.getArray(7).array as Array<*>).mapNotNull {
-                                    if (it is String) it else null
-                                },
-                            )
-                        } else {
-                            null
-                        }
-                    }.toList()
-                }
+    fun filesToLoad(connection: Connection, runId: Long): List<LoadFiles> {
+        return connection.prepareStatement("""
+            with t1 as (
+                SELECT DISTINCT t1.st_oid,
+                       'CREATE table '||t1.table_name||' ('||
+                       STRING_AGG(t2.name::text,' text,'::text order by t2.column_index)||
+                       ' text)' create_statement
+                FROM   source_tables t1
+                JOIN   source_table_columns t2
+                ON     t1.st_oid = t2.st_oid
+                WHERE  t1.run_id = ?
+                AND    t1.load
+                GROUP BY t1.st_oid
+            ), t2 as (
+                SELECT t2.file_name,
+                       array_agg(t1.st_oid order by t1.st_oid) st_oids,
+                       array_agg(t2.table_name order by t1.st_oid) table_names,
+                       array_agg(t2.sub_table order by t1.st_oid) sub_Tables,
+                       array_agg(t2.delimiter order by t1.st_oid) "delimiter",
+                       array_agg(t2.qualified order by t1.st_oid) qualified,
+                       array_agg(t1.create_statement order by t1.st_oid) create_statements
+                FROM   t1
+                JOIN   source_tables t2
+                ON     t1.st_oid = t2.st_oid
+                GROUP BY file_name
+            )
+            SELECT file_name, st_oids, table_names, sub_Tables, delimiter[1] "delimiter", qualified[1] qualified,
+                   create_statements
+            FROM   t2;
+        """.trimIndent()).use { statement ->
+            statement.setLong(1, runId)
+            statement.executeQuery().use { rs ->
+                generateSequence {
+                    if (rs.next()) {
+                        LoadFiles(
+                            rs.getString(1),
+                            (rs.getArray(2).array as Array<*>).mapNotNull {
+                                if (it is Long) it else null
+                            },
+                            (rs.getArray(3).array as Array<*>).mapNotNull {
+                                if (it is String) it else null
+                            },
+                            (rs.getArray(4).array as Array<*>).mapNotNull {
+                                if (it is String) it else null
+                            },
+                            rs.getString(5),
+                            rs.getBoolean(6),
+                            (rs.getArray(7).array as Array<*>).mapNotNull {
+                                if (it is String) it else null
+                            },
+                        )
+                    } else {
+                        null
+                    }
+                }.toList()
             }
         }
     }

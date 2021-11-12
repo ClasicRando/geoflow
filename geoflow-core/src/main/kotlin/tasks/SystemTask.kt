@@ -5,6 +5,7 @@ import mu.KotlinLogging
 import database.enums.TaskStatus
 import database.tables.PipelineRunTasks
 import database.tables.PipelineRunTasks.getWithLock
+import java.sql.Connection
 import java.time.Instant
 
 /**
@@ -18,7 +19,7 @@ abstract class SystemTask(pipelineRunTaskId: Long): PipelineTask(pipelineRunTask
     /** Buildable message to be applied to the table record after runTask completion */
     private val message = StringBuilder()
 
-    abstract suspend fun run(task: PipelineRunTasks.PipelineRunTask)
+    abstract suspend fun run(connection: Connection, task: PipelineRunTasks.PipelineRunTask)
 
     protected fun addToMessage(text: String) {
         message.append(text)
@@ -39,16 +40,19 @@ abstract class SystemTask(pipelineRunTaskId: Long): PipelineTask(pipelineRunTask
      * 4. If no errors are thrown, return Success with message if not blank. If error throw, return error with throwable
      */
     override suspend fun runTask(): TaskResult {
-        PipelineRunTasks.update(
-            pipelineRunTaskId,
-            taskStatus = TaskStatus.Running,
-            taskStart = Instant.now(),
-            taskCompleted = null,
-        )
+        DatabaseConnection.runWithConnection {
+            PipelineRunTasks.update(
+                it,
+                pipelineRunTaskId,
+                taskStatus = TaskStatus.Running,
+                taskStart = Instant.now(),
+                taskCompleted = null,
+            )
+        }
         return DatabaseConnection.useTransaction { connection ->
             runCatching {
-                val task = connection.getWithLock(pipelineRunTaskId)
-                run(task)
+                val task = getWithLock(connection, pipelineRunTaskId)
+                run(connection, task)
                 TaskResult.Success(message.toString().takeIf { it.isNotBlank() })
             }.getOrElse { t ->
                 logger.error("Error for $pipelineRunTaskId: ${t.message ?: "No message provided. See record"}")

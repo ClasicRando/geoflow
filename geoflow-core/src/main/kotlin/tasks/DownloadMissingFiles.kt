@@ -1,10 +1,11 @@
 package tasks
 
-import database.DatabaseConnection
 import database.tables.PipelineRunTasks
 import database.enums.FileCollectType
+import database.submitQuery
 import database.tables.PipelineRuns
 import web.*
+import java.sql.Connection
 
 /**
  * System task that downloads missing files that have a URL to reference.
@@ -19,9 +20,9 @@ class DownloadMissingFiles(pipelineRunTaskId: Long): SystemTask(pipelineRunTaskI
     }
     override val taskId: Long = 4
 
-    override suspend fun run(task: PipelineRunTasks.PipelineRunTask) {
+    override suspend fun run(connection: Connection, task: PipelineRunTasks.PipelineRunTask) {
         requireNotNull(task.taskMessage) { "Task message must contain missing filenames" }
-        val pipelineRun = PipelineRuns.getRun(task.runId) ?: throw Exception("Run cannot be null")
+        val pipelineRun = PipelineRuns.getRun(connection, task.runId) ?: throw Exception("Run cannot be null")
         val outputFolder = pipelineRun.runFilesLocation
         val filenames = task.taskMessage
             .trim('[', ']')
@@ -36,8 +37,7 @@ class DownloadMissingFiles(pipelineRunTaskId: Long): SystemTask(pipelineRunTaskI
             AND    collect_type in (?,?)
             AND    url IS NOT NULL
         """.trimIndent()
-        val parameters = listOf(task.runId, *filenames, *downloadCollectTypes, )
-        for (url in DatabaseConnection.submitQuery<String>(sql, parameters)) {
+        for (url in connection.submitQuery<String>(sql, task.runId, *filenames, *downloadCollectTypes)) {
             when {
                 url.contains("/arcgis/rest/", ignoreCase = true) -> {
                     scrapeArcGisService(

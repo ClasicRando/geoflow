@@ -4,6 +4,7 @@ import database.tables.PipelineRunTasks
 import formatLocalDateDefault
 import database.tables.PipelineRuns
 import java.io.File
+import java.sql.Connection
 import java.util.zip.ZipEntry
 import java.util.zip.ZipOutputStream
 
@@ -18,8 +19,8 @@ class BackupFilesToZip(pipelineRunTaskId: Long): SystemTask(pipelineRunTaskId) {
     override val taskId: Long = 7
 
     @Suppress("BlockingMethodInNonBlockingContext")
-    override suspend fun run(task: PipelineRunTasks.PipelineRunTask) {
-        val pipelineRun = PipelineRuns.getRun(task.runId) ?: throw Exception("Run cannot be null")
+    override suspend fun run(connection: Connection, task: PipelineRunTasks.PipelineRunTask) {
+        val pipelineRun = PipelineRuns.getRun(connection, task.runId) ?: throw Exception("Run cannot be null")
         val backupDirectory = File(pipelineRun.runZipLocation)
         if (!backupDirectory.exists()) {
             backupDirectory.mkdir()

@@ -2,6 +2,8 @@ package database.tables
 
 import at.favre.lib.crypto.bcrypt.BCrypt
 import database.DatabaseConnection
+import database.queryFirstOrNull
+import java.sql.Connection
 
 /**
  * Table used to store users of the web server interface of the application
@@ -48,23 +50,15 @@ object InternalUsers: DbTable("internal_users"), SequentialPrimaryKey {
      * If the user cannot be found or the password is incorrect, the [Failure][ValidationResponse.Failure] object is
      * returned. Otherwise, [Success][ValidationResponse.Success] is returned
      */
-    suspend fun validateUser(username: String, password: String): ValidationResponse {
-        return DatabaseConnection.queryConnectionSingle { connection ->
-            connection.prepareStatement(
-                "SELECT password FROM $tableName WHERE username = ?"
-            ).use { statement ->
-                statement.setString(1, username)
-                statement.executeQuery().use { rs ->
-                    if (rs.next()) rs.getString(1) else null
-                }
-            }?.let { userPassword ->
-                if (BCrypt.verifyer().verify(password.toCharArray(), userPassword).verified) {
-                    ValidationResponse.Success
-                } else {
-                    ValidationResponse.Failure
-                }
-            } ?: ValidationResponse.Failure
-        }
+    fun validateUser(connection: Connection, username: String, password: String): ValidationResponse {
+        val sql = "SELECT password FROM $tableName WHERE username = ?"
+        return connection.queryFirstOrNull<String>(sql, username)?.let { userPassword ->
+            if (BCrypt.verifyer().verify(password.toCharArray(), userPassword).verified) {
+                ValidationResponse.Success
+            } else {
+                ValidationResponse.Failure
+            }
+        } ?: ValidationResponse.Failure
     }
 
     /**
@@ -72,28 +66,26 @@ object InternalUsers: DbTable("internal_users"), SequentialPrimaryKey {
      *
      * @throws IllegalArgumentException when the query returns an empty result
      */
-    suspend fun getUser(username: String): InternalUser {
-        return DatabaseConnection.queryConnectionSingle { connection ->
-            connection.prepareStatement(
-                "SELECT * FROM $tableName WHERE username = ?"
-            ).use { statement ->
-                statement.setString(1, username)
-                statement.executeQuery().use { rs ->
-                    if (rs.next()) {
-                        InternalUser(
-                            rs.getLong(1),
-                            rs.getString(2),
-                            rs.getString(3),
-                            rs.getString(4),
-                            (rs.getArray(5).array as Array<*>).mapNotNull {
-                                if (it is String) it else null
-                            }
-                        )
-                    } else {
-                        null
-                    }
+    fun getUser(connection: Connection, username: String): InternalUser {
+        return connection.prepareStatement(
+            "SELECT * FROM $tableName WHERE username = ?"
+        ).use { statement ->
+            statement.setString(1, username)
+            statement.executeQuery().use { rs ->
+                if (rs.next()) {
+                    InternalUser(
+                        rs.getLong(1),
+                        rs.getString(2),
+                        rs.getString(3),
+                        rs.getString(4),
+                        (rs.getArray(5).array as Array<*>).mapNotNull {
+                            if (it is String) it else null
+                        }
+                    )
+                } else {
+                    null
                 }
-            } ?: throw IllegalArgumentException("User cannot be found")
-        }
+            }
+        } ?: throw IllegalArgumentException("User cannot be found")
     }
 }
