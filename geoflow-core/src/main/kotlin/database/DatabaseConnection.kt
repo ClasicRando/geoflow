@@ -38,17 +38,6 @@ object DatabaseConnection {
     private val logger = KotlinLogging.logger {}
     val scope = CoroutineScope(Dispatchers.IO + CoroutineDataSource(dataSource))
 
-    inline fun <reified T> CoroutineScope.useConnectionAsync(block: CoroutineScope.(Connection) -> T): T {
-        val connection = if (coroutineContext.hasOpenConnection()) {
-            coroutineContext.connection
-        } else {
-            coroutineContext.dataSource.connection
-        }
-        return connection.use {
-            block(it)
-        }
-    }
-
     inline fun <reified T> CoroutineScope.useConnection(block: CoroutineScope.(Connection) -> T): T {
         val connection = if (coroutineContext.hasOpenConnection()) {
             coroutineContext.connection
