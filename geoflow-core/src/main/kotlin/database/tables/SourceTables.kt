@@ -135,9 +135,9 @@ object SourceTables: DbTable("source_tables"), ApiExposed, SequentialPrimaryKey 
                         yield(key to fileName)
                         yield("loader_type" to loaderType.pgObject)
                     }
-                    "delimiter" -> yield(key to value)
-                    "url" -> yield(key to value)
-                    "comments" -> yield(key to value)
+                    "delimiter" -> yield(key to value.takeIf { it == null || it.isNotBlank() })
+                    "url" -> yield(key to value.takeIf { it == null || it.isNotBlank() })
+                    "comments" -> yield(key to value.takeIf { it == null || it.isNotBlank() })
                     "collect_type" -> {
                         yield(key to FileCollectType.valueOf(value ?: "").pgObject)
                     }
