@@ -3,13 +3,13 @@ package tasks
 import data_loader.AnalyzeResult
 import data_loader.analyzeFile
 import database.tables.PipelineRunTasks
+import database.tables.PipelineRuns
+import database.tables.SourceTableColumns
+import database.tables.SourceTables
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.buffer
 import kotlinx.coroutines.flow.collect
 import kotlinx.coroutines.flow.flowOn
-import database.tables.PipelineRuns
-import database.tables.SourceTableColumns
-import database.tables.SourceTables
 import java.io.File
 import java.sql.Connection
 

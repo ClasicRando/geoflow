@@ -2,6 +2,7 @@
 
 import auth.UserSession
 import database.DatabaseConnection
+import database.tables.InternalUsers
 import html.errorPage
 import html.login
 import io.ktor.application.*
@@ -17,7 +18,6 @@ import it.justwrote.kjob.Mongo
 import it.justwrote.kjob.job.JobExecutionType
 import it.justwrote.kjob.kjob
 import mu.KotlinLogging
-import database.tables.InternalUsers
 
 val logger = KotlinLogging.logger {}
 /** Kjob instance used by the server to schedule jobs for the worker application */

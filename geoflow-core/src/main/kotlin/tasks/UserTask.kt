@@ -1,8 +1,8 @@
 package tasks
 
 import database.DatabaseConnection
-import database.tables.PipelineRunTasks
 import database.enums.TaskStatus
+import database.tables.PipelineRunTasks
 import java.time.Instant
 
 /**

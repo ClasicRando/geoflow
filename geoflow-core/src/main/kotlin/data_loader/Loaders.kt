@@ -3,26 +3,25 @@ package data_loader
 import com.linuxense.javadbf.DBFReader
 import com.univocity.parsers.csv.CsvParser
 import com.univocity.parsers.csv.CsvParserSettings
-import kotlinx.coroutines.*
+import database.enums.LoaderType
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.*
+import kotlinx.coroutines.withContext
 import mu.KotlinLogging
 import org.apache.poi.ss.usermodel.*
 import org.postgresql.copy.CopyManager
 import org.postgresql.jdbc.PgConnection
-import database.enums.LoaderType
 import requireNotEmpty
 import java.io.File
 import java.io.InputStream
 import java.lang.Integer.min
 import java.math.BigDecimal
 import java.sql.*
-import kotlin.math.floor
 import java.time.*
 import java.time.format.DateTimeFormatter
 import java.util.Date
-import kotlin.io.use
+import kotlin.math.floor
 import kotlin.math.max
-import kotlin.text.toByteArray
 
 private const val defaultDelimiter = ','
 private val logger = KotlinLogging.logger {}

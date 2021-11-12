@@ -1,7 +1,11 @@
 import auth.UserSession
 import database.DatabaseConnection
+import database.enums.TaskRunType
+import database.enums.TaskStatus
 import database.tables.*
-import html.*
+import html.index
+import html.pipelineStatus
+import html.pipelineTasks
 import io.ktor.application.*
 import io.ktor.html.*
 import io.ktor.http.content.*
@@ -11,8 +15,6 @@ import io.ktor.routing.*
 import io.ktor.sessions.*
 import io.ktor.util.*
 import jobs.SystemJob
-import database.enums.TaskRunType
-import database.enums.TaskStatus
 
 /** Entry route that handles empty an empty path or the index route. Empty routes are redirected to index. */
 fun Route.index() {

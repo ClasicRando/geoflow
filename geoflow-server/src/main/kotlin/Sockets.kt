@@ -9,7 +9,6 @@ import kotlinx.coroutines.cancelAndJoin
 import kotlinx.coroutines.channels.ClosedReceiveChannelException
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
-import kotlin.collections.LinkedHashSet
 
 data class Connection(val session: DefaultWebSocketSession, val listenId: String)
 

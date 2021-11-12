@@ -1,8 +1,6 @@
 package tasks
 
-import database.DatabaseConnection
 import database.executeNoReturn
-import database.runUpdate
 import database.tables.PipelineRunTasks
 import database.tables.PipelineRuns
 import database.tables.SourceTables

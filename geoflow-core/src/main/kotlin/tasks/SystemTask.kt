@@ -1,10 +1,10 @@
 package tasks
 
 import database.DatabaseConnection
-import mu.KotlinLogging
 import database.enums.TaskStatus
 import database.tables.PipelineRunTasks
 import database.tables.PipelineRunTasks.getWithLock
+import mu.KotlinLogging
 import java.sql.Connection
 import java.time.Instant
 

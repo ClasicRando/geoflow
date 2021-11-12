@@ -1,8 +1,7 @@
 package database.tables
 
-import kotlinx.serialization.Serializable
-import database.rowToClass
 import database.submitQuery
+import kotlinx.serialization.Serializable
 import java.sql.Connection
 
 /**

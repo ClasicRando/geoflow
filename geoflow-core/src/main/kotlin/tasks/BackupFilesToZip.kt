@@ -1,7 +1,6 @@
 package tasks
 
 import database.tables.PipelineRunTasks
-import formatLocalDateDefault
 import database.tables.PipelineRuns
 import java.io.File
 import java.sql.Connection

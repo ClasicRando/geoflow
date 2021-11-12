@@ -1,17 +1,16 @@
 package database.tables
 
-import database.DatabaseConnection
+import database.enums.MergeType
+import database.enums.OperationState
+import database.queryFirstOrNull
+import database.runUpdate
+import database.submitQuery
 import formatLocalDateDefault
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.decodeFromString
 import kotlinx.serialization.json.Json
 import org.postgresql.util.PGobject
-import database.enums.MergeType
-import database.enums.OperationState
-import database.queryFirstOrNull
-import database.runUpdate
-import database.submitQuery
 import java.sql.Connection
 import java.sql.Date
 import java.sql.ResultSet

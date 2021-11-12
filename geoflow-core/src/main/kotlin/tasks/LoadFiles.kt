@@ -2,7 +2,6 @@ package tasks
 
 import data_loader.checkTableExists
 import data_loader.loadFile
-import database.DatabaseConnection
 import database.tables.PipelineRunTasks
 import database.tables.PipelineRuns
 import database.tables.SourceTables

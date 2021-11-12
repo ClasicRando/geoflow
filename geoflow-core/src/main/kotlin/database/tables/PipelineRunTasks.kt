@@ -1,14 +1,14 @@
 package database.tables
 
-import database.functions.GetTasksOrdered
-import database.procedures.DeleteRunTaskChildren
-import kotlinx.serialization.SerialName
-import kotlinx.serialization.Serializable
 import database.enums.TaskRunType
 import database.enums.TaskStatus
+import database.functions.GetTasksOrdered
+import database.procedures.DeleteRunTaskChildren
 import database.queryFirstOrNull
 import database.runReturningFirstOrNull
 import database.runUpdate
+import kotlinx.serialization.SerialName
+import kotlinx.serialization.Serializable
 import java.sql.Connection
 import java.sql.ResultSet
 import java.sql.Timestamp

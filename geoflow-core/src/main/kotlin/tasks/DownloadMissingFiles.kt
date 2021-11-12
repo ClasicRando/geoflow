@@ -1,10 +1,12 @@
 package tasks
 
-import database.tables.PipelineRunTasks
 import database.enums.FileCollectType
 import database.submitQuery
+import database.tables.PipelineRunTasks
 import database.tables.PipelineRuns
-import web.*
+import web.downloadFile
+import web.downloadZip
+import web.scrapeArcGisService
 import java.sql.Connection
 
 /**

@@ -1,9 +1,9 @@
 package tasks
 
+import database.enums.LoaderType
 import database.procedures.UpdateFiles
 import database.tables.PipelineRunTasks
 import database.tables.SourceTables
-import database.enums.LoaderType
 import java.sql.Connection
 
 /**

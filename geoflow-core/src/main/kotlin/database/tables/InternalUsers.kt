@@ -1,7 +1,6 @@
 package database.tables
 
 import at.favre.lib.crypto.bcrypt.BCrypt
-import database.DatabaseConnection
 import database.queryFirstOrNull
 import java.sql.Connection
 

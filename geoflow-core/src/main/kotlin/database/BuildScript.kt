@@ -4,10 +4,10 @@ import data_loader.checkTableExists
 import data_loader.loadDefaultData
 import database.functions.PlPgSqlTableFunction
 import database.procedures.SqlProcedure
+import database.tables.*
 import mu.KotlinLogging
 import org.reflections.Reflections
-import org.reflections.scanners.Scanners.*
-import database.tables.*
+import org.reflections.scanners.Scanners.SubTypes
 import java.sql.Connection
 
 /** Container for an enum translation to a PostgreSQL enum creation */
