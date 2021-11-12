@@ -9,6 +9,8 @@ import it.justwrote.kjob.dsl.JobContextWithProps
 import it.justwrote.kjob.job.JobExecutionType
 import it.justwrote.kjob.kjob
 import jobs.SystemJob
+import kotlinx.coroutines.NonCancellable
+import kotlinx.coroutines.withContext
 import mu.KotlinLogging
 import tasks.SystemTask
 import tasks.TaskResult
@@ -64,26 +66,28 @@ fun startKjob(isMongo: Boolean): KJob {
  * task result is an [error][TaskResult.Error], the database record is updated with the message and stacktrace.
  */
 suspend fun JobContextWithProps<SystemJob>.executeSystemJob(kJob: KJob) {
-    DatabaseConnection.runWithConnectionAsync { connection ->
-        try {
-            val pipelineRunTaskId = props[SystemJob.pipelineRunTaskId]
-            val runId = props[SystemJob.runId]
-            val task = ClassLoader
-                .getSystemClassLoader()
-                .loadClass("tasks.${props[SystemJob.taskClassName]}")
-                .getConstructor(Long::class.java)
-                .newInstance(props[SystemJob.pipelineRunTaskId]) as SystemTask
-            when(val result = task.runTask()) {
-                is TaskResult.Success -> {
+    try {
+        val pipelineRunTaskId = props[SystemJob.pipelineRunTaskId]
+        val runId = props[SystemJob.runId]
+        val task = ClassLoader
+            .getSystemClassLoader()
+            .loadClass("tasks.${props[SystemJob.taskClassName]}")
+            .getConstructor(Long::class.java)
+            .newInstance(props[SystemJob.pipelineRunTaskId]) as SystemTask
+        when(val result = task.runTask()) {
+            is TaskResult.Success -> {
+                DatabaseConnection.runWithConnection {
                     PipelineRunTasks.update(
-                        connection,
+                        it,
                         pipelineRunTaskId,
                         taskMessage = result.message,
                         taskStatus = TaskStatus.Complete,
                         taskCompleted = Instant.now(),
                         taskStackTrace = null
                     )
-                    if (props[SystemJob.runNext]) {
+                }
+                if (props[SystemJob.runNext]) {
+                    DatabaseConnection.runWithConnectionAsync { connection ->
                         PipelineRunTasks.getNextTask(connection, props[SystemJob.runId])?.let { nextTask ->
                             if (nextTask.taskRunType == TaskRunType.System) {
                                 kJob.schedule(SystemJob) {
@@ -96,9 +100,11 @@ suspend fun JobContextWithProps<SystemJob>.executeSystemJob(kJob: KJob) {
                         }
                     }
                 }
-                is TaskResult.Error -> {
+            }
+            is TaskResult.Error -> {
+                DatabaseConnection.runWithConnection {
                     PipelineRunTasks.update(
-                        connection,
+                        it,
                         pipelineRunTaskId,
                         taskMessage = result.message,
                         taskStatus = TaskStatus.Failed,
@@ -107,16 +113,20 @@ suspend fun JobContextWithProps<SystemJob>.executeSystemJob(kJob: KJob) {
                     )
                 }
             }
-        } catch (t: Throwable) {
+        }
+    } catch (t: Throwable) {
+        withContext(NonCancellable) {
             val pipelineRunTaskId = props[SystemJob.pipelineRunTaskId]
-            PipelineRunTasks.update(
-                connection,
-                pipelineRunTaskId,
-                taskMessage = "ERROR in Job: ${t.message}",
-                taskStatus = TaskStatus.Failed,
-                taskCompleted = null,
-                taskStackTrace = t.stackTraceToString()
-            )
+            DatabaseConnection.runWithConnection {
+                PipelineRunTasks.update(
+                    it,
+                    pipelineRunTaskId,
+                    taskMessage = "ERROR in Job: ${t.message}",
+                    taskStatus = TaskStatus.Failed,
+                    taskCompleted = null,
+                    taskStackTrace = t.stackTraceToString()
+                )
+            }
         }
     }
 }
