@@ -2,6 +2,7 @@ package database
 
 import data_loader.checkTableExists
 import data_loader.loadDefaultData
+import database.functions.Constraints
 import database.functions.PlPgSqlTableFunction
 import database.procedures.SqlProcedure
 import database.tables.*
@@ -9,6 +10,8 @@ import mu.KotlinLogging
 import org.reflections.Reflections
 import org.reflections.scanners.Scanners.SubTypes
 import java.sql.Connection
+import kotlin.reflect.full.createType
+import kotlin.reflect.full.memberProperties
 
 /** Container for an enum translation to a PostgreSQL enum creation */
 data class PostgresEnumType(val name: String, val constantValues: List<String>) {
@@ -80,6 +83,15 @@ private val tableFunctions by lazy {
         .map { procedure -> procedure.getDeclaredField("INSTANCE").get(null)::class }
         .filter { !it.isAbstract }
         .map { kClass -> kClass.objectInstance!! as PlPgSqlTableFunction }
+}
+
+private val constraintFunctions by lazy {
+    val stringType = String::class.createType()
+    val instance = Constraints::class.objectInstance
+        ?: Constraints::class.java.getDeclaredField("INSTANCE").get(null) as Constraints
+    instance::class.memberProperties
+        .filter { it.returnType == stringType }
+        .associate { it.name to it.getter.call(instance) as String }
 }
 
 private val logger = KotlinLogging.logger {}
@@ -200,24 +212,36 @@ private fun Connection.createTables(
 /**
  * Uses the database connection to create all required objects, tables, procedures, and table functions for application.
  */
-suspend fun buildDatabase() {
+fun buildDatabase(connection: Connection) {
     try {
-        Database.runWithConnection { connection ->
-            for (enum in enums) {
-                logger.info("Creating ${enum.postgresName}")
-                connection.prepareStatement(enum.create).execute()
+        for (enum in enums) {
+            logger.info("Creating ${enum.postgresName}")
+            connection.prepareStatement(enum.create).use {
+                it.execute()
             }
-            connection.createTables(tables)
-            for (procedure in procedures) {
-                logger.info("Creating ${procedure.name}")
-                connection.prepareStatement(procedure.code).execute()
+        }
+        for (constraintFunction in constraintFunctions) {
+            logger.info("Creating ${constraintFunction.key}")
+            connection.prepareStatement(constraintFunction.value).use {
+                it.execute()
             }
-            for (tableFunction in tableFunctions) {
-                logger.info("Creating ${tableFunction.name}")
-                for (innerFunction in tableFunction.innerFunctions) {
-                    connection.prepareStatement(innerFunction).execute()
+        }
+        connection.createTables(tables)
+        for (procedure in procedures) {
+            logger.info("Creating ${procedure.name}")
+            connection.prepareStatement(procedure.code).use {
+                it.execute()
+            }
+        }
+        for (tableFunction in tableFunctions) {
+            logger.info("Creating ${tableFunction.name}")
+            for (innerFunction in tableFunction.innerFunctions) {
+                connection.prepareStatement(innerFunction).use {
+                    it.execute()
                 }
-                connection.prepareStatement(tableFunction.functionCode).execute()
+            }
+            connection.prepareStatement(tableFunction.functionCode).use {
+                it.execute()
             }
         }
     } catch (ex: Exception) {
