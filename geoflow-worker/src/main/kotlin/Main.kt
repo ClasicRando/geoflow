@@ -1,4 +1,4 @@
-import database.DatabaseConnection
+import database.Database
 import database.enums.TaskRunType
 import database.enums.TaskStatus
 import database.tables.PipelineRunTasks
@@ -76,7 +76,7 @@ suspend fun JobContextWithProps<SystemJob>.executeSystemJob(kJob: KJob) {
             .newInstance(props[SystemJob.pipelineRunTaskId]) as SystemTask
         when(val result = task.runTask()) {
             is TaskResult.Success -> {
-                DatabaseConnection.runWithConnection {
+                Database.runWithConnection {
                     PipelineRunTasks.update(
                         it,
                         pipelineRunTaskId,
@@ -87,7 +87,7 @@ suspend fun JobContextWithProps<SystemJob>.executeSystemJob(kJob: KJob) {
                     )
                 }
                 if (props[SystemJob.runNext]) {
-                    DatabaseConnection.runWithConnectionAsync { connection ->
+                    Database.runWithConnectionAsync { connection ->
                         PipelineRunTasks.getNextTask(connection, props[SystemJob.runId])?.let { nextTask ->
                             if (nextTask.taskRunType == TaskRunType.System) {
                                 kJob.schedule(SystemJob) {
@@ -102,7 +102,7 @@ suspend fun JobContextWithProps<SystemJob>.executeSystemJob(kJob: KJob) {
                 }
             }
             is TaskResult.Error -> {
-                DatabaseConnection.runWithConnection {
+                Database.runWithConnection {
                     PipelineRunTasks.update(
                         it,
                         pipelineRunTaskId,
@@ -117,7 +117,7 @@ suspend fun JobContextWithProps<SystemJob>.executeSystemJob(kJob: KJob) {
     } catch (t: Throwable) {
         withContext(NonCancellable) {
             val pipelineRunTaskId = props[SystemJob.pipelineRunTaskId]
-            DatabaseConnection.runWithConnection {
+            Database.runWithConnection {
                 PipelineRunTasks.update(
                     it,
                     pipelineRunTaskId,

@@ -202,7 +202,7 @@ private fun Connection.createTables(
  */
 suspend fun buildDatabase() {
     try {
-        DatabaseConnection.runWithConnection { connection ->
+        Database.runWithConnection { connection ->
             for (enum in enums) {
                 logger.info("Creating ${enum.postgresName}")
                 connection.prepareStatement(enum.create).execute()

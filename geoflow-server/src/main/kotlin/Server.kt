@@ -1,7 +1,7 @@
 @file:Suppress("unused")
 
 import auth.UserSession
-import database.DatabaseConnection
+import database.Database
 import database.tables.InternalUsers
 import html.errorPage
 import html.login
@@ -55,7 +55,7 @@ fun Application.module() {
             userParamName = "username"
             passwordParamName = "password"
             validate { credentials ->
-                val validateResult = DatabaseConnection.runWithConnection {
+                val validateResult = Database.runWithConnection {
                     InternalUsers.validateUser(it, credentials.name, credentials.password)
                 }
                 when (validateResult) {
@@ -137,7 +137,7 @@ fun Application.module() {
             post("/login") {
                 val username = call.principal<UserIdPrincipal>()?.name ?: ""
                 val redirect = runCatching {
-                    val user = DatabaseConnection.runWithConnection {
+                    val user = Database.runWithConnection {
                         InternalUsers.getUser(it, username)
                     }
                     call.sessions.set(

@@ -1,6 +1,6 @@
 package tasks
 
-import database.DatabaseConnection
+import database.Database
 import database.enums.TaskStatus
 import database.tables.PipelineRunTasks
 import database.tables.PipelineRunTasks.getWithLock
@@ -40,7 +40,7 @@ abstract class SystemTask(pipelineRunTaskId: Long): PipelineTask(pipelineRunTask
      * 4. If no errors are thrown, return Success with message if not blank. If error throw, return error with throwable
      */
     override suspend fun runTask(): TaskResult {
-        DatabaseConnection.runWithConnection {
+        Database.runWithConnection {
             PipelineRunTasks.update(
                 it,
                 pipelineRunTaskId,
@@ -49,7 +49,7 @@ abstract class SystemTask(pipelineRunTaskId: Long): PipelineTask(pipelineRunTask
                 taskCompleted = null,
             )
         }
-        return DatabaseConnection.useTransaction { connection ->
+        return Database.useTransaction { connection ->
             runCatching {
                 val task = getWithLock(connection, pipelineRunTaskId)
                 run(connection, task)

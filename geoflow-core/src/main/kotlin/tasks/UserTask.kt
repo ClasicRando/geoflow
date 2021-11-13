@@ -1,6 +1,6 @@
 package tasks
 
-import database.DatabaseConnection
+import database.Database
 import database.enums.TaskStatus
 import database.tables.PipelineRunTasks
 import java.time.Instant
@@ -12,7 +12,7 @@ abstract class UserTask(pipelineRunTaskId: Long): PipelineTask(pipelineRunTaskId
 
     override suspend fun runTask(): TaskResult {
         val currentTime = Instant.now()
-        DatabaseConnection.runWithConnection {
+        Database.runWithConnection {
             PipelineRunTasks.update(
                 it,
                 pipelineRunTaskId,

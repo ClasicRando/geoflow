@@ -1,6 +1,6 @@
 package database
 
-import database.DatabaseConnection.useConnection
+import database.Database.useConnection
 import kotlinx.coroutines.*
 import mu.KotlinLogging
 import org.postgresql.PGConnection
@@ -17,7 +17,7 @@ private val logger = KotlinLogging.logger {}
  * Primarily used for web sockets and a pub/sub design to listen for table changes
  */
 fun CoroutineScope.startListener(channelName: String, callback: suspend (String) -> Unit): Job {
-    return launch(DatabaseConnection.scope.coroutineContext) {
+    return launch(Database.scope.coroutineContext) {
         useConnection { connection ->
             val pgConnection: PGConnection = connection.unwrap(PGConnection::class.java)
             connection.prepareStatement("LISTEN $channelName").use {

@@ -1,5 +1,5 @@
 import auth.UserSession
-import database.DatabaseConnection
+import database.Database
 import database.enums.TaskRunType
 import database.enums.TaskStatus
 import database.tables.*
@@ -49,7 +49,7 @@ fun Route.pipelineStatus() = route("/pipeline-status/{code}") {
         val params = call.receiveParameters()
         val runId = params.getOrFail("run_id").toLong()
         try {
-            DatabaseConnection.runWithConnection {
+            Database.runWithConnection {
                 PipelineRuns.pickupRun(it, runId, call.sessions.get<UserSession>()!!.userId)
             }
         } catch (t: Throwable) {
@@ -74,7 +74,7 @@ fun Route.api() = route("/api") {
     /** Returns list of operations based upon the current user's roles. */
     get("/operations") {
         val operations = runCatching {
-            DatabaseConnection.runWithConnection {
+            Database.runWithConnection {
                 WorkflowOperations.userOperations(it, call.sessions.get<UserSession>()?.roles!!)
             }
         }.getOrElse { t ->
@@ -86,7 +86,7 @@ fun Route.api() = route("/api") {
     /** Returns list of actions based upon the current user's roles. */
     get("/actions") {
         val actions = runCatching {
-            DatabaseConnection.runWithConnection {
+            Database.runWithConnection {
                 Actions.userActions(it, call.sessions.get<UserSession>()?.roles!!)
             }
         }.getOrElse { t ->
@@ -98,7 +98,7 @@ fun Route.api() = route("/api") {
     /** Returns list of pipeline runs for the given workflow code based upon the current user. */
     get("/pipeline-runs/{code}") {
         val runs = runCatching {
-            DatabaseConnection.runWithConnection {
+            Database.runWithConnection {
                 PipelineRuns.userRuns(
                     it,
                     call.sessions.get<UserSession>()?.userId!!,
@@ -114,7 +114,7 @@ fun Route.api() = route("/api") {
     /** Returns list of pipeline tasks for the given run. */
     get("/pipeline-run-tasks/{runId}") {
         val tasks = runCatching {
-            DatabaseConnection.runWithConnection {
+            Database.runWithConnection {
                 PipelineRunTasks.getOrderedTasks(it, call.parameters.getOrFail("runId").toLong())
             }
         }.getOrElse { t ->
@@ -135,7 +135,7 @@ fun Route.api() = route("/api") {
         val user = call.sessions.get<UserSession>()!!
         val runId = call.parameters.getOrFail("runId").toLong()
         val response = runCatching {
-            val pipelineRunTask = DatabaseConnection.runWithConnection {
+            val pipelineRunTask = Database.runWithConnection {
                 PipelineRunTasks.getRecordForRun(it, user.username, runId)
             }
             if (pipelineRunTask.taskRunType == TaskRunType.User) {
@@ -143,7 +143,7 @@ fun Route.api() = route("/api") {
                     .runTask()
                 mapOf("success" to "Completed ${pipelineRunTask.pipelineRunTaskId}")
             } else {
-                DatabaseConnection.runWithConnection {
+                Database.runWithConnection {
                     PipelineRunTasks.setStatus(it, pipelineRunTask.pipelineRunTaskId, TaskStatus.Scheduled)
                 }
                 kjob.schedule(SystemJob) {
@@ -174,7 +174,7 @@ fun Route.api() = route("/api") {
         val user = call.sessions.get<UserSession>()!!
         val runId = call.parameters.getOrFail("runId").toLong()
         val response = runCatching {
-            val pipelineRunTask = DatabaseConnection.runWithConnection {
+            val pipelineRunTask = Database.runWithConnection {
                 PipelineRunTasks.getRecordForRun(it, user.username, runId)
             }
             if (pipelineRunTask.taskRunType == TaskRunType.User) {
@@ -182,7 +182,7 @@ fun Route.api() = route("/api") {
                     .runTask()
                 mapOf("success" to "Completed ${pipelineRunTask.pipelineRunTaskId}")
             } else {
-                DatabaseConnection.runWithConnection {
+                Database.runWithConnection {
                     PipelineRunTasks.setStatus(it, pipelineRunTask.pipelineRunTaskId, TaskStatus.Scheduled)
                 }
                 kjob.schedule(SystemJob) {
@@ -205,7 +205,7 @@ fun Route.api() = route("/api") {
         val runId = call.parameters.getOrFail("runId").toLong()
         val pipelineRunTaskId = call.parameters.getOrFail("prTaskId").toLong()
         val response = runCatching {
-            DatabaseConnection.runWithConnection {
+            Database.runWithConnection {
                 PipelineRunTasks.resetRecord(it, user.username, runId, pipelineRunTaskId)
             }
             mapOf("success" to "Reset $pipelineRunTaskId")
@@ -221,7 +221,7 @@ fun Route.api() = route("/api") {
         get("/{runId}") {
             val runId = call.parameters.getOrFail("runId").toLong()
             val response = runCatching {
-                DatabaseConnection.runWithConnection {
+                Database.runWithConnection {
                     SourceTables.getRunSourceTables(it, runId)
                 }
             }.getOrElse { t ->
@@ -235,7 +235,7 @@ fun Route.api() = route("/api") {
             val user = call.sessions.get<UserSession>()!!
             val params = call.request.queryParameters.names().associateWith { call.request.queryParameters[it] }
             val response = runCatching {
-                val (stOid, updateCount) = DatabaseConnection.runWithConnection {
+                val (stOid, updateCount) = Database.runWithConnection {
                     SourceTables.updateSourceTable(it, user.username, params)
                 }
                 mapOf("success" to "updated stOid = $stOid. Records affected, $updateCount")
@@ -251,7 +251,7 @@ fun Route.api() = route("/api") {
             val user = call.sessions.get<UserSession>()!!
             val params = call.request.queryParameters.names().associateWith { call.request.queryParameters[it] }
             val response = runCatching {
-                val stOid = DatabaseConnection.runWithConnection {
+                val stOid = Database.runWithConnection {
                     SourceTables.insertSourceTable(it, user.username, params)
                 }
                 mapOf("success" to "inserted stOid $stOid")
@@ -267,7 +267,7 @@ fun Route.api() = route("/api") {
             val user = call.sessions.get<UserSession>()!!
             val params = call.request.queryParameters.names().associateWith { call.request.queryParameters[it] }
             val response = runCatching {
-                val stOid = DatabaseConnection.runWithConnection {
+                val stOid = Database.runWithConnection {
                     SourceTables.deleteSourceTable(it, user.username, params)
                 }
                 mapOf("success" to "deleted stOid $stOid")

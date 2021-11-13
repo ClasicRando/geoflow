@@ -22,7 +22,7 @@ import kotlin.coroutines.CoroutineContext
  * Singleton to hold the primary database connection as a [DataSource][javax.sql.DataSource] and anything else linked to
  * that DataSource.
  */
-object DatabaseConnection {
+object Database {
     @OptIn(ExperimentalSerializationApi::class)
     private val dataSource = BasicDataSource().apply {
         val json = File(System.getProperty("user.dir"), "db_config.json").readText()
