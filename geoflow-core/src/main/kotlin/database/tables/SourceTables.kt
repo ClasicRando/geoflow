@@ -1,6 +1,8 @@
 package database.tables
 
 import data_loader.AnalyzeResult
+import data_loader.LoadingInfo
+import data_loader.defaultDelimiter
 import database.*
 import database.enums.FileCollectType
 import database.enums.LoaderType
@@ -329,64 +331,69 @@ object SourceTables: DbTable("source_tables"), ApiExposed {
 
     data class LoadFiles(
         val fileName: String,
-        val stOids: List<Long>,
-        val tableNames: List<String>,
-        val subTables: List<String>,
-        val delimiter: String?,
-        val qualified: Boolean,
-        val createStatements: List<String>,
+        val loaders: List<LoadingInfo>,
     )
 
     fun filesToLoad(connection: Connection, runId: Long): List<LoadFiles> {
         return connection.prepareStatement("""
             with t1 as (
-                SELECT DISTINCT t1.st_oid,
+                SELECT t1.st_oid,
                        'CREATE table '||t1.table_name||' ('||
                        STRING_AGG(t2.name::text,' text,'::text order by t2.column_index)||
                        ' text)' create_statement
-                FROM   source_tables t1
-                JOIN   source_table_columns t2
+                FROM   $tableName t1
+                JOIN   ${SourceTableColumns.tableName} t2
                 ON     t1.st_oid = t2.st_oid
                 WHERE  t1.run_id = ?
                 AND    t1.load
                 GROUP BY t1.st_oid
-            ), t2 as (
-                SELECT t2.file_name,
-                       array_agg(t1.st_oid order by t1.st_oid) st_oids,
-                       array_agg(t2.table_name order by t1.st_oid) table_names,
-                       array_agg(t2.sub_table order by t1.st_oid) sub_Tables,
-                       array_agg(t2.delimiter order by t1.st_oid) "delimiter",
-                       array_agg(t2.qualified order by t1.st_oid) qualified,
-                       array_agg(t1.create_statement order by t1.st_oid) create_statements
-                FROM   t1
-                JOIN   source_tables t2
-                ON     t1.st_oid = t2.st_oid
-                GROUP BY file_name
             )
-            SELECT file_name, st_oids, table_names, sub_Tables, delimiter[1] "delimiter", qualified[1] qualified,
-                   create_statements
-            FROM   t2;
+            SELECT t2.file_name,
+                   array_agg(t1.st_oid order by t1.st_oid) st_oids,
+                   array_agg(t2.table_name order by t1.st_oid) table_names,
+                   array_agg(t2.sub_table order by t1.st_oid) sub_Tables,
+                   array_agg(t2.delimiter order by t1.st_oid) "delimiter",
+                   array_agg(t2.qualified order by t1.st_oid) qualified,
+                   array_agg(t1.create_statement order by t1.st_oid) create_statements
+            FROM   t1
+            JOIN   $tableName t2
+            ON     t1.st_oid = t2.st_oid
+            GROUP BY file_name;
         """.trimIndent()).use { statement ->
             statement.setLong(1, runId)
             statement.executeQuery().use { rs ->
                 generateSequence {
                     if (rs.next()) {
+                        val stOids = (rs.getArray(2).array as Array<*>).mapNotNull {
+                            if (it is Long) it else null
+                        }
+                        val tableNames = (rs.getArray(3).array as Array<*>).mapNotNull {
+                            if (it is String) it else null
+                        }
+                        val subTables = (rs.getArray(4).array as Array<*>).map {
+                            if (it is String?) it else null
+                        }
+                        val delimiters = (rs.getArray(5).array as Array<*>).map {
+                            if (it is String?) it else null
+                        }
+                        val areQualified = (rs.getArray(6).array as Array<*>).mapNotNull {
+                            if (it is Boolean) it else null
+                        }
+                        val createStatements = (rs.getArray(7).array as Array<*>).mapNotNull {
+                            if (it is String) it else null
+                        }
                         LoadFiles(
                             rs.getString(1),
-                            (rs.getArray(2).array as Array<*>).mapNotNull {
-                                if (it is Long) it else null
-                            },
-                            (rs.getArray(3).array as Array<*>).mapNotNull {
-                                if (it is String) it else null
-                            },
-                            (rs.getArray(4).array as Array<*>).mapNotNull {
-                                if (it is String) it else null
-                            },
-                            rs.getString(5),
-                            rs.getBoolean(6),
-                            (rs.getArray(7).array as Array<*>).mapNotNull {
-                                if (it is String) it else null
-                            },
+                            stOids.mapIndexed { i, stOid ->
+                                LoadingInfo(
+                                    stOid,
+                                    tableName = tableNames[i],
+                                    createStatement = createStatements[i],
+                                    delimiter = delimiters[i]?.getOrNull(i) ?: defaultDelimiter,
+                                    qualified = areQualified[i],
+                                    subTable = subTables[i],
+                                )
+                            }
                         )
                     } else {
                         null

@@ -2,6 +2,7 @@ package tasks
 
 import data_loader.AnalyzeResult
 import data_loader.analyzeFile
+import data_loader.defaultDelimiter
 import database.tables.PipelineRunTasks
 import database.tables.PipelineRuns
 import database.tables.SourceTableColumns
@@ -34,7 +35,7 @@ class AnalyzeFiles(pipelineRunTaskId: Long): SystemTask(pipelineRunTaskId) {
                 file = file,
                 tableNames = fileInfo.tableNames,
                 subTableNames = fileInfo.subTables,
-                delimiter = fileInfo.delimiter?.get(0) ?: ',',
+                delimiter = fileInfo.delimiter?.get(0) ?: defaultDelimiter,
                 qualified = fileInfo.qualified,
             ).buffer().flowOn(Dispatchers.IO).collect { analyzeResult ->
                 val stOid = fileInfo.stOids[fileInfo.tableNames.indexOf(analyzeResult.tableName)]
