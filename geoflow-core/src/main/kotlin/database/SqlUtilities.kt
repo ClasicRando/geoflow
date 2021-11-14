@@ -69,6 +69,20 @@ inline fun <reified T> Connection.submitQuery(
     }
 }
 
+fun Connection.queryHasResult(
+    sql: String,
+    vararg parameters: Any?,
+): Boolean {
+    return prepareStatement(sql).use { statement ->
+        for (parameter in parameters.withIndex()) {
+            statement.setObject(parameter.index + 1, parameter.value)
+        }
+        statement.executeQuery().use {
+            it.next()
+        }
+    }
+}
+
 inline fun <reified T> Connection.queryFirstOrNull(
     sql: String,
     vararg parameters: Any?,

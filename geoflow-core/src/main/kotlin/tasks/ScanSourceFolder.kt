@@ -1,6 +1,7 @@
 package tasks
 
 import database.enums.FileCollectType
+import database.queryHasResult
 import database.tables.PipelineRunTasks
 import database.tables.PipelineRuns
 import database.tables.SourceTables
@@ -37,14 +38,7 @@ class ScanSourceFolder(pipelineTaskId: Long): SystemTask(pipelineTaskId) {
             AND    pr_task_id != ?
             LIMIT 1
         """.trimIndent()
-        val hasScanned = connection.prepareStatement(hasScannedSql).use { statement ->
-            statement.setLong(1, task.runId)
-            statement.setLong(2, taskId)
-            statement.setLong(3, pipelineRunTaskId)
-            statement.executeQuery().use {
-                it.next()
-            }
-        }
+        val hasScanned = connection.queryHasResult(sql = hasScannedSql, task.runId, taskId, pipelineRunTaskId)
         val sourceFiles = SourceTables.getRunSourceTables(connection, task.runId)
         val files = folder
             .walk()
