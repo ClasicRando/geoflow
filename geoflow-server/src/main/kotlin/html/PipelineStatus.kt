@@ -1,8 +1,9 @@
 package html
 
+import database.tables.PipelineRuns
 import io.ktor.html.*
-import kotlinx.html.*
-import orm.tables.PipelineRuns
+import kotlinx.html.HTML
+import kotlinx.html.script
 
 /** Page for pipeline status operations */
 object PipelineStatus {

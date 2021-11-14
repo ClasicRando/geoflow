@@ -1,5 +1,11 @@
 import auth.UserSession
-import html.*
+import database.Database
+import database.enums.TaskRunType
+import database.enums.TaskStatus
+import database.tables.*
+import html.index
+import html.pipelineStatus
+import html.pipelineTasks
 import io.ktor.application.*
 import io.ktor.html.*
 import io.ktor.http.content.*
@@ -9,9 +15,6 @@ import io.ktor.routing.*
 import io.ktor.sessions.*
 import io.ktor.util.*
 import jobs.SystemJob
-import orm.enums.TaskRunType
-import orm.enums.TaskStatus
-import orm.tables.*
 
 /** Entry route that handles empty an empty path or the index route. Empty routes are redirected to index. */
 fun Route.index() {
@@ -46,10 +49,9 @@ fun Route.pipelineStatus() = route("/pipeline-status/{code}") {
         val params = call.receiveParameters()
         val runId = params.getOrFail("run_id").toLong()
         try {
-            PipelineRuns.pickupRun(
-                runId,
-                call.sessions.get<UserSession>()!!.userId
-            )
+            Database.runWithConnection {
+                PipelineRuns.pickupRun(it, runId, call.sessions.get<UserSession>()!!.userId)
+            }
         } catch (t: Throwable) {
             call.application.environment.log.error("/pipeline-stats: pickup", t)
             throw t
@@ -72,7 +74,9 @@ fun Route.api() = route("/api") {
     /** Returns list of operations based upon the current user's roles. */
     get("/operations") {
         val operations = runCatching {
-            WorkflowOperations.userOperations(call.sessions.get<UserSession>()?.roles!!)
+            Database.runWithConnection {
+                WorkflowOperations.userOperations(it, call.sessions.get<UserSession>()?.roles!!)
+            }
         }.getOrElse { t ->
             call.application.environment.log.error("/api/operations", t)
             listOf()
@@ -82,7 +86,9 @@ fun Route.api() = route("/api") {
     /** Returns list of actions based upon the current user's roles. */
     get("/actions") {
         val actions = runCatching {
-            Actions.userActions(call.sessions.get<UserSession>()?.roles!!)
+            Database.runWithConnection {
+                Actions.userActions(it, call.sessions.get<UserSession>()?.roles!!)
+            }
         }.getOrElse { t ->
             call.application.environment.log.error("/api/actions", t)
             listOf()
@@ -92,10 +98,13 @@ fun Route.api() = route("/api") {
     /** Returns list of pipeline runs for the given workflow code based upon the current user. */
     get("/pipeline-runs/{code}") {
         val runs = runCatching {
-            PipelineRuns.userRuns(
-                call.sessions.get<UserSession>()?.userId!!,
-                call.parameters.getOrFail("code")
-            )
+            Database.runWithConnection {
+                PipelineRuns.userRuns(
+                    it,
+                    call.sessions.get<UserSession>()?.userId!!,
+                    call.parameters.getOrFail("code")
+                )
+            }
         }.getOrElse { t ->
             call.application.environment.log.error("/api/pipeline-runs", t)
             listOf()
@@ -105,7 +114,9 @@ fun Route.api() = route("/api") {
     /** Returns list of pipeline tasks for the given run. */
     get("/pipeline-run-tasks/{runId}") {
         val tasks = runCatching {
-            PipelineRunTasks.getOrderedTasks(call.parameters.getOrFail("runId").toLong())
+            Database.runWithConnection {
+                PipelineRunTasks.getOrderedTasks(it, call.parameters.getOrFail("runId").toLong())
+            }
         }.getOrElse { t ->
             call.application.environment.log.error("/api/pipeline-run-tasks", t)
             listOf()
@@ -120,22 +131,25 @@ fun Route.api() = route("/api") {
      * task fetching and assessment, an error can be thrown. The error is caught, logged and the response becomes an
      * error message.
      */
-    post("/run-task/{runId}/{prTaskId}") {
+    post("/run-task/{runId}") {
         val user = call.sessions.get<UserSession>()!!
         val runId = call.parameters.getOrFail("runId").toLong()
-        val pipelineRunTaskId = call.parameters.getOrFail("prTaskId").toLong()
         val response = runCatching {
-            val pipelineRunTask = PipelineRunTasks.getRecordForRun(user.username, runId, pipelineRunTaskId)
-            if (pipelineRunTask.task.taskRunType == TaskRunType.User) {
-                getUserPipelineTask(pipelineRunTask.pipelineRunTaskId, pipelineRunTask.task.taskClassName)
+            val pipelineRunTask = Database.runWithConnection {
+                PipelineRunTasks.getRecordForRun(it, user.username, runId)
+            }
+            if (pipelineRunTask.taskRunType == TaskRunType.User) {
+                getUserPipelineTask(pipelineRunTask.pipelineRunTaskId, pipelineRunTask.taskClassName)
                     .runTask()
                 mapOf("success" to "Completed ${pipelineRunTask.pipelineRunTaskId}")
             } else {
-                PipelineRunTasks.setStatus(pipelineRunTask.pipelineRunTaskId, TaskStatus.Scheduled)
+                Database.runWithConnection {
+                    PipelineRunTasks.setStatus(it, pipelineRunTask.pipelineRunTaskId, TaskStatus.Scheduled)
+                }
                 kjob.schedule(SystemJob) {
                     props[it.pipelineRunTaskId] = pipelineRunTask.pipelineRunTaskId
-                    props[it.runId] = pipelineRunTask.runId
-                    props[it.taskClassName] = pipelineRunTask.task.taskClassName
+                    props[it.runId] = runId
+                    props[it.taskClassName] = pipelineRunTask.taskClassName
                     props[it.runNext] = false
                 }
                 mapOf("success" to "Scheduled ${pipelineRunTask.pipelineRunTaskId}")
@@ -156,28 +170,31 @@ fun Route.api() = route("/api") {
      * During the task fetching and assessment, an error can be thrown. The error is caught, logged and the response
      * becomes an error message.
      */
-    post("/run-all/{runId}/{prTaskId}") {
+    post("/run-all/{runId}") {
         val user = call.sessions.get<UserSession>()!!
         val runId = call.parameters.getOrFail("runId").toLong()
-        val pipelineRunTaskId = call.parameters.getOrFail("prTaskId").toLong()
         val response = runCatching {
-            val pipelineRunTask = PipelineRunTasks.getRecordForRun(user.username, runId, pipelineRunTaskId)
-            if (pipelineRunTask.task.taskRunType == TaskRunType.User) {
-                getUserPipelineTask(pipelineRunTask.pipelineRunTaskId, pipelineRunTask.task.taskClassName)
+            val pipelineRunTask = Database.runWithConnection {
+                PipelineRunTasks.getRecordForRun(it, user.username, runId)
+            }
+            if (pipelineRunTask.taskRunType == TaskRunType.User) {
+                getUserPipelineTask(pipelineRunTask.pipelineRunTaskId, pipelineRunTask.taskClassName)
                     .runTask()
                 mapOf("success" to "Completed ${pipelineRunTask.pipelineRunTaskId}")
             } else {
-                PipelineRunTasks.setStatus(pipelineRunTask.pipelineRunTaskId, TaskStatus.Scheduled)
+                Database.runWithConnection {
+                    PipelineRunTasks.setStatus(it, pipelineRunTask.pipelineRunTaskId, TaskStatus.Scheduled)
+                }
                 kjob.schedule(SystemJob) {
                     props[it.pipelineRunTaskId] = pipelineRunTask.pipelineRunTaskId
-                    props[it.runId] = pipelineRunTask.runId
-                    props[it.taskClassName] = pipelineRunTask.task.taskClassName
+                    props[it.runId] = runId
+                    props[it.taskClassName] = pipelineRunTask.taskClassName
                     props[it.runNext] = true
                 }
                 mapOf("success" to "Scheduled ${pipelineRunTask.pipelineRunTaskId}")
             }
         }.getOrElse { t ->
-            call.application.environment.log.info("/api/run-task", t)
+            call.application.environment.log.info("/api/run-all", t)
             mapOf("error" to t.message)
         }
         call.respond(response)
@@ -188,10 +205,12 @@ fun Route.api() = route("/api") {
         val runId = call.parameters.getOrFail("runId").toLong()
         val pipelineRunTaskId = call.parameters.getOrFail("prTaskId").toLong()
         val response = runCatching {
-            PipelineRunTasks.resetRecord(user.username, runId, pipelineRunTaskId)
+            Database.runWithConnection {
+                PipelineRunTasks.resetRecord(it, user.username, runId, pipelineRunTaskId)
+            }
             mapOf("success" to "Reset $pipelineRunTaskId")
         }.getOrElse { t ->
-            call.application.environment.log.info("/api/run-task", t)
+            call.application.environment.log.info("/api/reset-task", t)
             mapOf("error" to t.message)
         }
         call.respond(response)
@@ -202,7 +221,9 @@ fun Route.api() = route("/api") {
         get("/{runId}") {
             val runId = call.parameters.getOrFail("runId").toLong()
             val response = runCatching {
-                SourceTables.getRunSourceTables(runId)
+                Database.runWithConnection {
+                    SourceTables.getRunSourceTables(it, runId)
+                }
             }.getOrElse { t ->
                 call.application.environment.log.info("/api/source-tables", t)
                 listOf()
@@ -214,8 +235,10 @@ fun Route.api() = route("/api") {
             val user = call.sessions.get<UserSession>()!!
             val params = call.request.queryParameters.names().associateWith { call.request.queryParameters[it] }
             val response = runCatching {
-                val stOid = SourceTables.updateSourceTable(user.username, params)
-                mapOf("success" to "updated stOid $stOid")
+                val (stOid, updateCount) = Database.runWithConnection {
+                    SourceTables.updateSourceTable(it, user.username, params)
+                }
+                mapOf("success" to "updated stOid = $stOid. Records affected, $updateCount")
             }.getOrElse { t ->
                 call.application.environment.log.info("/api/source-tables", t)
                 val message = "Failed to update stOid ${params["stOid"]}"
@@ -228,7 +251,9 @@ fun Route.api() = route("/api") {
             val user = call.sessions.get<UserSession>()!!
             val params = call.request.queryParameters.names().associateWith { call.request.queryParameters[it] }
             val response = runCatching {
-                val stOid = SourceTables.insertSourceTable(user.username, params)
+                val stOid = Database.runWithConnection {
+                    SourceTables.insertSourceTable(it, user.username, params)
+                }
                 mapOf("success" to "inserted stOid $stOid")
             }.getOrElse { t ->
                 call.application.environment.log.info("/api/source-tables", t)
@@ -242,7 +267,9 @@ fun Route.api() = route("/api") {
             val user = call.sessions.get<UserSession>()!!
             val params = call.request.queryParameters.names().associateWith { call.request.queryParameters[it] }
             val response = runCatching {
-                val stOid = SourceTables.deleteSourceTable(user.username, params)
+                val stOid = Database.runWithConnection {
+                    SourceTables.deleteSourceTable(it, user.username, params)
+                }
                 mapOf("success" to "deleted stOid $stOid")
             }.getOrElse { t ->
                 call.application.environment.log.info("/api/source-tables", t)

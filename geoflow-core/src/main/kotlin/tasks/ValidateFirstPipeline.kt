@@ -1,9 +1,9 @@
 package tasks
 
-import database.DatabaseConnection
-import database.procedures.UpdateFiles
-import org.ktorm.dsl.*
-import orm.tables.SourceTables
+import database.queryFirstOrNull
+import database.tables.PipelineRunTasks
+import database.tables.SourceTables
+import java.sql.Connection
 
 /**
  * System task to validate the pipeline run has at least 1 [SourceTables] record entry
@@ -12,15 +12,13 @@ class ValidateFirstPipeline(pipelineRunTaskId: Long): SystemTask(pipelineRunTask
 
     override val taskId: Long = 11
 
-    override suspend fun run() {
-        DatabaseConnection.database.run {
-            val sourceTableCount = from(SourceTables)
-                .select(count())
-                .where { SourceTables.runId eq task.runId }
-                .map { row -> row.getInt(1) }
-                .first()
-            if (sourceTableCount == 0)
-                throw Exception("Source must have at least 1 file")
+    override suspend fun run(connection: Connection, task: PipelineRunTasks.PipelineRunTask) {
+        val sourceTableCount = connection.queryFirstOrNull<Long>(
+            sql = "SELECT COUNT(0) FROM ${SourceTables.tableName} WHERE run_id = ?",
+            task.runId,
+        ) ?: 0
+        if (sourceTableCount == 0L) {
+            error("Source must have at least 1 file")
         }
     }
 

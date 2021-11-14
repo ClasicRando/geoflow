@@ -3,61 +3,29 @@ package data_loader
 import com.linuxense.javadbf.DBFReader
 import com.univocity.parsers.csv.CsvParser
 import com.univocity.parsers.csv.CsvParserSettings
-import kotlinx.coroutines.*
+import database.enums.LoaderType
+import database.queryFirstOrNull
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.*
+import kotlinx.coroutines.withContext
 import mu.KotlinLogging
 import org.apache.poi.ss.usermodel.*
 import org.postgresql.copy.CopyManager
 import org.postgresql.jdbc.PgConnection
-import orm.enums.LoaderType
 import requireNotEmpty
 import java.io.File
 import java.io.InputStream
-import java.lang.Integer.min
 import java.math.BigDecimal
 import java.sql.*
-import kotlin.math.floor
 import java.time.*
 import java.time.format.DateTimeFormatter
 import java.util.Date
-import kotlin.io.use
-import kotlin.math.max
-import kotlin.text.toByteArray
+import kotlin.math.floor
 
-private const val defaultDelimiter = ','
+const val defaultDelimiter = ','
 private val logger = KotlinLogging.logger {}
 /** Map of jdbc type constants to the name they represent */
 private val jdbcTypeNames = Types::class.java.fields.associate { (it.get(null) as Int) to it.name  }
-
-/** Container for column metadata and stats. Obtained during file analysis */
-data class ColumnStats(val name: String, val minLength: Int, val maxLength: Int, val type: String = "")
-
-/** Result container for file analysis. Holds table stats and metadata required for schema */
-data class AnalyzeResult(
-    val tableName: String,
-    val recordCount: Int,
-    val columns: List<ColumnStats>,
-) {
-    /**
-     * Merge another [result][analyzeResult] into this result. Adds the 2 record counts and for each column, chooses
-     * the higher or lower column lengths for [maxLength][ColumnStats.maxLength] and [minLength][ColumnStats.minLength]
-     * respectively. Returns a new [AnalyzeResult] instance without altering any object.
-     */
-    fun merge(analyzeResult: AnalyzeResult): AnalyzeResult {
-        return AnalyzeResult(
-            tableName = tableName,
-            recordCount = recordCount + analyzeResult.recordCount,
-            columns = columns.map { columnStats ->
-                val currentStats = analyzeResult.columns.first { columnStats.name == it.name }
-                ColumnStats(
-                    name = columnStats.name,
-                    maxLength = max(columnStats.maxLength, currentStats.maxLength),
-                    minLength = min(columnStats.minLength, currentStats.minLength),
-                )
-            },
-        )
-    }
-}
 
 /**
  * Obtain the Postgresql COPY command for the specified [tableName] through a stream with various format options. The
@@ -67,10 +35,11 @@ data class AnalyzeResult(
 private fun getCopyCommand(
     tableName: String,
     header: Boolean,
+    columnNames: List<String>,
     delimiter: Char = defaultDelimiter,
     qualified: Boolean = true,
 ) = """
-    COPY ${tableName.lowercase()}
+    COPY ${tableName.lowercase()} (${columnNames.joinToString()})
     FROM STDIN
     WITH (
         FORMAT csv,
@@ -169,6 +138,7 @@ private fun analyzeRecords(
             maxLength = lengths.last(),
             minLength = lengths.first(),
             type = type,
+            index = index,
         )
     }
     return AnalyzeResult(tableName, recordCount, stats)
@@ -181,16 +151,24 @@ fun Connection.checkTableExists(tableName: String, schema: String = "public"): B
         from   information_schema.tables
         where  table_schema = ?
         and    table_name = ?
-    """.trimIndent())
-        .apply {
-            setString(1, schema)
-            setString(2, tableName.lowercase())
+    """.trimIndent()).use { statement ->
+        statement.setString(1, schema)
+        statement.setString(2, tableName.lowercase())
+        statement.executeQuery().use { rs ->
+            rs.next()
         }
-        .use { statement ->
-            statement.executeQuery().use { rs ->
-                rs.next()
-            }
-        }
+    }
+}
+
+private fun Connection.getDefaultDataColumnNames(tableName: String): String {
+    val sql = """
+        select string_agg(column_name, ',' order by ordinal_position) "columns"
+        from   information_schema.columns
+        where  table_name = ?
+        and    is_identity = 'NO'
+        group by table_name;
+    """.trimIndent()
+    return queryFirstOrNull(sql = sql, tableName) ?: throw IllegalArgumentException("Table does not exist")
 }
 
 fun Connection.loadDefaultData(tableName: String, inputStream: InputStream): Long {
@@ -199,6 +177,7 @@ fun Connection.loadDefaultData(tableName: String, inputStream: InputStream): Lon
             getCopyCommand(
                 tableName = tableName,
                 header = true,
+                columnNames = getDefaultDataColumnNames(tableName).split(','),
             ),
             inputStream
         )
@@ -215,61 +194,45 @@ fun Connection.loadDefaultData(tableName: String, inputStream: InputStream): Lon
  * @throws IllegalArgumentException various cases:
  * - [file] does not exist
  * - [file] provided is not a file
- * - [tableNames] is empty
+ * - [loaders] is empty
  * - [LoaderType] cannot be found
  */
 suspend fun Connection.loadFile(
     file: File,
-    tableNames: List<String>,
-    subTableNames: List<String> = listOf(),
-    delimiter: Char = ',',
-    qualified: Boolean = true,
+    loaders: List<LoadingInfo>,
 ) {
     require(file.exists()) { "File cannot be found" }
     require(file.isFile) { "File object provided is not a file in the directory system" }
-    requireNotEmpty(tableNames) { "Table names cannot be empty" }
+    requireNotEmpty(loaders) { "Loaders cannot be empty" }
     val loaderType = LoaderType.getLoaderTypeFromExtension(file.extension)
     with(CopyManager(this.unwrap(PgConnection::class.java))) {
         when(loaderType) {
             LoaderType.Excel -> {
-                require(tableNames.size == subTableNames.size) {
-                    "Number of table names must match number of sheet names"
-                }
                 loadExcelFile(
                     excelFile = file,
-                    tableNames = tableNames,
-                    sheetNames = subTableNames,
-                    connection = this@loadFile,
+                    loaders = loaders,
                 )
             }
             LoaderType.Flat -> {
                 loadFlatFile(
                     flatFile = file,
-                    tableName = tableNames.first(),
-                    delimiter = delimiter,
-                    qualified = qualified,
+                    loader = loaders.first(),
                 )
             }
             LoaderType.MDB -> {
-                require(tableNames.size == subTableNames.size) {
-                    "Number of table names must match number of mdb table names"
-                }
                 loadMdbFile(
                     mdbFile = file,
-                    tableNames = tableNames,
-                    mdbTableNames = subTableNames,
-                    connection = this@loadFile,
+                    loaders = loaders,
                 )
             }
             LoaderType.DBF -> {
                 loadDbfFile(
                     dbfFile = file,
-                    tableName = tableNames.first(),
+                    loader = loaders.first(),
                 )
             }
         }
     }
-    commit()
 }
 
 /**
@@ -365,23 +328,22 @@ private suspend fun analyzeFlatFile(
 }
 
 /**
- * Extension function allows for a CopyManager to easily load a [flatFile] line by line to a given [table][tableName].
+ * Extension function uses a [loader] to allow for a CopyManager to load a [flatFile] line by line to a given table.
  *
  * Creates a [CopyIn][org.postgresql.copy.CopyIn] instance then utilizes the provided stream to write each line of the
  * file to the Connection of the CopyManager.
  */
 private suspend fun CopyManager.loadFlatFile(
     flatFile: File,
-    tableName: String,
-    delimiter: Char,
-    qualified: Boolean,
+    loader: LoadingInfo,
 ) {
     val copyStream = copyIn(
         getCopyCommand(
-            tableName = tableName,
+            tableName = loader.tableName,
             header = true,
-            delimiter = delimiter,
-            qualified = qualified,
+            delimiter = loader.delimiter,
+            qualified = loader.qualified,
+            columnNames = loader.columns,
         )
     )
     flatFile
@@ -395,7 +357,7 @@ private suspend fun CopyManager.loadFlatFile(
                 }
         }
     val recordCount = copyStream.endCopy()
-    logger.info("Copy stream closed. Wrote $recordCount records to the target table $tableName")
+    logger.info("Copy stream closed. Wrote $recordCount records to the target table ${loader.tableName}")
 }
 
 /**
@@ -484,9 +446,7 @@ private suspend fun FlowCollector<AnalyzeResult>.analyzeExcelFile(
  */
 private suspend fun CopyManager.loadExcelFile(
     excelFile: File,
-    tableNames: List<String>,
-    sheetNames: List<String>,
-    connection: Connection,
+    loaders: List<LoadingInfo>,
 ) {
     excelFile.inputStream().use { inputStream ->
         withContext(Dispatchers.IO) {
@@ -495,12 +455,13 @@ private suspend fun CopyManager.loadExcelFile(
         }.use { workbook ->
             val formulaEvaluator = workbook.creationHelper.createFormulaEvaluator()
             val dataFormatter = DataFormatter()
-            (tableNames zip sheetNames).forEach { (tableName, sheetName) ->
-                val sheet = workbook.getSheet(sheetName)
+            for (loader in loaders) {
+                val sheet = workbook.getSheet(loader.subTable!!)
                 val copyStream = copyIn(
                     getCopyCommand(
-                        tableName = tableName,
+                        tableName = loader.tableName,
                         header = true,
+                        columnNames = loader.columns,
                     )
                 )
                 val headerLength = sheet.first().physicalNumberOfCells
@@ -512,8 +473,9 @@ private suspend fun CopyManager.loadExcelFile(
                         copyStream.writeToCopy(it, 0, it.size)
                     }
                 val recordCount = copyStream.endCopy()
-                connection.commit()
-                logger.info("Copy stream closed. Wrote $recordCount records to the target table $tableName")
+                logger.info(
+                    "Copy stream closed. Wrote $recordCount records to the target table ${loader.tableName}"
+                )
             }
         }
     }
@@ -575,21 +537,20 @@ private suspend fun FlowCollector<AnalyzeResult>.analyzeMdbFile(
  */
 private suspend fun CopyManager.loadMdbFile(
     mdbFile: File,
-    tableNames: List<String>,
-    mdbTableNames: List<String>,
-    connection: Connection,
+    loaders: List<LoadingInfo>,
 ) {
     DriverManager
         .getConnection("jdbc:ucanaccess://${mdbFile.absolutePath}").use { mdbConnection ->
-            (tableNames zip mdbTableNames).forEach { (tableName, mdbTableName) ->
+            for (loader in loaders) {
                 val copyStream = copyIn(
                     getCopyCommand(
-                        tableName = tableName,
+                        tableName = loader.tableName,
                         header = false,
+                        columnNames = loader.columns,
                     )
                 )
                 mdbConnection
-                    .prepareStatement("SELECT * FROM $mdbTableName")
+                    .prepareStatement("SELECT * FROM ${loader.subTable!!}")
                     .executeQuery()
                     .use { rs ->
                         rs.resultRecords()
@@ -601,8 +562,9 @@ private suspend fun CopyManager.loadMdbFile(
                             }
                     }
                 val recordCount = copyStream.endCopy()
-                connection.commit()
-                logger.info("Copy stream closed. Wrote $recordCount records to the target table $tableName")
+                logger.info(
+                    "Copy stream closed. Wrote $recordCount records to the target table ${loader.tableName}"
+                )
             }
         }
 }
@@ -660,19 +622,20 @@ private suspend fun analyzeDbfFile(
 }
 
 /**
- * Extension function allows for a CopyManager to easily load all record from a [file][dbfFile] into a give [tableName].
+ * Extension function uses a [loader] to allow for a CopyManager to load a [file][dbfFile]line by line to a given table.
  *
  * Creates a [CopyIn][org.postgresql.copy.CopyIn] instance then utilizes the provided stream to write each record of the
  * file to the Connection of the CopyManager.
  */
 private suspend fun CopyManager.loadDbfFile(
     dbfFile: File,
-    tableName: String,
+    loader: LoadingInfo,
 ) {
     val copyStream = copyIn(
         getCopyCommand(
-            tableName = tableName,
+            tableName = loader.tableName,
             header = false,
+            columnNames = loader.columns,
         )
     )
     dbfFileRecords(dbfFile)
@@ -683,5 +646,5 @@ private suspend fun CopyManager.loadDbfFile(
             copyStream.writeToCopy(it, 0, it.size)
         }
     val recordCount = copyStream.endCopy()
-    logger.info("Copy stream closed. Wrote $recordCount records to the target table $tableName")
+    logger.info("Copy stream closed. Wrote $recordCount records to the target table ${loader.tableName}")
 }

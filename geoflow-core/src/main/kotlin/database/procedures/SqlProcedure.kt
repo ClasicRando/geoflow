@@ -1,8 +1,7 @@
 package database.procedures
 
-import database.DatabaseConnection
-import kotlin.jvm.Throws
-import kotlin.reflect.KClass
+import database.call
+import java.sql.Connection
 import kotlin.reflect.KType
 import kotlin.reflect.full.createType
 
@@ -21,8 +20,7 @@ abstract class SqlProcedure(
      *
      * @throws IllegalArgumentException when the params do not match the [parameterTypes] definition
      */
-    @Throws(IllegalArgumentException::class)
-    protected fun call(vararg params: Any?) {
+    protected fun call(connection: Connection, vararg params: Any?) {
         require(params.size == parameterTypes.size) {
             "Expected ${parameterTypes.size} params, got ${params.size}"
         }
@@ -36,16 +34,6 @@ abstract class SqlProcedure(
         if (paramMismatch != null) {
             throw IllegalArgumentException("Expected param type ${paramMismatch.first}, got ${paramMismatch.second}")
         }
-        DatabaseConnection
-            .database
-            .useConnection { connection ->
-                connection.prepareStatement("call $name(${"?".repeat(params.size)})")
-                    .apply {
-                        params.forEachIndexed { index, obj ->
-                            setObject(index + 1, obj)
-                        }
-                    }
-                    .execute()
-            }
+        connection.call(name, *params)
     }
 }

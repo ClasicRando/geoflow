@@ -3,7 +3,7 @@ plugins {
 }
 
 version = "0.1"
-val ktormVersion: String by project
+val kotlinVersion: String by project
 val postgresqlVersion: String by project
 val kjobVersion: String by project
 val dbfVersion: String by project
@@ -19,6 +19,7 @@ val junitVersion: String by project
 val slf4Version: String by project
 val kotlinLoggingVersion: String by project
 val reflectionsVersion: String by project
+val coroutinesJdbc: String by project
 
 dependencies {
     testImplementation(kotlin("test", "1.5.30"))
@@ -27,12 +28,8 @@ dependencies {
     testRuntimeOnly("org.junit.jupiter:junit-jupiter-engine:$junitVersion")
     // https://mvnrepository.com/artifact/org.jetbrains.kotlinx/kotlinx-serialization-json-jvm
     implementation("org.jetbrains.kotlinx:kotlinx-serialization-json:$kotlinxJsonVersion")
-    // https://mvnrepository.com/artifact/org.ktorm/ktorm-core
-    implementation("org.ktorm:ktorm-core:$ktormVersion")
-    // https://mvnrepository.com/artifact/org.ktorm/ktorm-jackson
-    implementation("org.ktorm:ktorm-jackson:$ktormVersion")
-    // https://mvnrepository.com/artifact/org.ktorm/ktorm-support-postgresql
-    implementation("org.ktorm:ktorm-support-postgresql:$ktormVersion")
+    // https://mvnrepository.com/artifact/org.jetbrains.kotlin/kotlin-reflect
+    implementation("org.jetbrains.kotlin:kotlin-reflect:$kotlinVersion")
     // https://mvnrepository.com/artifact/org.postgresql/postgresql
     implementation("org.postgresql","postgresql", postgresqlVersion)
     // https://mvnrepository.com/artifact/it.justwrote/kjob-core
@@ -61,6 +58,7 @@ dependencies {
     implementation("org.slf4j:slf4j-simple:$slf4Version")
     implementation("io.github.microutils:kotlin-logging-jvm:$kotlinLoggingVersion")
     implementation("org.reflections:reflections:$reflectionsVersion")
+    implementation("com.michael-bull.kotlin-coroutines-jdbc:kotlin-coroutines-jdbc:$coroutinesJdbc")
 }
 
 tasks.test {

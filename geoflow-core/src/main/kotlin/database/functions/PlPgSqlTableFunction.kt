@@ -1,10 +1,9 @@
 package database.functions
 
-import database.DatabaseConnection
-import kotlin.jvm.Throws
+import database.submitQuery
+import java.sql.Connection
 import kotlin.reflect.KType
 import kotlin.reflect.full.createType
-
 
 /**
  * Base implementation of plpgsql table functions.
@@ -36,8 +35,7 @@ abstract class PlPgSqlTableFunction(
      *
      * @throws IllegalArgumentException when the params do not match the [parameterTypes] definition
      */
-    @Throws(IllegalArgumentException::class)
-    protected fun call(vararg params: Any?): List<Map<String, Any?>> {
+    inline fun <reified T> call(connection: Connection, vararg params: Any?): List<T> {
         require(params.size == parameterTypes.size) {
             "Expected ${parameterTypes.size} params, got ${params.size}"
         }
@@ -51,25 +49,7 @@ abstract class PlPgSqlTableFunction(
         if (paramMismatch != null) {
             throw IllegalArgumentException("Expected param type ${paramMismatch.first}, got ${paramMismatch.second}")
         }
-        return DatabaseConnection.database.useConnection { connection ->
-            connection
-                .prepareStatement("select * from $name(${"?,".repeat(params.size).trim(',')})")
-                .apply {
-                   params.forEachIndexed { index, obj ->
-                       setObject(index + 1, obj)
-                   }
-                }.use { statement ->
-                    statement.executeQuery().use { rs ->
-                        val columnNames = (1..rs.metaData.columnCount).map { rs.metaData.getColumnName(it) }
-                        generateSequence {
-                            if (rs.next()) {
-                                columnNames.associateWith { name -> rs.getObject(name) }
-                            } else {
-                                null
-                            }
-                        }.toList()
-                    }
-                }
-        }
+        val sql = "select * from $name(${"?,".repeat(params.size).trim(',')})"
+        return connection.submitQuery(sql = sql, *params)
     }
 }

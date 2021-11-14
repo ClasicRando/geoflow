@@ -1,0 +1,3 @@
+"state","role","name","description","href"
+"collection","ds_create","Create Data Source","Create new data source","/collection/ds-create"
+"*","admin","Create User","Create new user for ETL management","/users/create"

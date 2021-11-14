@@ -1,5 +1,6 @@
 package database.procedures
 
+import java.sql.Connection
 import kotlin.reflect.full.createType
 
 /**
@@ -19,8 +20,8 @@ object UpdateFiles: SqlProcedure(
 ) {
 
     /** Call the stored procedure */
-    fun call(runId: Long) {
-        super.call(runId)
+    fun call(connection: Connection, pipelineRunTaskId: Long) {
+        super.call(connection, pipelineRunTaskId)
     }
 
     override val code = """

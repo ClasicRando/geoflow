@@ -1,9 +1,11 @@
 package tasks
 
-import database.DatabaseConnection
+import database.Database
+import database.enums.TaskStatus
+import database.tables.PipelineRunTasks
+import database.tables.PipelineRunTasks.getWithLock
 import mu.KotlinLogging
-import orm.enums.TaskStatus
-import orm.tables.PipelineRunTasks
+import java.sql.Connection
 import java.time.Instant
 
 /**
@@ -17,7 +19,7 @@ abstract class SystemTask(pipelineRunTaskId: Long): PipelineTask(pipelineRunTask
     /** Buildable message to be applied to the table record after runTask completion */
     private val message = StringBuilder()
 
-    abstract suspend fun run()
+    abstract suspend fun run(connection: Connection, task: PipelineRunTasks.PipelineRunTask)
 
     protected fun addToMessage(text: String) {
         message.append(text)
@@ -38,15 +40,19 @@ abstract class SystemTask(pipelineRunTaskId: Long): PipelineTask(pipelineRunTask
      * 4. If no errors are thrown, return Success with message if not blank. If error throw, return error with throwable
      */
     override suspend fun runTask(): TaskResult {
-        updateTask {
-            set(it.taskStart, Instant.now())
-            set(it.taskStatus, TaskStatus.Running)
-            set(it.taskCompleted, null)
+        Database.runWithConnection {
+            PipelineRunTasks.update(
+                it,
+                pipelineRunTaskId,
+                taskStatus = TaskStatus.Running,
+                taskStart = Instant.now(),
+                taskCompleted = null,
+            )
         }
-        return DatabaseConnection.database.useTransaction { transaction ->
-            PipelineRunTasks.lockRecord(transaction, pipelineRunTaskId)
+        return Database.useTransaction { connection ->
             runCatching {
-                run()
+                val task = getWithLock(connection, pipelineRunTaskId)
+                run(connection, task)
                 TaskResult.Success(message.toString().takeIf { it.isNotBlank() })
             }.getOrElse { t ->
                 logger.error("Error for $pipelineRunTaskId: ${t.message ?: "No message provided. See record"}")

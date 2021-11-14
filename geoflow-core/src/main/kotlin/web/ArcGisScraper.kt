@@ -6,9 +6,7 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.buffer
 import kotlinx.coroutines.flow.collect
 import kotlinx.coroutines.flow.flowOn
-import kotlinx.coroutines.withContext
 import java.io.File
-import kotlin.coroutines.coroutineContext
 
 /**
  * Convenience method to wrap ArcGIS REST service scraping. Uses a [url] to collect [metadata][ArcGisServiceMetadata],

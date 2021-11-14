@@ -46,14 +46,15 @@ class DownloadFileTest {
         "https://files.nc.gov/ncdeq/Waste+Management/DWM/UST/Databases/UST+Data/Tanks.zip"
     ])
     fun `download zip`(url: String) {
-        val filename = "(?<=/)[^/]+$".toRegex().find(url)!!.value
         runBlocking {
-            downloadZip(
+            val files = downloadZip(
                 url,
                 outputPath,
             )
-            assertTrue {
-                File(outputPath, filename).exists()
+            for (file in files) {
+                assertTrue {
+                    File(outputPath, file).exists()
+                }
             }
         }
     }

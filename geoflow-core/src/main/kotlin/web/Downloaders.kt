@@ -11,7 +11,6 @@ import kotlinx.coroutines.Dispatchers
 import java.io.File
 import java.io.IOException
 import java.util.zip.ZipFile
-import kotlin.jvm.Throws
 
 /**
  * Downloads a file from the specified [url] and writes that file to the [outputPath].
@@ -43,19 +42,22 @@ suspend fun downloadFile(
  * @throws IOException if an I/O error has occurred
  */
 @Suppress("BlockingMethodInNonBlockingContext")
-suspend fun downloadZip(url: String, outputPath: String) {
+suspend fun downloadZip(url: String, outputPath: String): List<String> {
+    val resultFiles = mutableListOf<String>()
     HttpClient(CIO).use { client ->
         client.get<HttpStatement>(url).execute { response ->
             with(File.createTempFile("temp", ".zip")) {
-                response.content.copyTo(this.writeChannel(Dispatchers.IO))
+                response.content.copyTo(this.outputStream())
                 ZipFile(this).use { zip ->
                     for (entry in zip.entries()) {
                         zip.getInputStream(entry)
                             .copyTo(File(outputPath, entry.name).writeChannel(Dispatchers.IO))
+                        resultFiles += entry.name
                     }
                 }
                 deleteOnExit()
             }
         }
     }
+    return resultFiles
 }

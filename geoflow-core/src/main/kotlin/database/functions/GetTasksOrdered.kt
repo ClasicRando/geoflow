@@ -1,6 +1,6 @@
 package database.functions
 
-import orm.enums.TaskStatus
+import java.sql.Connection
 import kotlin.reflect.full.createType
 
 /**
@@ -35,21 +35,12 @@ object GetTasksOrdered: PlPgSqlTableFunction(
 ) {
 
     /**
-     * Calls the current scope 'call' function using the [runId] and returns the next task to run (ie Waiting)
-     */
-    fun nextToRun(runId: Long): Map<String, Any?>? {
-        return call(runId).firstOrNull { task ->
-            (task["task_status"] as String) == TaskStatus.Waiting.name
-        }
-    }
-
-    /**
      * Current scope 'call' function that uses the [runId] and [workflowState] to call the parent class scope 'call'
      * function. Makes sure users of this object provide the correct parameters before calling the super function.
      * Returns the list of ResultSet rows as a map
      */
-    fun call(runId: Long, workflowState: String? = null): List<Map<String, Any?>> {
-        return super.call(runId, workflowState)
+    inline fun <reified T> getTasks(connection: Connection, runId: Long, workflowState: String? = null): List<T> {
+        return call(connection, runId, workflowState)
     }
 
     override val functionCode = """

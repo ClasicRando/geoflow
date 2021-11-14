@@ -2,12 +2,13 @@ package database
 
 import data_loader.checkTableExists
 import data_loader.loadDefaultData
+import database.functions.Constraints
 import database.functions.PlPgSqlTableFunction
 import database.procedures.SqlProcedure
+import database.tables.*
 import mu.KotlinLogging
 import org.reflections.Reflections
-import org.reflections.scanners.Scanners.*
-import orm.tables.*
+import org.reflections.scanners.Scanners.SubTypes
 import java.sql.Connection
 
 /** Container for an enum translation to a PostgreSQL enum creation */
@@ -26,7 +27,7 @@ data class PostgresEnumType(val name: String, val constantValues: List<String>) 
 
 /** Lazy list of table build interfaces. Uses reflection to get all interface classes that are used to build tables */
 private val tableInterfaces by lazy {
-    Reflections("orm.tables")
+    Reflections("database.tables")
         .get(SubTypes.of(TableBuildRequirement::class.java))
         .map { className -> ClassLoader.getSystemClassLoader().loadClass(className) }
 }
@@ -37,7 +38,7 @@ private val tableInterfaces by lazy {
  * Uses reflection to find all Enum classes and maps the class to a PostgresEnumType.
  */
 private val enums by lazy {
-    Reflections("orm.enums")
+    Reflections("database.enums")
         .get(SubTypes.of(Enum::class.java).asClass<Enum<*>>())
         .asSequence()
         .map { enum ->
@@ -47,12 +48,12 @@ private val enums by lazy {
 
 /** Lazy list of tables declared in the 'orm.tables' package. List items are the Object instances themselves. */
 private val tables by lazy {
-    Reflections("orm.tables")
-        .get(SubTypes.of(DbTable::class.java).asClass<DbTable<*>>())
+    Reflections("database.tables")
+        .get(SubTypes.of(DbTable::class.java).asClass<DbTable>())
         .asSequence()
         .map { table -> table.getDeclaredField("INSTANCE").get(null)::class }
         .filter { !it.isAbstract }
-        .map { kClass -> kClass.objectInstance!! as DbTable<*> }
+        .map { kClass -> kClass.objectInstance!! as DbTable }
         .toList()
 }
 
@@ -87,50 +88,17 @@ private val logger = KotlinLogging.logger {}
 /**
  * Extension function to create a given [table] instance within the current Connection. Multiple steps might be required
  * depending upon the complexity of the table definition. Steps may include:
- * 1. If the primary key is serial (ie table extends interface [SequentialPrimaryKey]), find the PK field and the
- * sequence name in the CREATE TABLE statement then execute the generated CREATE SEQUENCE statement.
- * 2. Execute the CREATE TABLE statement stored in [createStatement][DbTable.createStatement] property.
- * 3. If the table has triggers (ie table extends interface [Triggers]), loop through list of [Trigger] data classes
+ * 1. Execute the CREATE TABLE statement stored in [createStatement][DbTable.createStatement] property.
+ * 2. If the table has triggers (ie table extends interface [Triggers]), loop through list of [Trigger] data classes
  * to create the trigger function then run the CREATE TRIGGER statement.
- * 4. If the table had initial data to load (ie table extends interface [DefaultData]), get the resource's
+ * 3. If the table had initial data to load (ie table extends interface [DefaultData]), get the resource's
  * [InputStream][java.io.InputStream] to COPY the file to the current table. When the load is done, set the sequence
  * value to the current max value in the table if the table has a sequential primary key.
  */
-private fun Connection.createTable(table: DbTable<*>) {
+private fun Connection.createTable(table: DbTable) {
     logger.info("Starting ${table.tableName}")
     require(!checkTableExists(table.tableName)) { "${table.tableName} already exists" }
     val interfaces = table::class.java.interfaces.filter { it in tableInterfaces }
-    val sequentialPrimaryKey = SequentialPrimaryKey::class.java in interfaces
-    var sequenceName = ""
-    var pkField = ""
-    if (sequentialPrimaryKey) {
-        pkField = "PRIMARY KEY \\((.+)\\)".toRegex()
-            .find(table.createStatement)
-            ?.groupValues
-            ?.get(1)
-            ?: throw IllegalStateException("Cannot find primary key constraint for sequential primary key interface")
-        val pkFieldMatch = "$pkField ([a-z]+) .+ nextval\\('(.+)'::regclass\\)".toRegex()
-            .find(table.createStatement)
-            ?: throw IllegalStateException("Cannot find sequence name for sequential primary key interface")
-        val maxValue = when(pkFieldMatch.groupValues[1]) {
-            "integer" -> 2147483647
-            "bigint" -> 9223372036854775807
-            else -> throw IllegalStateException("PK field type must be a numeric serial type")
-        }
-        sequenceName = pkFieldMatch.groupValues[2]
-        logger.info("Creating ${table.tableName}'s sequence, $sequenceName")
-        prepareStatement("""
-            CREATE SEQUENCE public.$sequenceName
-                INCREMENT 1
-                START 1
-                MINVALUE 1
-                MAXVALUE $maxValue
-                CACHE 1;
-        """.trimIndent())
-            .use {
-                it.execute()
-            }
-    }
     logger.info("Creating ${table.tableName}")
     this.prepareStatement(table.createStatement).execute()
     if (Triggers::class.java in interfaces) {
@@ -158,13 +126,6 @@ private fun Connection.createTable(table: DbTable<*>) {
             val recordCount = loadDefaultData(table.tableName, defaultRecordsStream)
             logger.info("Inserted $recordCount records into ${table.tableName}")
         }
-        if (sequentialPrimaryKey) {
-            this.prepareStatement("SELECT setval(?, max($pkField)) from ${table.tableName}").apply {
-                setString(1, sequenceName)
-            }.use {
-                it.execute()
-            }
-        }
     }
 }
 
@@ -180,7 +141,7 @@ private fun Connection.createTable(table: DbTable<*>) {
  * The process exits the recursion when the passed list of tables to create is empty.
  */
 private fun Connection.createTables(
-    tables: List<DbTable<*>>,
+    tables: List<DbTable>,
     createdTables: Set<String> = setOf()
 ) {
     if (tables.isEmpty()) {
@@ -200,24 +161,40 @@ private fun Connection.createTables(
 /**
  * Uses the database connection to create all required objects, tables, procedures, and table functions for application.
  */
-fun buildDatabase() {
+fun buildDatabase(connection: Connection) {
     try {
-        DatabaseConnection.database.useConnection { connection ->
-            for (enum in enums) {
-                logger.info("Creating ${enum.postgresName}")
-                connection.prepareStatement(enum.create).execute()
+        for (enum in enums) {
+            logger.info("Creating ${enum.postgresName}")
+            connection.prepareStatement(enum.create).use {
+                it.execute()
             }
-            connection.createTables(tables)
-            for (procedure in procedures) {
-                logger.info("Creating ${procedure.name}")
-                connection.prepareStatement(procedure.code).execute()
+        }
+        for (function in Constraints.functions) {
+            val functionName = "FUNCTION (public\\.)?(.+) ".toRegex()
+                .find(function)
+                ?.groupValues
+                ?.get(2)
+            logger.info("Creating constraint function ${functionName ?: "!! NAME UNKNOWN !!\n$function"}")
+            connection.prepareStatement(function).use {
+                it.execute()
             }
-            for (tableFunction in tableFunctions) {
-                logger.info("Creating ${tableFunction.name}")
-                for (innerFunction in tableFunction.innerFunctions) {
-                    connection.prepareStatement(innerFunction).execute()
+        }
+        connection.createTables(tables)
+        for (procedure in procedures) {
+            logger.info("Creating ${procedure.name}")
+            connection.prepareStatement(procedure.code).use {
+                it.execute()
+            }
+        }
+        for (tableFunction in tableFunctions) {
+            logger.info("Creating ${tableFunction.name}")
+            for (innerFunction in tableFunction.innerFunctions) {
+                connection.prepareStatement(innerFunction).use {
+                    it.execute()
                 }
-                connection.prepareStatement(tableFunction.functionCode).execute()
+            }
+            connection.prepareStatement(tableFunction.functionCode).use {
+                it.execute()
             }
         }
     } catch (ex: Exception) {

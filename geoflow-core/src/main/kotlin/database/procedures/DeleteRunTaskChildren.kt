@@ -1,5 +1,6 @@
 package database.procedures
 
+import java.sql.Connection
 import kotlin.reflect.full.createType
 
 /**
@@ -14,8 +15,8 @@ object DeleteRunTaskChildren: SqlProcedure(
 ) {
 
     /** Call the stored procedure */
-    fun call(pipelineRunTaskId: Long) {
-        super.call(pipelineRunTaskId)
+    fun call(connection: Connection, pipelineRunTaskId: Long) {
+        super.call(connection, pipelineRunTaskId)
     }
 
     override val code = """
