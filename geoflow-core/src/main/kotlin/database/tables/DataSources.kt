@@ -11,32 +11,42 @@ package database.tables
  * --------------
  * - implement API requirements for users to perform CRUD operations on this table
  */
-object DataSources: DbTable("data_sources"), SequentialPrimaryKey {
+object DataSources: DbTable("data_sources") {
 
     override val createStatement = """
         CREATE TABLE IF NOT EXISTS public.data_sources
         (
-            ds_id bigint NOT NULL DEFAULT nextval('data_sources_ds_id_seq'::regclass),
+            ds_id bigint PRIMARY KEY GENERATED ALWAYS AS IDENTITY,
             code text COLLATE pg_catalog."default" NOT NULL,
-            country text COLLATE pg_catalog."default" NOT NULL,
-            prov text COLLATE pg_catalog."default",
-            description text COLLATE pg_catalog."default" NOT NULL,
-            files_location text COLLATE pg_catalog."default" NOT NULL,
+            prov text COLLATE pg_catalog."default" NOT NULL REFERENCES public.provs (prov_code) MATCH SIMPLE
+                ON UPDATE CASCADE
+                ON DELETE RESTRICT,
+            description text COLLATE pg_catalog."default" NOT NULL CHECK (check_not_blank_or_empty(description)),
+            files_location text COLLATE pg_catalog."default" NOT NULL CHECK (check_not_blank_or_empty(files_location)),
             prov_level boolean NOT NULL,
-            comments text COLLATE pg_catalog."default",
-            assigned_user bigint NOT NULL,
-            created_by bigint NOT NULL,
+            comments text COLLATE pg_catalog."default" CHECK (check_not_blank_or_empty(comments)),
+            assigned_user bigint NOT NULL REFERENCES public.internal_users (user_oid) MATCH SIMPLE
+                ON UPDATE CASCADE
+                ON DELETE RESTRICT,
+            created_by bigint NOT NULL REFERENCES public.internal_users (user_oid) MATCH SIMPLE
+                ON UPDATE CASCADE
+                ON DELETE RESTRICT,
             last_updated timestamp without time zone,
-            updated_by bigint,
+            updated_by bigint REFERENCES public.internal_users (user_oid) MATCH SIMPLE
+                ON UPDATE CASCADE
+                ON DELETE RESTRICT,
             search_radius double precision NOT NULL,
-            record_warehouse_type integer NOT NULL,
-            reporting_type text COLLATE pg_catalog."default" NOT NULL,
+            record_warehouse_type integer NOT NULL REFERENCES public.record_warehouse_types (id) MATCH SIMPLE
+                ON UPDATE CASCADE
+                ON DELETE RESTRICT,
+            reporting_type text COLLATE pg_catalog."default" NOT NULL CHECK (check_not_blank_or_empty(reporting_type)),
             created timestamp without time zone NOT NULL DEFAULT timezone('utc'::text, now()),
-            collection_pipeline bigint NOT NULL,
+            collection_pipeline bigint NOT NULL REFERENCES public.pipelines (pipeline_id) MATCH SIMPLE
+                ON UPDATE CASCADE
+                ON DELETE RESTRICT,
             load_pipeline bigint,
             check_pipeline bigint,
-            qa_pipeline bigint,
-            CONSTRAINT data_sources_pkey PRIMARY KEY (ds_id)
+            qa_pipeline bigint
         )
         WITH (
             OIDS = FALSE

@@ -18,12 +18,11 @@ object WorkflowOperations: DbTable("workflow_operations"), DefaultData, ApiExpos
     override val createStatement = """
         CREATE TABLE IF NOT EXISTS public.workflow_operations
         (
-            code text COLLATE pg_catalog."default" NOT NULL,
-            href text COLLATE pg_catalog."default" NOT NULL,
-            role text COLLATE pg_catalog."default" NOT NULL,
-            name text COLLATE pg_catalog."default" NOT NULL,
-            workflow_order integer NOT NULL,
-            CONSTRAINT workflow_operations_pkey PRIMARY KEY (code)
+            code text PRIMARY KEY COLLATE pg_catalog."default",
+            href text COLLATE pg_catalog."default" NOT NULL CHECK (check_not_blank_or_empty(href)),
+            role text COLLATE pg_catalog."default" NOT NULL CHECK (check_not_blank_or_empty(role)),
+            name text COLLATE pg_catalog."default" NOT NULL CHECK (check_not_blank_or_empty(name)) UNIQUE,
+            workflow_order integer NOT NULL UNIQUE
         )
         WITH (
             OIDS = FALSE

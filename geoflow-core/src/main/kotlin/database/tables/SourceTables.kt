@@ -9,7 +9,7 @@ import kotlinx.serialization.Serializable
 import java.sql.Connection
 import java.util.*
 
-object SourceTables: DbTable("source_tables"), ApiExposed, SequentialPrimaryKey {
+object SourceTables: DbTable("source_tables"), ApiExposed {
 
     override val tableDisplayFields = mapOf(
         "table_name" to mapOf("editable" to "true", "sortable" to "true"),
@@ -32,26 +32,27 @@ object SourceTables: DbTable("source_tables"), ApiExposed, SequentialPrimaryKey 
     override val createStatement = """
         CREATE TABLE IF NOT EXISTS public.source_tables
         (
-            run_id bigint NOT NULL,
-            table_name text COLLATE pg_catalog."default" NOT NULL,
-            file_name text COLLATE pg_catalog."default" NOT NULL,
+            st_oid bigint PRIMARY KEY GENERATED ALWAYS AS IDENTITY,
+            run_id bigint NOT NULL REFERENCES public.pipeline_runs (run_id) MATCH SIMPLE
+                ON UPDATE CASCADE
+                ON DELETE CASCADE,
+            table_name text COLLATE pg_catalog."default" NOT NULL
+				CHECK (table_name ~ '^[0-9A-Z_]+$'::text),
+            file_name text COLLATE pg_catalog."default" NOT NULL CHECK (file_name ~ '^.+\..+$'),
             "analyze" boolean NOT NULL DEFAULT true,
             load boolean NOT NULL DEFAULT true,
             qualified boolean NOT NULL DEFAULT false,
-            encoding text COLLATE pg_catalog."default" NOT NULL DEFAULT 'utf8'::text,
-            sub_table text COLLATE pg_catalog."default",
+            encoding text COLLATE pg_catalog."default" NOT NULL DEFAULT 'utf8'::text CHECK (check_not_blank_or_empty(encoding)),
+            sub_table text COLLATE pg_catalog."default" CHECK (check_not_blank_or_empty(sub_table)),
             record_count integer NOT NULL DEFAULT 0,
-            file_id text COLLATE pg_catalog."default" NOT NULL,
-            url text COLLATE pg_catalog."default",
-            comments text COLLATE pg_catalog."default",
-            st_oid bigint NOT NULL DEFAULT nextval('source_tables_st_oid_seq'::regclass),
+            file_id text COLLATE pg_catalog."default" NOT NULL CHECK (file_id ~ '^F\d+$'),
+            url text COLLATE pg_catalog."default" CHECK (check_not_blank_or_empty(url)),
+            comments text COLLATE pg_catalog."default" CHECK (check_not_blank_or_empty(comments)),
             collect_type file_collect_type NOT NULL,
             loader_type loader_type NOT NULL,
-            delimiter character varying(1) COLLATE pg_catalog."default",
-            CONSTRAINT source_tables_pkey PRIMARY KEY (st_oid),
-            CONSTRAINT file_id_run_id_unique UNIQUE (run_id, file_id),
-            CONSTRAINT table_name_run_id_unique UNIQUE (run_id, table_name),
-            CONSTRAINT table_name_correct CHECK (table_name ~ '^[0-9A-Z_]+${'$'}'::text) NOT VALID
+            delimiter character varying(1) COLLATE pg_catalog."default" CHECK (check_not_blank_or_empty(delimiter::text)),
+            CONSTRAINT unique_file_id_run_id UNIQUE (run_id, file_id),
+            CONSTRAINT unique_table_name_run_id UNIQUE (run_id, table_name)
         )
         WITH (
             OIDS = FALSE

@@ -3,14 +3,13 @@ package database.tables
 /**
  * Table has yet to be finalized and should not be used until then
  */
-object PlottingMethodTypes: DbTable("plotting_method_types"), SequentialPrimaryKey {
+object PlottingMethodTypes: DbTable("plotting_method_types") {
 
     override val createStatement = """
         CREATE TABLE IF NOT EXISTS public.plotting_method_types
         (
-            name text COLLATE pg_catalog."default" NOT NULL,
-            method_id integer NOT NULL DEFAULT nextval('plotting_method_types_method_id_seq'::regclass),
-            CONSTRAINT plotting_method_types_pkey PRIMARY KEY (method_id)
+            method_id integer PRIMARY KEY GENERATED ALWAYS AS IDENTITY,
+            name text COLLATE pg_catalog."default" NOT NULL CHECK (check_not_blank_or_empty(name)) UNIQUE
         )
         WITH (
             OIDS = FALSE

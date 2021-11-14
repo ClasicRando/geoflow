@@ -10,8 +10,6 @@ import mu.KotlinLogging
 import org.reflections.Reflections
 import org.reflections.scanners.Scanners.SubTypes
 import java.sql.Connection
-import kotlin.reflect.full.createType
-import kotlin.reflect.full.memberProperties
 
 /** Container for an enum translation to a PostgreSQL enum creation */
 data class PostgresEnumType(val name: String, val constantValues: List<String>) {
@@ -85,26 +83,15 @@ private val tableFunctions by lazy {
         .map { kClass -> kClass.objectInstance!! as PlPgSqlTableFunction }
 }
 
-private val constraintFunctions by lazy {
-    val stringType = String::class.createType()
-    val instance = Constraints::class.objectInstance
-        ?: Constraints::class.java.getDeclaredField("INSTANCE").get(null) as Constraints
-    instance::class.memberProperties
-        .filter { it.returnType == stringType }
-        .associate { it.name to it.getter.call(instance) as String }
-}
-
 private val logger = KotlinLogging.logger {}
 
 /**
  * Extension function to create a given [table] instance within the current Connection. Multiple steps might be required
  * depending upon the complexity of the table definition. Steps may include:
- * 1. If the primary key is serial (ie table extends interface [SequentialPrimaryKey]), find the PK field and the
- * sequence name in the CREATE TABLE statement then execute the generated CREATE SEQUENCE statement.
- * 2. Execute the CREATE TABLE statement stored in [createStatement][DbTable.createStatement] property.
- * 3. If the table has triggers (ie table extends interface [Triggers]), loop through list of [Trigger] data classes
+ * 1. Execute the CREATE TABLE statement stored in [createStatement][DbTable.createStatement] property.
+ * 2. If the table has triggers (ie table extends interface [Triggers]), loop through list of [Trigger] data classes
  * to create the trigger function then run the CREATE TRIGGER statement.
- * 4. If the table had initial data to load (ie table extends interface [DefaultData]), get the resource's
+ * 3. If the table had initial data to load (ie table extends interface [DefaultData]), get the resource's
  * [InputStream][java.io.InputStream] to COPY the file to the current table. When the load is done, set the sequence
  * value to the current max value in the table if the table has a sequential primary key.
  */
@@ -112,37 +99,6 @@ private fun Connection.createTable(table: DbTable) {
     logger.info("Starting ${table.tableName}")
     require(!checkTableExists(table.tableName)) { "${table.tableName} already exists" }
     val interfaces = table::class.java.interfaces.filter { it in tableInterfaces }
-    val sequentialPrimaryKey = SequentialPrimaryKey::class.java in interfaces
-    var sequenceName = ""
-    var pkField = ""
-    if (sequentialPrimaryKey) {
-        pkField = "PRIMARY KEY \\((.+)\\)".toRegex()
-            .find(table.createStatement)
-            ?.groupValues
-            ?.get(1)
-            ?: throw IllegalStateException("Cannot find primary key constraint for sequential primary key interface")
-        val pkFieldMatch = "$pkField ([a-z]+) .+ nextval\\('(.+)'::regclass\\)".toRegex()
-            .find(table.createStatement)
-            ?: throw IllegalStateException("Cannot find sequence name for sequential primary key interface")
-        val maxValue = when(pkFieldMatch.groupValues[1]) {
-            "integer" -> 2147483647
-            "bigint" -> 9223372036854775807
-            else -> throw IllegalStateException("PK field type must be a numeric serial type")
-        }
-        sequenceName = pkFieldMatch.groupValues[2]
-        logger.info("Creating ${table.tableName}'s sequence, $sequenceName")
-        prepareStatement("""
-            CREATE SEQUENCE public.$sequenceName
-                INCREMENT 1
-                START 1
-                MINVALUE 1
-                MAXVALUE $maxValue
-                CACHE 1;
-        """.trimIndent())
-            .use {
-                it.execute()
-            }
-    }
     logger.info("Creating ${table.tableName}")
     this.prepareStatement(table.createStatement).execute()
     if (Triggers::class.java in interfaces) {
@@ -169,13 +125,6 @@ private fun Connection.createTable(table: DbTable) {
         (table as DefaultData).defaultRecordsFile?.let { defaultRecordsStream ->
             val recordCount = loadDefaultData(table.tableName, defaultRecordsStream)
             logger.info("Inserted $recordCount records into ${table.tableName}")
-        }
-        if (sequentialPrimaryKey) {
-            this.prepareStatement("SELECT setval(?, max($pkField)) from ${table.tableName}").apply {
-                setString(1, sequenceName)
-            }.use {
-                it.execute()
-            }
         }
     }
 }
@@ -220,9 +169,13 @@ fun buildDatabase(connection: Connection) {
                 it.execute()
             }
         }
-        for (constraintFunction in constraintFunctions) {
-            logger.info("Creating ${constraintFunction.key}")
-            connection.prepareStatement(constraintFunction.value).use {
+        for (function in Constraints.functions) {
+            val functionName = "FUNCTION (public\\.)?(.+) ".toRegex()
+                .find(function)
+                ?.groupValues
+                ?.get(2)
+            logger.info("Creating constraint function ${functionName ?: "!! NAME UNKNOWN !!\n$function"}")
+            connection.prepareStatement(function).use {
                 it.execute()
             }
         }

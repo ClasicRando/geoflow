@@ -5,20 +5,16 @@ package database.tables
  *
  * Named for easier access and categorized by workflow operation the pipeline is associated with
  */
-object Pipelines: DbTable("pipelines"), SequentialPrimaryKey {
+object Pipelines: DbTable("pipelines") {
 
     override val createStatement = """
         CREATE TABLE IF NOT EXISTS public.pipelines
         (
-            pipeline_id bigint NOT NULL DEFAULT nextval('pipelines_pipeline_id_seq'::regclass),
-            name text COLLATE pg_catalog."default" NOT NULL,
-            workflow_operation text COLLATE pg_catalog."default" NOT NULL,
-            CONSTRAINT pipelines_pkey PRIMARY KEY (pipeline_id),
-            CONSTRAINT workflow_operations FOREIGN KEY (workflow_operation)
-                REFERENCES public.workflow_operations (code) MATCH SIMPLE
+            pipeline_id bigint PRIMARY KEY GENERATED ALWAYS AS IDENTITY,
+            name text COLLATE pg_catalog."default" NOT NULL CHECK (check_not_blank_or_empty(name)) UNIQUE,
+            workflow_operation text COLLATE pg_catalog."default" NOT NULL REFERENCES public.workflow_operations (code) MATCH SIMPLE
                 ON UPDATE CASCADE
-                ON DELETE SET NULL
-                NOT VALID
+                ON DELETE RESTRICT
         )
         WITH (
             OIDS = FALSE

@@ -17,7 +17,7 @@ import java.sql.Connection
  * form interface for the current user to create another user. These endpoints should include role validation so that a
  * user without the required role is given an error status page.
  */
-object Actions: DbTable("actions"), ApiExposed, SequentialPrimaryKey {
+object Actions: DbTable("actions"), ApiExposed, DefaultData {
 
     /**
      * Fields provided when this table is used in the server API to display in a bootstrap table.
@@ -32,20 +32,24 @@ object Actions: DbTable("actions"), ApiExposed, SequentialPrimaryKey {
     )
 
     override val createStatement = """
-        CREATE TABLE IF NOT EXISTS public.actions
+		CREATE TABLE IF NOT EXISTS public.actions
         (
-            state text COLLATE pg_catalog."default" NOT NULL,
-            role text COLLATE pg_catalog."default" NOT NULL,
-            name text COLLATE pg_catalog."default" NOT NULL,
-            description text COLLATE pg_catalog."default" NOT NULL,
-            href text COLLATE pg_catalog."default" NOT NULL,
-            action_oid bigint NOT NULL DEFAULT nextval('actions_action_oid_seq'::regclass),
-            CONSTRAINT actions_pkey PRIMARY KEY (action_oid)
+			action_id bigint PRIMARY KEY NOT NULL GENERATED ALWAYS AS IDENTITY,
+            state text COLLATE pg_catalog."default" NOT NULL CHECK (check_not_blank_or_empty(state)),
+            role text COLLATE pg_catalog."default" NOT NULL CHECK (check_not_blank_or_empty(role))
+                REFERENCES roles(name) MATCH SIMPLE
+				ON DELETE RESTRICT
+				ON UPDATE CASCADE,
+            name text COLLATE pg_catalog."default" NOT NULL CHECK (check_not_blank_or_empty(name)),
+            description text COLLATE pg_catalog."default" NOT NULL CHECK (check_not_blank_or_empty(description)),
+            href text COLLATE pg_catalog."default" NOT NULL CHECK (check_not_blank_or_empty(href))
         )
         WITH (
             OIDS = FALSE
         );
     """.trimIndent()
+
+    override val defaultRecordsFileName: String = "actions.csv"
 
     /** API response data class for JSON serialization */
     @Serializable

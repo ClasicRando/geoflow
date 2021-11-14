@@ -16,7 +16,7 @@ import java.sql.Date
 import java.sql.ResultSet
 import java.time.LocalDate
 
-object PipelineRuns: DbTable("pipeline_runs"), SequentialPrimaryKey, ApiExposed, Triggers {
+object PipelineRuns: DbTable("pipeline_runs"), ApiExposed, Triggers {
 
     override val tableDisplayFields = mapOf(
         "ds_id" to mapOf("name" to "Data Source ID"),
@@ -32,14 +32,26 @@ object PipelineRuns: DbTable("pipeline_runs"), SequentialPrimaryKey, ApiExposed,
     override val createStatement = """
         CREATE TABLE IF NOT EXISTS public.pipeline_runs
         (
-            ds_id bigint NOT NULL,
+            run_id bigint PRIMARY KEY GENERATED ALWAYS AS IDENTITY,
+            ds_id bigint NOT NULL REFERENCES public.data_sources (ds_id) MATCH SIMPLE
+                ON UPDATE CASCADE
+                ON DELETE CASCADE,
             record_date date NOT NULL,
-            load_user_oid bigint,
-            check_user_oid bigint,
-            qa_user_oid bigint,
-            collection_user_oid bigint,
-            workflow_operation text COLLATE pg_catalog."default" NOT NULL,
-            run_id bigint NOT NULL DEFAULT nextval('pipeline_runs_run_id_seq'::regclass),
+            collection_user_oid bigint REFERENCES public.internal_users (user_oid) MATCH SIMPLE
+                ON UPDATE CASCADE
+                ON DELETE SET NULL,
+            load_user_oid bigint REFERENCES public.internal_users (user_oid) MATCH SIMPLE
+                ON UPDATE CASCADE
+                ON DELETE SET NULL,
+            check_user_oid bigint REFERENCES public.internal_users (user_oid) MATCH SIMPLE
+                ON UPDATE CASCADE
+                ON DELETE SET NULL,
+            qa_user_oid bigint REFERENCES public.internal_users (user_oid) MATCH SIMPLE
+                ON UPDATE CASCADE
+                ON DELETE SET NULL,
+            workflow_operation text COLLATE pg_catalog."default" NOT NULL REFERENCES public.workflow_operations (code) MATCH SIMPLE
+                ON UPDATE CASCADE
+                ON DELETE RESTRICT,
             operation_state operation_state NOT NULL,
             production_count integer NOT NULL,
             staging_count integer NOT NULL,
@@ -47,13 +59,7 @@ object PipelineRuns: DbTable("pipeline_runs"), SequentialPrimaryKey, ApiExposed,
             new_count integer NOT NULL,
             plotting_stats jsonb NOT NULL,
             has_child_tables boolean NOT NULL,
-            merge_type merge_type,
-            CONSTRAINT pipeline_runs_pkey PRIMARY KEY (run_id),
-            CONSTRAINT ds_id FOREIGN KEY (ds_id)
-                REFERENCES public.data_sources (ds_id) MATCH SIMPLE
-                ON UPDATE CASCADE
-                ON DELETE CASCADE
-                NOT VALID
+            merge_type merge_type
         )
         WITH (
             OIDS = FALSE

@@ -32,11 +32,6 @@ interface ApiExposed {
 }
 
 /**
- * Table's primary key is a sequential value. Tells build script to look through create statement to make sequence
- */
-interface SequentialPrimaryKey: TableBuildRequirement
-
-/**
  * Data Class to hold the trigger create statement and trigger function create statement
  */
 data class Trigger(val trigger: String, val triggerFunction: String)

@@ -10,21 +10,20 @@ import java.sql.Connection
  * General user definition with username, password (hashed) and roles provided to the user. This table is only used
  * during the user validation/login phase. After that point, the session contains the user information needed
  */
-object InternalUsers: DbTable("internal_users"), SequentialPrimaryKey {
+object InternalUsers: DbTable("internal_users") {
 
     override val createStatement = """
         CREATE TABLE IF NOT EXISTS public.internal_users
         (
-            user_oid bigint NOT NULL DEFAULT nextval('internal_users_user_oid_seq'::regclass),
-            name text COLLATE pg_catalog."default" NOT NULL,
-            username text COLLATE pg_catalog."default" NOT NULL,
-            password text COLLATE pg_catalog."default" NOT NULL,
-            roles text[] COLLATE pg_catalog."default" NOT NULL,
-            CONSTRAINT internal_users_pkey PRIMARY KEY (user_oid)
+            user_oid bigint PRIMARY KEY GENERATED ALWAYS AS IDENTITY,
+            name text COLLATE pg_catalog."default" NOT NULL CHECK (check_not_blank_or_empty(name)),
+            username text COLLATE pg_catalog."default" NOT NULL CHECK (check_not_blank_or_empty(username)),
+            password text COLLATE pg_catalog."default" NOT NULL CHECK (check_not_blank_or_empty(password)),
+            roles text[] COLLATE pg_catalog."default" NOT NULL CHECK (check_array_not_blank_or_empty(roles))
         )
         WITH (
             OIDS = FALSE
-        )
+        );
     """.trimIndent()
 
     /** Validation response as a sealed interface of success or failure (standard message) */

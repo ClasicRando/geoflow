@@ -19,7 +19,7 @@ import java.time.Instant
  *
  * Records contain metadata about the task, and it's run status/outcome.
  */
-object PipelineRunTasks: DbTable("pipeline_run_tasks"), ApiExposed, SequentialPrimaryKey {
+object PipelineRunTasks: DbTable("pipeline_run_tasks"), ApiExposed {
 
     override val tableDisplayFields = mapOf(
         "task_status" to mapOf("name" to "Status", "formatter" to "statusFormatter"),
@@ -33,29 +33,23 @@ object PipelineRunTasks: DbTable("pipeline_run_tasks"), ApiExposed, SequentialPr
     override val createStatement = """
         CREATE TABLE IF NOT EXISTS public.pipeline_run_tasks
         (
-            pr_task_id bigint NOT NULL DEFAULT nextval('pipeline_run_tasks_pr_task_id_seq'::regclass),
-            run_id bigint NOT NULL,
+            pr_task_id bigint PRIMARY KEY GENERATED ALWAYS AS IDENTITY,
+            run_id bigint NOT NULL REFERENCES public.pipeline_runs (run_id) MATCH SIMPLE
+                ON UPDATE CASCADE
+                ON DELETE CASCADE,
             task_start timestamp without time zone,
             task_completed timestamp without time zone,
-            task_id bigint NOT NULL,
-            task_message text COLLATE pg_catalog."default",
+            task_id bigint NOT NULL REFERENCES public.tasks (task_id) MATCH SIMPLE
+                ON UPDATE CASCADE
+                ON DELETE RESTRICT,
+            task_message text COLLATE pg_catalog."default" CHECK (check_not_blank_or_empty(task_message)),
             task_status task_status NOT NULL DEFAULT 'Waiting'::task_status,
             parent_task_id bigint NOT NULL DEFAULT 0,
             parent_task_order integer NOT NULL,
-            workflow_operation text COLLATE pg_catalog."default" NOT NULL,
-            task_stack_trace text COLLATE pg_catalog."default",
-            CONSTRAINT pipeline_run_tasks_pkey PRIMARY KEY (pr_task_id),
-            CONSTRAINT task_per_run UNIQUE (run_id, task_id),
-            CONSTRAINT run_id FOREIGN KEY (pr_task_id)
-                REFERENCES public.pipeline_runs (run_id) MATCH SIMPLE
+            workflow_operation text COLLATE pg_catalog."default" NOT NULL REFERENCES public.workflow_operations (code) MATCH SIMPLE
                 ON UPDATE CASCADE
-                ON DELETE CASCADE
-                NOT VALID,
-            CONSTRAINT workflow_operation_fk FOREIGN KEY (workflow_operation)
-                REFERENCES public.workflow_operations (code) MATCH SIMPLE
-                ON UPDATE CASCADE
-                ON DELETE SET NULL
-                NOT VALID
+                ON DELETE RESTRICT,
+            task_stack_trace text COLLATE pg_catalog."default" CHECK (check_not_blank_or_empty(task_stack_trace))
         )
         WITH (
             OIDS = FALSE

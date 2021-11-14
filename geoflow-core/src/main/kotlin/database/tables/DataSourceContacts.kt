@@ -5,19 +5,20 @@ package database.tables
  *
  * This table should never be used by itself but rather referenced in [DataSources] table
  */
-object DataSourceContacts: DbTable("data_source_contacts"), SequentialPrimaryKey {
+object DataSourceContacts: DbTable("data_source_contacts") {
 
     override val createStatement = """
         CREATE TABLE IF NOT EXISTS public.data_source_contacts
         (
-            contact_id bigint NOT NULL DEFAULT nextval('data_source_contacts_contact_id_seq'::regclass),
-            ds_id bigint NOT NULL,
-            name text COLLATE pg_catalog."default",
-            email text COLLATE pg_catalog."default",
-            website text COLLATE pg_catalog."default",
-            type text COLLATE pg_catalog."default",
-            notes text COLLATE pg_catalog."default",
-            CONSTRAINT data_source_contacts_pkey PRIMARY KEY (contact_id)
+            contact_id bigint PRIMARY KEY GENERATED ALWAYS AS IDENTITY,
+            ds_id bigint NOT NULL REFERENCES public.data_sources (ds_id) MATCH SIMPLE
+                ON UPDATE CASCADE
+                ON DELETE CASCADE,
+            name text COLLATE pg_catalog."default" CHECK(check_not_blank_or_empty(name)),
+            email text COLLATE pg_catalog."default" CHECK(check_not_blank_or_empty(email)),
+            website text COLLATE pg_catalog."default" CHECK(check_not_blank_or_empty(website)),
+            type text COLLATE pg_catalog."default" CHECK(check_not_blank_or_empty(type)),
+            notes text COLLATE pg_catalog."default" CHECK(check_not_blank_or_empty(notes))
         )
         WITH (
             OIDS = FALSE
