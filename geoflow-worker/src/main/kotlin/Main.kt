@@ -12,8 +12,8 @@ import jobs.SystemJob
 import kotlinx.coroutines.NonCancellable
 import kotlinx.coroutines.withContext
 import mu.KotlinLogging
-import tasks.SystemTask
 import tasks.TaskResult
+import tasks.runTask
 import java.time.Instant
 
 private val logger = KotlinLogging.logger {}
@@ -69,12 +69,7 @@ suspend fun JobContextWithProps<SystemJob>.executeSystemJob(kJob: KJob) {
     try {
         val pipelineRunTaskId = props[SystemJob.pipelineRunTaskId]
         val runId = props[SystemJob.runId]
-        val task = ClassLoader
-            .getSystemClassLoader()
-            .loadClass("tasks.${props[SystemJob.taskClassName]}")
-            .getConstructor(Long::class.java)
-            .newInstance(props[SystemJob.pipelineRunTaskId]) as SystemTask
-        when(val result = task.runTask()) {
+        when(val result = runTask(pipelineRunTaskId)) {
             is TaskResult.Success -> {
                 Database.runWithConnection {
                     PipelineRunTasks.update(

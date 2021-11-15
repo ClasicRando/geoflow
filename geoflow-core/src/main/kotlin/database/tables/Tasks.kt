@@ -1,16 +1,15 @@
 package database.tables
 
 import database.enums.TaskRunType
-import tasks.PipelineTask
-import tasks.SystemTask
 import tasks.UserTask
+import tasks.SystemTask
 
 /**
- * Table used to store generic tasks that link to a class name for execution in the worker application. Class name used
- * must be a subclass of [PipelineTask] to be runnable
+ * Table used to store generic tasks that link to a function ([SystemTask]) or a const value ([UserTask]) for execution
+ * in the worker application.
  *
  * Metadata stored describes the task intent, hints as to the workflow state the task is intended to work within, and
- * defines the type of run operation the task entails (Simple [UserTask] or complex [SystemTask])
+ * defines the type of run operation the task entails (as mentioned above).
  */
 object Tasks: DbTable("tasks") {
 
