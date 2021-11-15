@@ -10,7 +10,6 @@ import org.reflections.scanners.Scanners
 import org.reflections.util.ConfigurationBuilder
 import java.time.Instant
 import kotlin.reflect.KFunction
-import kotlin.reflect.KParameter
 import kotlin.reflect.full.callSuspend
 import kotlin.reflect.full.createType
 import kotlin.reflect.jvm.kotlinFunction
@@ -19,7 +18,7 @@ import kotlin.reflect.jvm.kotlinProperty
 val taskLogger = KotlinLogging.logger {}
 
 sealed interface TaskInfo {
-    data class SystemTaskInfo(val function: KFunction<*>, val parameters: List<KParameter>) : TaskInfo
+    data class SystemTaskInfo(val function: KFunction<*>) : TaskInfo
     object UserTaskInfo: TaskInfo
 }
 
@@ -29,28 +28,57 @@ val tasks by lazy {
     val config = ConfigurationBuilder()
         .forPackage("tasks")
         .setScanners(Scanners.MethodsAnnotated)
-    val systemTasks = Reflections(config)
+    val systemTasksList = Reflections(config)
         .getMethodsAnnotatedWith(SystemTask::class.java)
         .asSequence()
         .mapNotNull { it.kotlinFunction }
         .filter { it.returnType == nullableStringType || it.returnType == unitType }
-        .associate { function ->
-            val annotation = function.annotations.first { it.annotationClass.java == SystemTask::class.java } as SystemTask
+        .map { function ->
+            val annotation = function.annotations.first {
+                it.annotationClass.java == SystemTask::class.java
+            } as SystemTask
             @Suppress("UNCHECKED_CAST")
-            annotation.taskId to TaskInfo.SystemTaskInfo(function, function.parameters)
+            annotation.taskId to TaskInfo.SystemTaskInfo(function)
         }
+
+    val repeatSystemTasks = systemTasksList
+        .groupingBy { it.first }
+        .eachCount()
+        .filter { it.value > 1 }
+        .map { it.key }
+    if (repeatSystemTasks.isNotEmpty()) {
+        throw IllegalStateException("TaskIds must not repeat: ${repeatSystemTasks.joinToString()}")
+    }
+
     val longType = Long::class.createType()
     val config2 = ConfigurationBuilder()
         .forPackage("tasks")
         .setScanners(Scanners.FieldsAnnotated)
-    val userTasks = Reflections(config2)
+    val userTasksList = Reflections(config2)
         .getFieldsAnnotatedWith(UserTask::class.java)
         .asSequence()
         .mapNotNull { it.kotlinProperty }
         .filter { it.isConst && it.returnType == longType }
-        .associate { property ->
+        .map { property ->
             property.getter.call() as Long to TaskInfo.UserTaskInfo
         }
+
+    val repeatUserTasks = userTasksList
+        .groupingBy { it.first }
+        .eachCount()
+        .filter { it.value > 1 }
+        .map { it.key }
+    if (repeatUserTasks.isNotEmpty()) {
+        throw IllegalStateException("TaskIds must not repeat: ${repeatUserTasks.joinToString()}")
+    }
+
+    val systemTasks = systemTasksList.toMap()
+    val userTasks = userTasksList.toMap()
+    val intersectIds = userTasks.keys.intersect(systemTasks.keys)
+
+    if (intersectIds.isNotEmpty()) {
+        throw IllegalStateException("TaskIds must not repeat: ${intersectIds.joinToString()}")
+    }
     systemTasks + userTasks
 }
 
