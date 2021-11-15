@@ -120,7 +120,7 @@ object PipelineRunTasks: DbTable("pipeline_run_tasks"), ApiExposed, Triggers {
             name = taskName,
             description = taskDescription,
             state = taskState,
-            taskRunType = TaskRunType.valueOf(taskRunType),
+            taskRunType = taskRunType,
             taskClassName = taskClassName,
         )
 
