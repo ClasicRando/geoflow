@@ -19,7 +19,7 @@ import java.time.Instant
  *
  * Records contain metadata about the task, and it's run status/outcome.
  */
-object PipelineRunTasks: DbTable("pipeline_run_tasks"), ApiExposed {
+object PipelineRunTasks: DbTable("pipeline_run_tasks"), ApiExposed, Triggers {
 
     override val tableDisplayFields = mapOf(
         "task_status" to mapOf("name" to "Status", "formatter" to "statusFormatter"),
@@ -55,6 +55,34 @@ object PipelineRunTasks: DbTable("pipeline_run_tasks"), ApiExposed {
             OIDS = FALSE
         );
     """.trimIndent()
+
+    override val triggers: List<Trigger> = listOf(
+        Trigger(
+            trigger = """
+                CREATE TRIGGER record_event
+                    AFTER UPDATE OR INSERT OR DELETE
+                    ON public.pipeline_run_Tasks
+                    FOR EACH ROW
+                    EXECUTE FUNCTION public.pipeline_run_tasks_event();
+            """.trimIndent(),
+            triggerFunction = """
+                CREATE OR REPLACE FUNCTION public.pipeline_run_tasks_event()
+                    RETURNS trigger
+                    LANGUAGE 'plpgsql'
+                    COST 100
+                    VOLATILE NOT LEAKPROOF
+                AS ${'$'}BODY${'$'}
+                BEGIN
+                    PERFORM pg_notify(
+                      'pipelineruntasks',
+                      NEW.run_id::TEXT
+                    );
+                    RETURN NEW;
+                END;
+                ${'$'}BODY${'$'};
+            """.trimIndent()
+        )
+    )
 
     private val genericSql = """
         SELECT t1.pr_task_id, t1.run_id, t1.task_start, t1.task_completed, t1.task_id, t2.name, t2.description,
