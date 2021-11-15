@@ -22,7 +22,6 @@ val reflectionsVersion: String by project
 val coroutinesJdbc: String by project
 
 dependencies {
-    testImplementation(kotlin("test", "1.5.30"))
     testImplementation("org.junit.jupiter:junit-jupiter-api:$junitVersion")
     testImplementation("org.junit.jupiter:junit-jupiter-params:$junitVersion")
     testRuntimeOnly("org.junit.jupiter:junit-jupiter-engine:$junitVersion")
