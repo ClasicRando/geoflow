@@ -250,49 +250,42 @@ suspend fun Connection.loadFile(
  * @throws IllegalArgumentException various cases:
  * - [file] does not exist
  * - [file] provided is not a file
- * - [tableNames] is empty
+ * - [analyzers] is empty
  * - [LoaderType] cannot be found
  */
 suspend fun analyzeFile(
     file: File,
-    tableNames: List<String>,
-    subTableNames: List<String> = listOf(),
-    delimiter: Char = ',',
-    qualified: Boolean = true,
+    analyzers: List<AnalyzeInfo>,
 ): Flow<AnalyzeResult> {
     require(file.exists()) { "File cannot be found" }
     require(file.isFile) { "File object provided is not a file in the directory system" }
-    requireNotEmpty(tableNames) { "Table names cannot be empty" }
+    requireNotEmpty(analyzers) { "analyzers cannot be empty" }
     val loaderType = LoaderType.getLoaderTypeFromExtension(file.extension)
     return flow {
         when(loaderType) {
             LoaderType.Excel -> {
                 analyzeExcelFile(
                     excelFile = file,
-                    tableNames = tableNames,
-                    sheetNames = subTableNames,
+                    analyzers = analyzers,
                 )
             }
             LoaderType.Flat -> {
                 val result = analyzeFlatFile(
                     flatFile = file,
-                    tableName = tableNames.first(),
-                    delimiter = delimiter,
-                    qualified = qualified,
+                    analyzer = analyzers.first(),
                 )
                 emit(result)
             }
             LoaderType.MDB -> {
                 analyzeMdbFile(
                     mdbFile = file,
-                    tableNames = tableNames,
-                    mdbTableNames = subTableNames,
+                    analyzers = analyzers,
                 )
             }
             LoaderType.DBF -> {
                 val result = analyzeDbfFile(
                     dbfFile = file,
-                    tableName = tableNames.first(),
+                    analyzer = analyzers.first(),
                 )
                 emit(result)
             }
@@ -308,13 +301,11 @@ suspend fun analyzeFile(
  */
 private suspend fun analyzeFlatFile(
     flatFile: File,
-    tableName: String,
-    delimiter: Char,
-    qualified: Boolean
+    analyzer: AnalyzeInfo,
 ): AnalyzeResult {
     val parserSettings = CsvParserSettings().apply {
-        format.delimiter = delimiter
-        format.quote = if (qualified) '"' else '\u0000'
+        format.delimiter = analyzer.delimiter
+        format.quote = if (analyzer.qualified) '"' else '\u0000'
         format.quoteEscape = format.quote
     }
     return CsvParser(parserSettings).use(flatFile) { parser ->
@@ -323,7 +314,7 @@ private suspend fun analyzeFlatFile(
             .chunked(10000)
             .asFlow()
             .flowOn(Dispatchers.IO)
-            .map { recordChunk -> analyzeNonTypedRecords(tableName, header, recordChunk) }
+            .map { recordChunk -> analyzeNonTypedRecords(analyzer.tableName, header, recordChunk) }
             .reduce { acc, analyzeResult -> acc.merge(analyzeResult) }
     }
 }
@@ -406,14 +397,13 @@ private fun Sheet.excelSheetRecords(
 }
 
 /**
- * Extension function to analyze all the required sheets (as per [sheetNames]).
+ * Extension function to analyze all the required sheets (as per [analyzers]).
  *
  * Generates a chunked sequence of 10000 records per chunk to analyze and reduce to a single [AnalyzeResult].
  */
 private suspend fun FlowCollector<AnalyzeResult>.analyzeExcelFile(
     excelFile: File,
-    tableNames: List<String>,
-    sheetNames: List<String>,
+    analyzers: List<AnalyzeInfo>,
 ) {
     excelFile.inputStream().use { inputStream ->
         withContext(Dispatchers.IO) {
@@ -422,8 +412,9 @@ private suspend fun FlowCollector<AnalyzeResult>.analyzeExcelFile(
         }.use { workbook ->
             val formulaEvaluator = workbook.creationHelper.createFormulaEvaluator()
             val dataFormatter = DataFormatter()
-            (sheetNames zip tableNames).forEach { (sheetName, tableName) ->
-                val sheet: Sheet = workbook.getSheet(sheetName) ?: throw IllegalStateException("Could not find sheet")
+            for (info in analyzers) {
+                val sheet: Sheet = workbook.getSheet(info.subTable)
+                    ?: throw IllegalStateException("Could not find sheet")
                 val header = sheet.first().cellIterator().asSequence().map { cell ->
                     formatColumnName(cell.stringCellValue)
                 }.toList()
@@ -431,7 +422,7 @@ private suspend fun FlowCollector<AnalyzeResult>.analyzeExcelFile(
                     .chunked(10000)
                     .asFlow()
                     .flowOn(Dispatchers.IO)
-                    .map { recordChunk -> analyzeNonTypedRecords(tableName, header, recordChunk) }
+                    .map { recordChunk -> analyzeNonTypedRecords(info.tableName, header, recordChunk) }
                     .reduce { acc, analyzeResult -> acc.merge(analyzeResult) }
                 emit(analyzeResult)
             }
@@ -496,21 +487,18 @@ private fun ResultSet.resultRecords() = sequence {
 }
 
 /**
- * Extension function to analyze all the required sub tables (as per [mdbTableNames]).
+ * Extension function to analyze all the required sub tables (as per [analyzers]).
  *
  * Generates a chunked sequence of 10000 records per chunk to analyze and reduce to a single [AnalyzeResult].
  */
 private suspend fun FlowCollector<AnalyzeResult>.analyzeMdbFile(
     mdbFile: File,
-    tableNames: List<String>,
-    mdbTableNames: List<String>,
+    analyzers: List<AnalyzeInfo>,
 ) {
-    DriverManager .getConnection("jdbc:ucanaccess://${mdbFile.absolutePath}").use { connection ->
-        mdbTableNames.zip(tableNames).forEach { (mdbTableName, tableName) ->
-            connection
-                .prepareStatement("SELECT * FROM $mdbTableName")
-                .executeQuery()
-                .use { rs ->
+    DriverManager.getConnection("jdbc:ucanaccess://${mdbFile.absolutePath}").use { connection ->
+        for (info in analyzers) {
+            connection.prepareStatement("SELECT * FROM ${info.subTable}").use { statement ->
+                statement.executeQuery().use { rs ->
                     val headers = (1..rs.metaData.columnCount).map {
                         Pair(
                             formatColumnName(rs.metaData.getColumnName(it)),
@@ -521,10 +509,11 @@ private suspend fun FlowCollector<AnalyzeResult>.analyzeMdbFile(
                         .chunked(10000)
                         .asFlow()
                         .flowOn(Dispatchers.IO)
-                        .map { records -> analyzeRecords(tableName, headers, records) }
+                        .map { records -> analyzeRecords(info.tableName, headers, records) }
                         .reduce { acc, analyzeResult -> acc.merge(analyzeResult) }
                     emit(analyzeResult)
                 }
+            }
         }
     }
 }
@@ -605,14 +594,14 @@ private fun dbfFileRecords(dbfFile: File) = sequence {
  */
 private suspend fun analyzeDbfFile(
     dbfFile: File,
-    tableName: String,
+    analyzer: AnalyzeInfo,
 ): AnalyzeResult {
     val header = getDbfHeader(dbfFile)
     return dbfFileRecords(dbfFile)
         .chunked(10000)
         .asFlow()
         .flowOn(Dispatchers.IO)
-        .map { records -> analyzeRecords(tableName, header, records) }
+        .map { records -> analyzeRecords(analyzer.tableName, header, records) }
         .reduce { acc, analyzeResult -> acc.merge(analyzeResult) }
 }
 

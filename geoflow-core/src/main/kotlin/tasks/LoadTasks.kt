@@ -29,12 +29,9 @@ suspend fun analyzeFiles(connection: Connection, prTask: PipelineRunTasks.Pipeli
         val file = File(pipelineRun.runFilesLocation, fileInfo.fileName)
         analyzeFile(
             file = file,
-            tableNames = fileInfo.tableNames,
-            subTableNames = fileInfo.subTables,
-            delimiter = fileInfo.delimiter?.get(0) ?: defaultDelimiter,
-            qualified = fileInfo.qualified,
+            analyzers = fileInfo.analyzeInfo,
         ).buffer().flowOn(Dispatchers.IO).collect { analyzeResult ->
-            val stOid = fileInfo.stOids[fileInfo.tableNames.indexOf(analyzeResult.tableName)]
+            val stOid = fileInfo.analyzeInfo.first { it.tableName == analyzeResult.tableName }.stOid
             results[stOid] = analyzeResult
         }
     }
