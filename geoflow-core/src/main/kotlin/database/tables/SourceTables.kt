@@ -1,5 +1,6 @@
 package database.tables
 
+import data_loader.AnalyzeInfo
 import data_loader.AnalyzeResult
 import data_loader.LoadingInfo
 import data_loader.defaultDelimiter
@@ -225,54 +226,42 @@ object SourceTables: DbTable("source_tables"), ApiExposed {
         return stOid
     }
 
-    data class AnalyzeFiles(
-        val fileName: String,
-        val stOids: List<Long>,
-        val tableNames: List<String>,
-        val subTables: List<String>,
-        val delimiter: String?,
-        val qualified: Boolean,
-    )
+    data class AnalyzeFiles(val fileName: String, val analyzeInfo: List<AnalyzeInfo>)
 
     fun filesToAnalyze(connection: Connection, runId: Long): List<AnalyzeFiles> {
         return connection.prepareStatement("""
-            with t1 as (
-                SELECT file_name,
-                       array_agg(st_oid order by st_oid) st_oids,
-                       array_agg(table_name order by st_oid) table_names,
-                       array_agg(sub_table order by st_oid) sub_Tables,
-                       array_agg(delimiter order by st_oid) "delimiter",
-                       array_agg(qualified order by st_oid) qualified
-                FROM   $tableName
-                WHERE  run_id = ?
-                AND    "analyze"
-                GROUP BY file_name
-            )
-            select file_name, st_oids, table_names, sub_Tables, delimiter[1] "delimiter", qualified[1] qualified
-            from   t1
+            SELECT file_name,
+                   array_agg(st_oid order by st_oid) st_oids,
+                   array_agg(table_name order by st_oid) table_names,
+                   array_agg(sub_table order by st_oid) sub_Tables,
+                   array_agg(delimiter order by st_oid) "delimiter",
+                   array_agg(qualified order by st_oid) qualified
+            FROM   $tableName
+            WHERE  run_id = ?
+            AND    "analyze"
+            GROUP BY file_name
         """.trimIndent()).use { statement ->
             statement.setLong(1, runId)
             statement.executeQuery().use { rs ->
-                generateSequence {
-                    if (rs.next()) {
-                        AnalyzeFiles(
-                            rs.getString(1),
-                            (rs.getArray(2).array as Array<*>).mapNotNull {
-                                if (it is Long) it else null
-                            },
-                            (rs.getArray(3).array as Array<*>).mapNotNull {
-                                if (it is String) it else null
-                            },
-                            (rs.getArray(4).array as Array<*>).mapNotNull {
-                                if (it is String) it else null
-                            },
-                            rs.getString(5),
-                            rs.getBoolean(6),
-                        )
-                    } else {
-                        null
+                buildList {
+                    while (rs.next()) {
+                        val stOids = rs.getArray(2).getList<Long>()
+                        val tableNames = rs.getArray(3).getList<String>()
+                        val subTables = rs.getArray(4).getListWithNulls<String>()
+                        val delimiters = rs.getArray(5).getListWithNulls<String>()
+                        val qualified = rs.getArray(6).getList<Boolean>()
+                        val info = stOids.mapIndexed { i, stOid ->
+                            AnalyzeInfo(
+                                stOid = stOid,
+                                tableName = tableNames[i],
+                                subTable = subTables[i],
+                                delimiter = delimiters[i]?.get(i) ?: defaultDelimiter,
+                                qualified = qualified[i],
+                            )
+                        }
+                        add(AnalyzeFiles(fileName = rs.getString(1), analyzeInfo = info))
                     }
-                }.toList()
+                }
             }
         }
     }
@@ -329,10 +318,7 @@ object SourceTables: DbTable("source_tables"), ApiExposed {
         }
     }
 
-    data class LoadFiles(
-        val fileName: String,
-        val loaders: List<LoadingInfo>,
-    )
+    data class LoadFiles(val fileName: String, val loaders: List<LoadingInfo>)
 
     fun filesToLoad(connection: Connection, runId: Long): List<LoadFiles> {
         return connection.prepareStatement("""
@@ -362,43 +348,27 @@ object SourceTables: DbTable("source_tables"), ApiExposed {
         """.trimIndent()).use { statement ->
             statement.setLong(1, runId)
             statement.executeQuery().use { rs ->
-                generateSequence {
-                    if (rs.next()) {
-                        val stOids = (rs.getArray(2).array as Array<*>).mapNotNull {
-                            if (it is Long) it else null
+                buildList {
+                    while (rs.next()) {
+                        val stOids = rs.getArray(2).getList<Long>()
+                        val tableNames = rs.getArray(3).getList<String>()
+                        val subTables = rs.getArray(4).getListWithNulls<String>()
+                        val delimiters = rs.getArray(5).getListWithNulls<String>()
+                        val areQualified = rs.getArray(6).getList<Boolean>()
+                        val createStatements = rs.getArray(7).getList<String>()
+                        val info = stOids.mapIndexed { i, stOid ->
+                            LoadingInfo(
+                                stOid,
+                                tableName = tableNames[i],
+                                createStatement = createStatements[i],
+                                delimiter = delimiters[i]?.get(i) ?: defaultDelimiter,
+                                qualified = areQualified[i],
+                                subTable = subTables[i],
+                            )
                         }
-                        val tableNames = (rs.getArray(3).array as Array<*>).mapNotNull {
-                            if (it is String) it else null
-                        }
-                        val subTables = (rs.getArray(4).array as Array<*>).map {
-                            if (it is String?) it else null
-                        }
-                        val delimiters = (rs.getArray(5).array as Array<*>).map {
-                            if (it is String?) it else null
-                        }
-                        val areQualified = (rs.getArray(6).array as Array<*>).mapNotNull {
-                            if (it is Boolean) it else null
-                        }
-                        val createStatements = (rs.getArray(7).array as Array<*>).mapNotNull {
-                            if (it is String) it else null
-                        }
-                        LoadFiles(
-                            rs.getString(1),
-                            stOids.mapIndexed { i, stOid ->
-                                LoadingInfo(
-                                    stOid,
-                                    tableName = tableNames[i],
-                                    createStatement = createStatements[i],
-                                    delimiter = delimiters[i]?.getOrNull(i) ?: defaultDelimiter,
-                                    qualified = areQualified[i],
-                                    subTable = subTables[i],
-                                )
-                            }
-                        )
-                    } else {
-                        null
+                        add(LoadFiles(fileName = rs.getString(1), loaders = info))
                     }
-                }.toList()
+                }
             }
         }
     }
