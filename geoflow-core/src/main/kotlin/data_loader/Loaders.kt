@@ -8,6 +8,7 @@ import database.queryFirstOrNull
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.*
 import kotlinx.coroutines.withContext
+import mapToArray
 import mu.KotlinLogging
 import org.apache.poi.ss.usermodel.*
 import org.postgresql.copy.CopyManager
@@ -589,14 +590,8 @@ private fun getDbfHeader(dbfFile: File): List<Pair<String, String>> {
 private fun dbfFileRecords(dbfFile: File) = sequence {
     dbfFile.inputStream().use { inputStream ->
         DBFReader(inputStream).use { reader ->
-            generateSequence {
-                reader.nextRecord()
-            }.forEach { record ->
-                yield(
-                    record.map { value ->
-                        formatObject(value)
-                    }.toTypedArray()
-                )
+            for (record in generateSequence { reader.nextRecord() }) {
+                yield(record.mapToArray { value -> formatObject(value) })
             }
         }
     }

@@ -17,3 +17,9 @@ inline fun <T> requireNotEmpty(collection: Collection<T>, lazyMessage: () -> Any
         throw IllegalArgumentException(message.toString())
     }
 }
+
+inline fun <reified T, reified R> Array<T>.mapToArray(transform: (T) -> R): Array<R> {
+    return Array(this.size) { index ->
+        transform(this[index])
+    }
+}
