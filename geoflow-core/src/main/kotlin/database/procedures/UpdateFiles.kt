@@ -1,7 +1,7 @@
 package database.procedures
 
 import java.sql.Connection
-import kotlin.reflect.full.createType
+import kotlin.reflect.typeOf
 
 /**
  * Stored procedure that performs some standard maintenance of source_tables records.
@@ -15,7 +15,7 @@ import kotlin.reflect.full.createType
 object UpdateFiles: SqlProcedure(
     name = "update_files",
     parameterTypes = listOf(
-        Long::class.createType(),
+        typeOf<Long>(),
     ),
 ) {
 

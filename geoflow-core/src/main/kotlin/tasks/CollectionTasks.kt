@@ -298,13 +298,11 @@ fun validateSourceTables(connection: Connection, prTask: PipelineRunTasks.Pipeli
         statement.setObject(2, LoaderType.Excel.pgObject)
         statement.setObject(3, LoaderType.MDB.pgObject)
         statement.executeQuery().use { rs ->
-            generateSequence {
-                if (rs.next()) {
-                    rs.getString(1) to rs.getString(2)
-                } else {
-                    null
+            buildList {
+                while (rs.next()) {
+                    add(rs.getString(1) to rs.getString(2))
                 }
-            }.toList()
+            }
         }
     }
     if (issues.isNotEmpty()) {

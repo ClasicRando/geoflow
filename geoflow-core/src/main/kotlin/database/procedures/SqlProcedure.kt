@@ -4,6 +4,7 @@ import database.call
 import java.sql.Connection
 import kotlin.reflect.KType
 import kotlin.reflect.full.createType
+import kotlin.reflect.full.isSubtypeOf
 
 abstract class SqlProcedure(
     val name: String,
@@ -28,7 +29,7 @@ abstract class SqlProcedure(
             if (param == null) {
                 !pType.isMarkedNullable
             } else {
-                param::class.createType() != pType
+                param::class.createType().isSubtypeOf(pType)
             }
         }
         if (paramMismatch != null) {

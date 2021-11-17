@@ -7,14 +7,14 @@ import kotlinx.coroutines.runBlocking
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.TestInstance
 import java.sql.Connection
-import kotlin.reflect.full.createType
+import kotlin.reflect.typeOf
 import kotlin.test.assertFalse
 
 @TestInstance(TestInstance.Lifecycle.PER_CLASS)
 class TaskChecks {
 
-    private val connectionType = Connection::class.createType()
-    private val prTaskType = PipelineRunTasks.PipelineRunTask::class.createType()
+    private val connectionType = typeOf<Connection>()
+    private val prTaskType = typeOf<PipelineRunTasks.PipelineRunTask>()
 
     @Test
     fun checkTaskParameters() {

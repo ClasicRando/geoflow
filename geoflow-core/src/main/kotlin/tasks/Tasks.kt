@@ -11,9 +11,10 @@ import org.reflections.util.ConfigurationBuilder
 import java.time.Instant
 import kotlin.reflect.KFunction
 import kotlin.reflect.full.callSuspend
-import kotlin.reflect.full.createType
+import kotlin.reflect.full.withNullability
 import kotlin.reflect.jvm.kotlinFunction
 import kotlin.reflect.jvm.kotlinProperty
+import kotlin.reflect.typeOf
 
 val taskLogger = KotlinLogging.logger {}
 
@@ -23,8 +24,8 @@ sealed interface TaskInfo {
 }
 
 val tasks by lazy {
-    val nullableStringType = String::class.createType(nullable = true)
-    val unitType = Unit::class.createType()
+    val nullableStringType = typeOf<String>().withNullability(true)
+    val unitType = typeOf<Unit>()
     val config = ConfigurationBuilder()
         .forPackage("tasks")
         .setScanners(Scanners.MethodsAnnotated)
@@ -50,7 +51,7 @@ val tasks by lazy {
         throw IllegalStateException("TaskIds must not repeat: ${repeatSystemTasks.joinToString()}")
     }
 
-    val longType = Long::class.createType()
+    val longType = typeOf<Long>()
     val config2 = ConfigurationBuilder()
         .forPackage("tasks")
         .setScanners(Scanners.FieldsAnnotated)

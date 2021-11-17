@@ -6,9 +6,8 @@ import java.sql.Connection
 import java.sql.PreparedStatement
 import java.sql.ResultSet
 import java.sql.Timestamp
-import kotlin.reflect.full.companionObject
-import kotlin.reflect.full.createType
-import kotlin.reflect.full.hasAnnotation
+import kotlin.reflect.full.*
+import kotlin.reflect.typeOf
 
 inline fun <reified T> ResultSet.rowToClass(): T {
     require(!isClosed) { "ResultSet is closed" }
@@ -37,11 +36,12 @@ inline fun <reified T> ResultSet.rowToClass(): T {
     if (T::class.companionObject == null) {
         throw IllegalArgumentException("Type must have a companion object")
     }
-    val resultSetType = ResultSet::class.createType()
-    val genericType = T::class.createType()
+    val resultSetType = typeOf<ResultSet>()
+    val genericType = typeOf<T>()
     val companion = T::class.companionObject!!
     val function = companion.members.firstOrNull {
-        it.parameters.size == 2 && it.parameters[1].type == resultSetType && it.returnType == genericType
+        val checks = it.parameters.size == 2 && resultSetType.isSubtypeOf(it.parameters[1].type)
+        checks && genericType.isSubtypeOf(it.returnType.withNullability(genericType.isMarkedNullable))
     }
     if (function != null) {
         val instance = companion.objectInstance ?: companion.java.getDeclaredField("INSTANCE")
@@ -62,9 +62,11 @@ inline fun <reified T> Connection.submitQuery(
             statement.setObject(parameter.index + 1, parameter.value)
         }
         statement.executeQuery().use { rs ->
-            generateSequence {
-                if (rs.next()) rs.rowToClass<T>() else null
-            }.toList()
+            buildList {
+                while (rs.next()) {
+                    add(rs.rowToClass())
+                }
+            }
         }
     }
 }
@@ -176,9 +178,11 @@ fun <T> Connection.runReturningOrNull(
         }
         statement.execute()
         statement.resultSet.use { rs ->
-            generateSequence {
-                if (rs.next()) rs.getObject(1) as T else null
-            }.toList()
+            buildList {
+                while (rs.next()) {
+                    add(rs.getObject(1) as T)
+                }
+            }
         }
     }
 }
