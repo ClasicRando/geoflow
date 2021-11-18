@@ -8,9 +8,12 @@ import mu.KotlinLogging
 import org.reflections.Reflections
 import org.reflections.scanners.Scanners
 import org.reflections.util.ConfigurationBuilder
+import requireEmpty
+import requireState
 import java.time.Instant
 import kotlin.reflect.KFunction
 import kotlin.reflect.full.callSuspend
+import kotlin.reflect.full.isSubtypeOf
 import kotlin.reflect.full.withNullability
 import kotlin.reflect.jvm.kotlinFunction
 import kotlin.reflect.jvm.kotlinProperty
@@ -33,22 +36,19 @@ val tasks by lazy {
         .getMethodsAnnotatedWith(SystemTask::class.java)
         .asSequence()
         .mapNotNull { it.kotlinFunction }
-        .filter { it.returnType == nullableStringType || it.returnType == unitType }
-        .map { function ->
-            val annotation = function.annotations.first {
+    val systemTasks = buildMap {
+        for (systemTask in systemTasksList) {
+            val annotation = systemTask.annotations.first {
                 it.annotationClass.java == SystemTask::class.java
             } as SystemTask
-            @Suppress("UNCHECKED_CAST")
-            annotation.taskId to TaskInfo.SystemTaskInfo(function)
+            val returnsNullableString = systemTask.returnType.isSubtypeOf(nullableStringType)
+            val returnsUnit = systemTask.returnType.isSubtypeOf(unitType)
+            requireState(returnsNullableString || returnsUnit) {
+                "System task must return `String?` or `Unit`. Instead it returns ${systemTask.returnType}"
+            }
+            requireState(annotation.taskId !in this) { "TaskIds must not repeat: ${annotation.taskId}" }
+            set(annotation.taskId, TaskInfo.SystemTaskInfo(systemTask))
         }
-
-    val repeatSystemTasks = systemTasksList
-        .groupingBy { it.first }
-        .eachCount()
-        .filter { it.value > 1 }
-        .map { it.key }
-    if (repeatSystemTasks.isNotEmpty()) {
-        throw IllegalStateException("TaskIds must not repeat: ${repeatSystemTasks.joinToString()}")
     }
 
     val longType = typeOf<Long>()
@@ -59,27 +59,19 @@ val tasks by lazy {
         .getFieldsAnnotatedWith(UserTask::class.java)
         .asSequence()
         .mapNotNull { it.kotlinProperty }
-        .filter { it.isConst && it.returnType == longType }
-        .map { property ->
-            property.getter.call() as Long to TaskInfo.UserTaskInfo
+    val userTasks = buildMap {
+        for (userTask in userTasksList) {
+            requireState(userTask.isConst) { "User task property must be a const" }
+            requireState(userTask.returnType.isSubtypeOf(longType)) { "User task property must be of type `Long`" }
+            val taskId = userTask.getter.call() as Long
+            requireState(taskId !in this) { "TaskIds must not repeat: $taskId" }
+            set(taskId, TaskInfo.UserTaskInfo)
         }
-
-    val repeatUserTasks = userTasksList
-        .groupingBy { it.first }
-        .eachCount()
-        .filter { it.value > 1 }
-        .map { it.key }
-    if (repeatUserTasks.isNotEmpty()) {
-        throw IllegalStateException("TaskIds must not repeat: ${repeatUserTasks.joinToString()}")
     }
 
-    val systemTasks = systemTasksList.toMap()
-    val userTasks = userTasksList.toMap()
     val intersectIds = userTasks.keys.intersect(systemTasks.keys)
+    requireEmpty(intersectIds) { "TaskIds must not repeat: ${intersectIds.joinToString()}" }
 
-    if (intersectIds.isNotEmpty()) {
-        throw IllegalStateException("TaskIds must not repeat: ${intersectIds.joinToString()}")
-    }
     systemTasks + userTasks
 }
 
@@ -87,7 +79,7 @@ fun getTaskIdFromFunction(function: KFunction<*>): Long {
     require(function.annotations.any { it.annotationClass.java == SystemTask::class.java }) {
         "Function passed must annotated with @Task"
     }
-    return tasks.entries.first { (_, info) -> info is TaskInfo.SystemTaskInfo && info.function === function }.key
+    return tasks.entries.first { (_, info) -> info is TaskInfo.SystemTaskInfo && info.function == function }.key
 }
 
 suspend fun runTask(pipelineRunTaskId: Long): TaskResult {
