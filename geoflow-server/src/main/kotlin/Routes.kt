@@ -1,6 +1,5 @@
 import auth.UserSession
 import database.Database
-import database.enums.TaskRunType
 import database.enums.TaskStatus
 import database.tables.*
 import html.index
