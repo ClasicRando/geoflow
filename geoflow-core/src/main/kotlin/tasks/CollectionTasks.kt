@@ -84,6 +84,32 @@ fun buildPipelineRun(connection: Connection, prTask: PipelineRunTasks.PipelineRu
     }
 }
 
+private fun checkSourceFolder(
+    connection: Connection,
+    runId: Long,
+    folder: File,
+): Pair<List<File>, Map<String, String>> {
+    val fileNames = buildMap<String, Pair<String?,File?>> {
+        for (sourceFile in SourceTables.getRunSourceTables(connection, runId)) {
+            this[sourceFile.fileName] = Pair(sourceFile.collectType, null)
+        }
+        for (file in folder.walk().filter { it.isFile }) {
+            this[file.name] = if (file.name in this) {
+                this[file.name]!!.copy(second = file)
+            } else {
+                Pair(null, file)
+            }
+        }
+    }
+    val extra = fileNames
+        .filter { (_, pair) -> pair.first == null && pair.second != null }
+        .map { it.value.second!! }
+    val missing = fileNames
+        .filter { (_, pair) -> pair.first != null && pair.second == null }
+        .mapValues { it.value.first!! }
+    return extra to missing
+}
+
 /**
  * System task that scans the source folder to find any missing or extra files in the 'files' folder.
  *
@@ -115,74 +141,34 @@ fun scanSourceFolder(connection: Connection, prTask: PipelineRunTasks.PipelineRu
         prTask.task.taskId,
         prTask.pipelineRunTaskId
     )
-    val sourceFiles = SourceTables.getRunSourceTables(connection, prTask.runId)
-    val files = folder
-        .walk()
-        .filter { it.isFile }
-        .toList()
-    val missingFiles = sourceFiles.filter { sourceFile ->
-        !files.any { sourceFile.fileName == it.name }
-    }
-    val extraFiles = files.filter { file ->
-        !sourceFiles.any { file.name == it.fileName }
-    }
+    val (extraFiles, missingFiles) = checkSourceFolder(connection, prTask.runId, folder)
     if (missingFiles.isNotEmpty()) {
         if (hasScanned)
             error("Attempted to rescan after download but still missing files")
-        val downloadTaskId = missingFiles
-            .filter { it.collectType in downloadCollectNames }
-            .map { it.fileName }
-            .distinct()
-            .let { downloadFiles ->
-                if (downloadFiles.isNotEmpty()) {
-                    PipelineRunTasks.addTask(
-                        connection,
-                        prTask.pipelineRunTaskId,
-                        getTaskIdFromFunction(::downloadMissingFiles)
-                    )?.also { downloadTaskId ->
-                        PipelineRunTasks.update(
-                            connection,
-                            downloadTaskId,
-                            taskMessage = missingFiles.joinToString(
-                                separator = "','",
-                                prefix = "['",
-                                postfix = "']"
-                            ) {
-                                it.fileName
-                            }
-                        )
-                    }
-                } else {
-                    null
-                }
-            }
-        val collectFilesTaskId = missingFiles
-            .filter { it.collectType !in downloadCollectNames }
-            .map { it.fileName }
-            .distinct()
-            .let { collectFiles ->
-                if (collectFiles.isNotEmpty()) {
-                    PipelineRunTasks.addTask(
-                        connection,
-                        prTask.pipelineRunTaskId,
-                        collectMissingFiles
-                    )?.also { collectTaskId ->
-                        PipelineRunTasks.update(
-                            connection,
-                            collectTaskId,
-                            taskMessage = missingFiles.joinToString(
-                                separator = "','",
-                                prefix = "['",
-                                postfix = "']"
-                            ) {
-                                it.fileName
-                            }
-                        )
-                    }
-                } else {
-                    null
-                }
-            }
+        val downloadFiles = missingFiles
+            .filter { it.value in downloadCollectNames }
+            .keys
+        val downloadTaskId = if (downloadFiles.isNotEmpty()) {
+            PipelineRunTasks.addTask(
+                connection,
+                prTask.pipelineRunTaskId,
+                getTaskIdFromFunction(::downloadMissingFiles)
+            )
+        } else {
+            null
+        }
+        val collectFiles = missingFiles
+            .filter { it.value !in downloadCollectNames }
+            .keys
+        val collectFilesTaskId = if (collectFiles.isNotEmpty()) {
+            PipelineRunTasks.addTask(
+                connection,
+                prTask.pipelineRunTaskId,
+                collectMissingFiles
+            )
+        } else {
+            null
+        }
         if (downloadTaskId != null || collectFilesTaskId != null) {
             PipelineRunTasks.addTask(connection, prTask.pipelineRunTaskId, prTask.task.taskId)
         }
@@ -202,14 +188,14 @@ fun scanSourceFolder(connection: Connection, prTask: PipelineRunTasks.PipelineRu
  */
 @SystemTask(taskId = 4)
 suspend fun downloadMissingFiles(connection: Connection, prTask: PipelineRunTasks.PipelineRunTask) {
-    requireNotNull(prTask.taskMessage) { "Task message must contain missing filenames" }
     val pipelineRun = PipelineRuns.getRun(connection, prTask.runId) ?: throw Exception("Run cannot be null")
-    val outputFolder = pipelineRun.runFilesLocation
-    val filenames = prTask.taskMessage
-        .trim('[', ']')
-        .split("','")
-        .map { it.trim('\'') }
-        .toTypedArray()
+    val outputFolder = File(pipelineRun.runFilesLocation)
+    require(outputFolder.exists()) {
+        "Files location specified by data source does not exist or the system does not have access"
+    }
+    require(outputFolder.isDirectory) { "Files location specified by data source is not a directory" }
+    val (_, missingFiles) = checkSourceFolder(connection, prTask.runId, outputFolder)
+    val filenames = missingFiles.keys.toTypedArray()
     val sql = """
             SELECT DISTINCT url
             FROM   ${SourceTables.tableName}
