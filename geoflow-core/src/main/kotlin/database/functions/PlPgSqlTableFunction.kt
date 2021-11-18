@@ -44,7 +44,7 @@ abstract class PlPgSqlTableFunction(
             if (param == null) {
                 !pType.isMarkedNullable
             } else {
-                param::class.createType().isSubtypeOf(pType)
+                !param::class.createType().isSubtypeOf(pType)
             }
         }
         if (paramMismatch != null) {
