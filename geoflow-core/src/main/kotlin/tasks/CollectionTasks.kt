@@ -84,6 +84,13 @@ fun buildPipelineRun(connection: Connection, prTask: PipelineRunTasks.PipelineRu
     }
 }
 
+/**
+ * Returns a [Pair] of extra files (as [List] of [File]s) and missing filenames (as a [Map] of filename to collection
+ * type).
+ *
+ * Uses the [runId] to get the required files and the [folder] to get the provided files. Finds missing files and extra
+ * files by comparing the 2 collections and finding mutually exclusive entries on both sides.
+ */
 private fun checkSourceFolder(
     connection: Connection,
     runId: Long,
