@@ -44,7 +44,7 @@ object GetTasksOrdered : PlPgSqlTableFunction(
         return call(connection, runId, workflowState)
     }
 
-    override val functionCode = """
+    override val functionCode: String = """
         CREATE OR REPLACE FUNCTION public.get_tasks_ordered(
             p_run_id bigint,
 			workflow_operation text default null,
@@ -88,7 +88,7 @@ object GetTasksOrdered : PlPgSqlTableFunction(
         ${'$'}BODY${'$'};
     """.trimIndent()
 
-    override val innerFunctions = listOf(
+    override val innerFunctions: List<String> = listOf(
         """
             CREATE OR REPLACE FUNCTION public.get_task_children(
                 p_run_id bigint,

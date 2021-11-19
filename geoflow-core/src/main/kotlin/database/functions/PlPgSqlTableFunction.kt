@@ -14,6 +14,9 @@ import kotlin.reflect.full.isSubtypeOf
  *
  * The class also requires subclasses to provide the function create code and any inner functions called for rebuilding
  * the function in future databases
+ *
+ * @param name name of the stored table function
+ * @param parameterTypes types of the parameters provided to the stored table function
  */
 abstract class PlPgSqlTableFunction(
     val name: String,
