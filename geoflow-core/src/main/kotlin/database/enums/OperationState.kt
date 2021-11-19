@@ -8,11 +8,14 @@ import org.postgresql.util.PGobject
  * ('Ready', 'Active');
  */
 enum class OperationState {
+    /** Operation state of the [PipelineRun][database.tables.PipelineRuns] is ready to be picked up */
     Ready,
+    /** Operation state of the [PipelineRun][database.tables.PipelineRuns] is actively held by a user */
     Active,
     ;
 
-    val pgObject = PGobject().apply {
+    /** [PGobject] representation of the enum value */
+    val pgObject: PGobject = PGobject().apply {
         type = "operation_state"
         value = name
     }
