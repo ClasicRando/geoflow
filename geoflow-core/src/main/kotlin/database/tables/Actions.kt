@@ -19,19 +19,12 @@ import java.sql.Connection
  */
 object Actions : DbTable("actions"), ApiExposed, DefaultData {
 
-    /**
-     * Fields provided when this table is used in the server API to display in a bootstrap table.
-     *
-     * Each key to the outer map is the field name (or JSON key from the API response), and the inner map is properties
-     * of the field (as described here [column-options](https://bootstrap-table.com/docs/api/column-options/)) with the
-     * 'data-' prefix automatically added during table HTML creation
-     */
-    override val tableDisplayFields = mapOf(
+    override val tableDisplayFields: Map<String, Map<String, String>> = mapOf(
         "name" to mapOf("name" to "Action"),
         "description" to mapOf(),
     )
 
-    override val createStatement = """
+    override val createStatement: String = """
 		CREATE TABLE IF NOT EXISTS public.actions
         (
 			action_id bigint PRIMARY KEY NOT NULL GENERATED ALWAYS AS IDENTITY,
@@ -51,7 +44,12 @@ object Actions : DbTable("actions"), ApiExposed, DefaultData {
 
     override val defaultRecordsFileName: String = "actions.csv"
 
-    /** API response data class for JSON serialization */
+    /**
+     * API response data class for JSON serialization
+     * @param name action name
+     * @param description action description
+     * @param href endpoint that allows for an action to be performed
+     */
     @Serializable
     data class Record(val name: String, val description: String, val href: String)
 
@@ -65,6 +63,6 @@ object Actions : DbTable("actions"), ApiExposed, DefaultData {
             " WHERE $tableName.role in (${"?,".repeat(roles.size).trim(',')})"
         } else ""
         val sql = "SELECT $tableName.name, $tableName.description, $tableName.href FROM $tableName$whereClause"
-        return connection.submitQuery(sql = sql, *roles.minus("admin").toTypedArray())
+        return connection.submitQuery(sql = sql, parameters = roles.minus("admin"))
     }
 }
