@@ -72,9 +72,24 @@ fun Route.pipelineTasks() = route("/tasks/{runId}") {
 fun Route.users() = route("/users") {
     route("/create") {
         get {
+            require(call.sessions.get<UserSession>()!!.hasRole("admin")) {
+                UnauthorizedRouteAccessException(call.request.uri)
+            }
             call.respondHtml {
                 createUser()
             }
+        }
+        post {
+            require(call.sessions.get<UserSession>()!!.hasRole("admin")) {
+                UnauthorizedRouteAccessException(call.request.uri)
+            }
+            val parameters = call.receiveParameters().toMap()
+            Database.runWithConnection {
+                InternalUsers.createUser(it, parameters)
+            }?.let { userOid ->
+                call.application.environment.log.info("Created new user $userOid")
+            }
+            call.respondRedirect("/index")
         }
     }
 }
