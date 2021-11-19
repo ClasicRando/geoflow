@@ -19,7 +19,7 @@ object DeleteRunTaskChildren : SqlProcedure(
         super.call(connection, pipelineRunTaskId)
     }
 
-    override val code = """
+    override val code: String = """
         CREATE OR REPLACE PROCEDURE public.delete_run_task_children(
         	pr_task_id bigint)
         LANGUAGE 'sql'

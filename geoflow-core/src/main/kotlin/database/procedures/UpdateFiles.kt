@@ -24,7 +24,7 @@ object UpdateFiles : SqlProcedure(
         super.call(connection, pipelineRunTaskId)
     }
 
-    override val code = """
+    override val code: String = """
         CREATE OR REPLACE PROCEDURE public.update_files(
         	run_id bigint)
         LANGUAGE 'sql'
