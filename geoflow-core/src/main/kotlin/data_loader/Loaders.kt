@@ -4,7 +4,7 @@ import com.linuxense.javadbf.DBFReader
 import com.univocity.parsers.csv.CsvParser
 import com.univocity.parsers.csv.CsvParserSettings
 import database.enums.LoaderType
-import database.queryFirstOrNull
+import database.extensions.queryFirstOrNull
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.*
 import kotlinx.coroutines.withContext

@@ -1,6 +1,6 @@
 package database.functions
 
-import database.submitQuery
+import database.extensions.submitQuery
 import java.sql.Connection
 import kotlin.reflect.KType
 import kotlin.reflect.full.createType

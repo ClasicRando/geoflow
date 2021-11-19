@@ -27,7 +27,7 @@ import kotlin.reflect.typeOf
  * 5. E
  * 6. C
  */
-object GetTasksOrdered: PlPgSqlTableFunction(
+object GetTasksOrdered : PlPgSqlTableFunction(
     name = "get_tasks_ordered",
     parameterTypes = listOf(
         typeOf<Long>(),
@@ -105,7 +105,8 @@ object GetTasksOrdered: PlPgSqlTableFunction(
                 r record;
                 i record;
             begin
-                for r in (select distinct t1.pr_task_id, t1.parent_task_order, case when t2.task_id is not null then true else false end has_children
+                for r in (select distinct t1.pr_task_id, t1.parent_task_order,
+                                 case when t2.task_id is not null then true else false end has_children
                           from   pipeline_run_tasks t1
                           left join pipeline_run_tasks t2
                           on     t1.run_id = t2.run_id

@@ -23,7 +23,7 @@ val taskLogger = KotlinLogging.logger {}
 
 sealed interface TaskInfo {
     data class SystemTaskInfo(val function: KFunction<*>) : TaskInfo
-    object UserTaskInfo: TaskInfo
+    object UserTaskInfo : TaskInfo
 }
 
 val tasks by lazy {
@@ -105,11 +105,7 @@ suspend fun runTask(pipelineRunTaskId: Long): TaskResult {
                     } else {
                         taskInfo.function.call(connection, prTask)
                     }
-                    if (result is String?) {
-                        result
-                    } else {
-                        null
-                    }
+                    result as? String?
                 }
                 TaskRunType.User -> { null }
             }

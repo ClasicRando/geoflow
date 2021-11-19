@@ -3,7 +3,7 @@ package database.tables
 /**
  * Table used to store the province/state codes that can be used to define prov/state level [DataSources]
  */
-object Provs: DbTable("provs"), DefaultData {
+object Provs : DbTable("provs"), DefaultData {
 
     override val createStatement = """
         CREATE TABLE IF NOT EXISTS public.provs

@@ -3,7 +3,7 @@ package database.tables
 /**
  * Table has yet to be finalized and should not be used until then
  */
-object PlottingMethodTypes: DbTable("plotting_method_types") {
+object PlottingMethodTypes : DbTable("plotting_method_types") {
 
     override val createStatement = """
         CREATE TABLE IF NOT EXISTS public.plotting_method_types

@@ -4,9 +4,9 @@ import database.enums.TaskRunType
 import database.enums.TaskStatus
 import database.functions.GetTasksOrdered
 import database.procedures.DeleteRunTaskChildren
-import database.queryFirstOrNull
-import database.runReturningFirstOrNull
-import database.runUpdate
+import database.extensions.queryFirstOrNull
+import database.extensions.runReturningFirstOrNull
+import database.extensions.runUpdate
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 import java.sql.Connection
@@ -46,7 +46,8 @@ object PipelineRunTasks: DbTable("pipeline_run_tasks"), ApiExposed, Triggers {
             task_status task_status NOT NULL DEFAULT 'Waiting'::task_status,
             parent_task_id bigint NOT NULL DEFAULT 0,
             parent_task_order integer NOT NULL,
-            workflow_operation text COLLATE pg_catalog."default" NOT NULL REFERENCES public.workflow_operations (code) MATCH SIMPLE
+            workflow_operation text COLLATE pg_catalog."default" NOT NULL
+                REFERENCES public.workflow_operations (code) MATCH SIMPLE
                 ON UPDATE CASCADE
                 ON DELETE RESTRICT,
             task_stack_trace text COLLATE pg_catalog."default" CHECK (check_not_blank_or_empty(task_stack_trace))
@@ -316,7 +317,7 @@ object PipelineRunTasks: DbTable("pipeline_run_tasks"), ApiExposed, Triggers {
             TaskStatus.Running.pgObject,
         )
         require(running == null) { "Task currently scheduled/running (id = $running)" }
-        return getOrderedTasks(connection, runId).firstOrNull{
+        return getOrderedTasks(connection, runId).firstOrNull {
             it.taskStatus == TaskStatus.Waiting.name
         }?.let { record ->
             NextTask(
@@ -352,35 +353,35 @@ object PipelineRunTasks: DbTable("pipeline_run_tasks"), ApiExposed, Triggers {
     ) {
         val updates = mutableMapOf<String, Any?>()
         if (taskStatus !== NonUpdatedField) {
-            updates["task_status"] = if(taskStatus is TaskStatus) {
+            updates["task_status"] = if (taskStatus is TaskStatus) {
                 taskStatus.pgObject
             } else {
                 throw IllegalArgumentException("taskStatus must be a TaskStatus")
             }
         }
         if (taskStart !== NonUpdatedField) {
-            updates["task_start"] = when(taskStart) {
+            updates["task_start"] = when (taskStart) {
                 is Timestamp? -> taskStart
                 is Instant? -> taskStart?.let { Timestamp(it.toEpochMilli()) }
                 else -> throw IllegalArgumentException("taskStart must be an Instant or Timestamp")
             }
         }
         if (taskCompleted !== NonUpdatedField) {
-            updates["task_completed"] = when(taskCompleted) {
+            updates["task_completed"] = when (taskCompleted) {
                 is Timestamp? -> taskCompleted
                 is Instant? -> taskCompleted?.let { Timestamp(it.toEpochMilli()) }
                 else -> throw IllegalArgumentException("taskCompleted must be an Instant or Timestamp")
             }
         }
         if (taskMessage !== NonUpdatedField) {
-            updates["task_message"] = if(taskMessage is String?) {
+            updates["task_message"] = if (taskMessage is String?) {
                 taskMessage
             } else {
                 throw IllegalArgumentException("taskMessage must be a String")
             }
         }
         if (taskStackTrace !== NonUpdatedField) {
-            updates["task_stack_trace"] = if(taskStackTrace is String?) {
+            updates["task_stack_trace"] = if (taskStackTrace is String?) {
                 taskStackTrace
             } else {
                 throw IllegalArgumentException("taskStackTrace must be a String")

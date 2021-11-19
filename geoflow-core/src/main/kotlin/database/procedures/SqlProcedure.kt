@@ -1,6 +1,6 @@
 package database.procedures
 
-import database.call
+import database.extensions.call
 import java.sql.Connection
 import kotlin.reflect.KType
 import kotlin.reflect.full.createType

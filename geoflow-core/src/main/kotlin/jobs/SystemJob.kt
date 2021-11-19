@@ -11,7 +11,7 @@ import tasks.SystemTask
  *
  * No execution code is included here, but it can be found in Main.kt of the geoflow-worker module.
  */
-object SystemJob: Job("system-job") {
+object SystemJob : Job("system-job") {
     val runId = long("runId")
     val pipelineRunTaskId = long("pipelineRunTaskId")
     val taskClassName = string("taskClassName")

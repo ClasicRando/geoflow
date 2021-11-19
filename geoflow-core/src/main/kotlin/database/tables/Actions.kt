@@ -1,6 +1,6 @@
 package database.tables
 
-import database.submitQuery
+import database.extensions.submitQuery
 import kotlinx.serialization.Serializable
 import java.sql.Connection
 
@@ -17,7 +17,7 @@ import java.sql.Connection
  * form interface for the current user to create another user. These endpoints should include role validation so that a
  * user without the required role is given an error status page.
  */
-object Actions: DbTable("actions"), ApiExposed, DefaultData {
+object Actions : DbTable("actions"), ApiExposed, DefaultData {
 
     /**
      * Fields provided when this table is used in the server API to display in a bootstrap table.

@@ -1,6 +1,6 @@
 package auth
 
-import io.ktor.auth.*
+import io.ktor.auth.Principal
 import java.time.Instant
 
 /**
@@ -16,7 +16,7 @@ data class UserSession(
     val name: String,
     val roles: List<String>,
     val expiration: Long = Instant.now().plusSeconds(60L * 60).epochSecond,
-): Principal {
+) : Principal {
     val isExpired: Boolean
         get() = Instant.now().isAfter(Instant.ofEpochSecond(expiration))
     fun hasRole(role: String): Boolean = "admin" in roles || role in roles

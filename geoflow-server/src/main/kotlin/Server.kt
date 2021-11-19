@@ -5,15 +5,32 @@ import database.Database
 import database.tables.InternalUsers
 import html.errorPage
 import html.login
-import io.ktor.application.*
-import io.ktor.auth.*
-import io.ktor.features.*
-import io.ktor.html.*
-import io.ktor.response.*
-import io.ktor.routing.*
-import io.ktor.serialization.*
-import io.ktor.sessions.*
-import io.ktor.websocket.*
+import io.ktor.application.call
+import io.ktor.application.Application
+import io.ktor.application.install
+import io.ktor.application.log
+import io.ktor.auth.form
+import io.ktor.auth.session
+import io.ktor.auth.Authentication
+import io.ktor.auth.authenticate
+import io.ktor.auth.UserIdPrincipal
+import io.ktor.auth.principal
+import io.ktor.features.ContentNegotiation
+import io.ktor.features.StatusPages
+import io.ktor.features.MissingRequestParameterException
+import io.ktor.html.respondHtml
+import io.ktor.response.respondRedirect
+import io.ktor.routing.get
+import io.ktor.routing.post
+import io.ktor.routing.routing
+import io.ktor.serialization.json
+import io.ktor.sessions.Sessions
+import io.ktor.sessions.cookie
+import io.ktor.sessions.sessions
+import io.ktor.sessions.clear
+import io.ktor.sessions.set
+import io.ktor.sessions.SessionStorageMemory
+import io.ktor.websocket.WebSockets
 import it.justwrote.kjob.Mongo
 import it.justwrote.kjob.job.JobExecutionType
 import it.justwrote.kjob.kjob
@@ -27,7 +44,7 @@ val kjob = kjob(Mongo) {
     maxRetries = 0
     defaultJobExecutor = JobExecutionType.NON_BLOCKING
 
-    exceptionHandler = { t -> logger.error("Unhandled exception", t)}
+    exceptionHandler = { t -> logger.error("Unhandled exception", t) }
     keepAliveExecutionPeriodInSeconds = 60
     jobExecutionPeriodInSeconds = 1
     cleanupPeriodInSeconds = 300
@@ -99,9 +116,7 @@ fun Application.module() {
         json()
     }
     /** Install WebSockets for pub/sub pattern. */
-    install(WebSockets) {
-
-    }
+    install(WebSockets) { }
     /** Install exception handling to display standard status pages for defined exception and throwables. */
     install(StatusPages) {
         exception<MissingRequestParameterException> { cause ->
@@ -146,7 +161,7 @@ fun Application.module() {
                             userId = user.userOid,
                             username = username,
                             name = user.name,
-                            roles = user.roles//.mapNotNull { it },
+                            roles = user.roles
                         )
                     )
                     "/index"
@@ -162,7 +177,7 @@ fun Application.module() {
             call.respondHtml {
                 val message = call.request.queryParameters["message"] ?: ""
                 login(
-                    when(message) {
+                    when (message) {
                         "invalid" -> "Invalid username or password"
                         "lookup" -> "Lookup error for session creation"
                         "expired" -> "Session has expired"

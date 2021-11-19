@@ -1,7 +1,7 @@
 package html
 
 import database.tables.PipelineRuns
-import io.ktor.html.*
+import io.ktor.html.Template
 import kotlinx.html.HTML
 import kotlinx.html.script
 
@@ -22,7 +22,7 @@ object PipelineStatus {
         return BasePage.withContent {
             basicTable(
                 tableId,
-                dataUrl = "/api/pipeline-runs/${workflowCode}",
+                dataUrl = "/api/pipeline-runs/$workflowCode",
                 PipelineRuns.tableDisplayFields
             )
             basicModal(

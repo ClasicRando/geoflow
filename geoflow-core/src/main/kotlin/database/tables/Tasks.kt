@@ -1,7 +1,7 @@
 package database.tables
 
 import database.enums.TaskRunType
-import database.queryFirstOrNull
+import database.extensions.queryFirstOrNull
 import tasks.UserTask
 import tasks.SystemTask
 import java.sql.Connection
@@ -14,7 +14,7 @@ import java.sql.ResultSet
  * Metadata stored describes the task intent, hints as to the workflow state the task is intended to work within, and
  * defines the type of run operation the task entails (as mentioned above).
  */
-object Tasks: DbTable("tasks") {
+object Tasks : DbTable("tasks") {
 
     override val createStatement = """
         CREATE TABLE IF NOT EXISTS public.tasks

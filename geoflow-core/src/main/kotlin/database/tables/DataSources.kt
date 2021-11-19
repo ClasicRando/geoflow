@@ -11,7 +11,7 @@ package database.tables
  * --------------
  * - implement API requirements for users to perform CRUD operations on this table
  */
-object DataSources: DbTable("data_sources") {
+object DataSources : DbTable("data_sources") {
 
     override val createStatement = """
         CREATE TABLE IF NOT EXISTS public.data_sources

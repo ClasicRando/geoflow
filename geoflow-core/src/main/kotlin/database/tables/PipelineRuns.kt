@@ -2,9 +2,9 @@ package database.tables
 
 import database.enums.MergeType
 import database.enums.OperationState
-import database.queryFirstOrNull
-import database.runUpdate
-import database.submitQuery
+import database.extensions.queryFirstOrNull
+import database.extensions.runUpdate
+import database.extensions.submitQuery
 import formatLocalDateDefault
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
@@ -16,7 +16,7 @@ import java.sql.Date
 import java.sql.ResultSet
 import java.time.LocalDate
 
-object PipelineRuns: DbTable("pipeline_runs"), ApiExposed, Triggers {
+object PipelineRuns : DbTable("pipeline_runs"), ApiExposed, Triggers {
 
     override val tableDisplayFields = mapOf(
         "ds_id" to mapOf("name" to "Data Source ID"),
@@ -49,7 +49,8 @@ object PipelineRuns: DbTable("pipeline_runs"), ApiExposed, Triggers {
             qa_user_oid bigint REFERENCES public.internal_users (user_oid) MATCH SIMPLE
                 ON UPDATE CASCADE
                 ON DELETE SET NULL,
-            workflow_operation text COLLATE pg_catalog."default" NOT NULL REFERENCES public.workflow_operations (code) MATCH SIMPLE
+            workflow_operation text COLLATE pg_catalog."default" NOT NULL
+                REFERENCES public.workflow_operations (code) MATCH SIMPLE
                 ON UPDATE CASCADE
                 ON DELETE RESTRICT,
             operation_state operation_state NOT NULL,

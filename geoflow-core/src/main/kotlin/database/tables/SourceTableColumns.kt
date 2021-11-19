@@ -6,7 +6,7 @@ package database.tables
  * When a source file is analyzed the column metadata is inserted into this table to alert a user if the file has
  * changed in the columns provided or the character length of data.
  */
-object SourceTableColumns: DbTable("source_table_columns") {
+object SourceTableColumns : DbTable("source_table_columns") {
 
     override val createStatement = """
         CREATE TABLE IF NOT EXISTS public.source_table_columns

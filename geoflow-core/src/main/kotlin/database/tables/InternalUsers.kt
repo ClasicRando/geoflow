@@ -1,9 +1,9 @@
 package database.tables
 
 import at.favre.lib.crypto.bcrypt.BCrypt
-import database.getList
-import database.queryFirstOrNull
-import database.runReturningFirstOrNull
+import database.extensions.getList
+import database.extensions.queryFirstOrNull
+import database.extensions.runReturningFirstOrNull
 import requireNotEmpty
 import java.sql.Connection
 
@@ -13,7 +13,7 @@ import java.sql.Connection
  * General user definition with username, password (hashed) and roles provided to the user. This table is only used
  * during the user validation/login phase. After that point, the session contains the user information needed
  */
-object InternalUsers: DbTable("internal_users") {
+object InternalUsers : DbTable("internal_users") {
 
     override val createStatement = """
         CREATE TABLE IF NOT EXISTS public.internal_users
@@ -32,7 +32,7 @@ object InternalUsers: DbTable("internal_users") {
     /** Validation response as a sealed interface of success or failure (standard message) */
     sealed interface ValidationResponse {
         object Success : ValidationResponse
-        object Failure: ValidationResponse {
+        object Failure : ValidationResponse {
             const val ERROR_MESSAGE = "Incorrect username or password"
         }
     }

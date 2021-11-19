@@ -4,15 +4,21 @@ import data_loader.AnalyzeInfo
 import data_loader.AnalyzeResult
 import data_loader.LoadingInfo
 import data_loader.defaultDelimiter
-import database.*
 import database.enums.FileCollectType
 import database.enums.LoaderType
+import database.extensions.executeNoReturn
+import database.extensions.runReturningFirstOrNull
+import database.extensions.runUpdate
+import database.extensions.getListWithNulls
+import database.extensions.getList
+import database.extensions.useMultipleStatements
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 import java.sql.Connection
-import java.util.*
+import java.util.SortedMap
+import database.extensions.submitQuery
 
-object SourceTables: DbTable("source_tables"), ApiExposed {
+object SourceTables : DbTable("source_tables"), ApiExposed {
 
     override val tableDisplayFields = mapOf(
         "table_name" to mapOf("editable" to "true", "sortable" to "true"),
@@ -204,7 +210,6 @@ object SourceTables: DbTable("source_tables"), ApiExposed {
             ?: throw IllegalArgumentException("Error while trying to insert record. Null returned")
     }
 
-
     /**
      * Uses [params] map to delete a record from [SourceTables] as specified by the stOid and return the stOid
      *
@@ -295,7 +300,7 @@ object SourceTables: DbTable("source_tables"), ApiExposed {
                 for (column in analyzeResult.columns) {
                     val columnName = repeats[column.name]?.let { repeatCount ->
                         repeats[column.name] = repeatCount - 1
-                        "${column.name}_${repeatCount}"
+                        "${column.name}_$repeatCount"
                     } ?: column.name
                     columnStatement.setLong(1, stOid)
                     columnStatement.setString(2, columnName)

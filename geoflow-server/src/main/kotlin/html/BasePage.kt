@@ -1,6 +1,8 @@
 package html
 
-import io.ktor.html.*
+import io.ktor.html.Template
+import io.ktor.html.Placeholder
+import io.ktor.html.insert
 import kotlinx.html.*
 
 /**
@@ -14,7 +16,7 @@ class BasePage private constructor (
     val styles: Placeholder<STYLE> = Placeholder(),
     val content: Placeholder<FlowContent> = Placeholder(),
     val script: Placeholder<FlowContent> = Placeholder(),
-): Template<HTML> {
+) : Template<HTML> {
 
     /** Applies [block] to the [styles] Placeholder */
     fun withStyles(block: STYLE.() -> Unit): BasePage {
@@ -133,7 +135,6 @@ class BasePage private constructor (
             }
         }
     }
-    
     companion object {
         /** Creates a [BasePage] instance, applies [block] to the [styles] Placeholder and returns the instance */
         fun withStyles(block: STYLE.() -> Unit): BasePage {

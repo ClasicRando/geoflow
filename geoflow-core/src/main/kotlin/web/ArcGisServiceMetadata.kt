@@ -8,13 +8,10 @@ import io.ktor.client.engine.cio.*
 import io.ktor.client.features.json.*
 import io.ktor.client.features.json.serializer.*
 import io.ktor.client.request.*
-import io.ktor.client.statement.*
-import io.ktor.http.*
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.asFlow
 import kotlinx.coroutines.flow.map
 import kotlinx.serialization.ExperimentalSerializationApi
-import kotlinx.serialization.decodeFromString
 import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.*
 import mu.KotlinLogging
@@ -45,7 +42,7 @@ class ArcGisServiceMetadata private constructor(
     val incrementalOid: Boolean,
 ) {
     /** Scrape chunk size. Uses service max record count but caps that value to 10000 */
-    private val scrapeCount = maxRecordCount.takeIf { maxRecordCount <= 10000 } ?: 10000
+    private val scrapeCount = maxRecordCount.takeIf { maxRecordCount <= maxRecordScrape } ?: maxRecordScrape
     /** Number of queries required to scrape all features using the OID field */
     private val oidQueryCount = ceil((maxMinOid.first - maxMinOid.second + 1) / scrapeCount.toFloat()).toInt()
     /** Number of queries required to scape all features using pagination */
@@ -53,7 +50,7 @@ class ArcGisServiceMetadata private constructor(
     /** True if service is a table. No geometry type is specified in query url */
     private val isTable = serverType == "TABLE"
     /** Geometry specification portion of query url */
-    private val geoText = if (isTable) "" else "&geometryType=${geoType}&outSR=4269"
+    private val geoText = if (isTable) "" else "&geometryType=$geoType&outSR=4269"
     private val logger = KotlinLogging.logger {}
     /** Settings used to write temp csv files for each query. Specifies what headers are used */
     val csvSettings = CsvWriterSettings().apply {
@@ -80,7 +77,7 @@ class ArcGisServiceMetadata private constructor(
     private fun paginationQuery(queryNumber: Int): String {
         return """
             /query?where=1+%3D+1&resultOffset=${queryNumber * scrapeCount}
-            &resultRecordCount=${scrapeCount}${geoText}&outFields=*&f=json
+            &resultRecordCount=${scrapeCount}$geoText&outFields=*&f=json
         """.trimIndent().replace("\n", "")
     }
 
@@ -90,8 +87,8 @@ class ArcGisServiceMetadata private constructor(
      */
     private fun oidQuery(minOid: Int): String {
         return """
-            /query?where=${oidField}+>%3D+${minOid}+and+${oidField}+<%3D+${minOid + scrapeCount - 1}
-            ${geoText}&outFields=*&f=json
+            /query?where=$oidField+>%3D+$minOid+and+$oidField+<%3D+${minOid + scrapeCount - 1}
+            $geoText&outFields=*&f=json
         """.trimIndent().replace("\n", "")
     }
 
@@ -140,24 +137,23 @@ class ArcGisServiceMetadata private constructor(
         var tryNumber = 1
         var invalidResponse = true
         var jsonResponse = JsonObject(mapOf())
-        HttpClient(CIO).use { client ->
+        HttpClient(CIO) {
+            install(JsonFeature) {
+                serializer = KotlinxSerializer()
+            }
+        }.use { client ->
             while (invalidResponse) {
-                if (tryNumber > maxTries)
-                    throw IllegalArgumentException("Too many tries to fetch query. $url")
-                val response = client.get<HttpResponse>(url)
-                if (!response.status.isSuccess()) {
-                    tryNumber++
-                    delay(delayMilli)
-                    continue
+                if (tryNumber > maxTries) {
+                    error("Too many tries to fetch query. $url")
                 }
-                val json = Json.decodeFromString<JsonObject>(response.readText())
+                val json: JsonObject = client.get(url)
                 if ("features" !in json) {
                     if ("error" in json) {
                         tryNumber++
                         delay(delayMilli)
                         continue
                     } else {
-                        throw IllegalStateException("Response was not an error but no features found")
+                        error("Response was not an error but no features found")
                     }
                 } else {
                     invalidResponse = false
@@ -179,6 +175,7 @@ class ArcGisServiceMetadata private constructor(
     }
 
     companion object {
+        private const val maxRecordScrape = 10000
         private const val countQuery = "/query?where=1%3D1&returnCountOnly=true&f=json"
         private const val oidQuery = "/query?where=1%3D1&returnIdsOnly=true&f=json"
         private const val fieldQuery = "?f=json"
@@ -200,9 +197,8 @@ class ArcGisServiceMetadata private constructor(
          * Only method to obtain a class instance. Since the class requires data obtained from an HTTP request, the
          * class creation method has to be suspendable to avoid the class constructor blocking the current thread.
          */
-        @Throws(TypeCastException::class)
         suspend fun fromUrl(url: String): ArcGisServiceMetadata {
-            return HttpClient(CIO){
+            return HttpClient(CIO) {
                 install(JsonFeature) {
                     serializer = KotlinxSerializer()
                 }
@@ -227,7 +223,7 @@ class ArcGisServiceMetadata private constructor(
                     )
                 }
                 val geoType = json["geometryType"]?.jsonPrimitive?.content ?: ""
-                val geoFields = when(geoType) {
+                val geoFields = when (geoType) {
                     "esriGeometryPoint" -> listOf("X", "Y")
                     "esriGeometryMultipoint" -> listOf("POINTS")
                     "esriGeometryPolygon" -> listOf("RINGS")
@@ -237,8 +233,8 @@ class ArcGisServiceMetadata private constructor(
                     ?.mapNotNull { it.jsonObject } ?: listOf()
                 val fieldNames = fields
                     .filter {
-                        it["name"]?.jsonPrimitive?.content != "Shape"
-                                && it["type"]?.jsonPrimitive?.content != "esriFieldTypeGeometry"
+                        it["name"]?.jsonPrimitive?.content != "Shape" &&
+                                it["type"]?.jsonPrimitive?.content != "esriFieldTypeGeometry"
                     }
                     .mapNotNull { it["name"]?.jsonPrimitive?.content }
                     .plus(geoFields)

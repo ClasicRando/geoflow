@@ -1,13 +1,13 @@
 package database.tables
 
-import database.submitQuery
+import database.extensions.submitQuery
 import kotlinx.serialization.Serializable
 import java.sql.Connection
 
 /**
  * Table used to store the available roles that a user can hold
  */
-object Roles: DbTable("roles") {
+object Roles : DbTable("roles") {
 
     override val createStatement = """
         CREATE TABLE IF NOT EXISTS public.roles

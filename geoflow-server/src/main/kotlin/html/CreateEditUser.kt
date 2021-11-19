@@ -2,7 +2,7 @@ package html
 
 import database.Database
 import database.tables.Roles
-import io.ktor.html.*
+import io.ktor.html.Template
 import kotlinx.html.*
 
 /** Page for creating a new user and editing an existing user */

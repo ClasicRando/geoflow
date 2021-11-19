@@ -1,6 +1,6 @@
 package database.tables
 
-object FileTypes: DbTable("file_types"), DefaultData {
+object FileTypes : DbTable("file_types"), DefaultData {
 
     override val createStatement: String = """
         CREATE TABLE IF NOT EXISTS public.file_types

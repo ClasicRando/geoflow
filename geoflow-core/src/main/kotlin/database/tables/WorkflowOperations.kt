@@ -1,13 +1,13 @@
 package database.tables
 
-import database.submitQuery
+import database.extensions.submitQuery
 import kotlinx.serialization.Serializable
 import java.sql.Connection
 
 /**
  * Table used to store the types of workflow states used in generic data pipelines.
  */
-object WorkflowOperations: DbTable("workflow_operations"), DefaultData, ApiExposed {
+object WorkflowOperations : DbTable("workflow_operations"), DefaultData, ApiExposed {
 
     override val tableDisplayFields = mapOf(
         "name" to mapOf("name" to "Operation"),

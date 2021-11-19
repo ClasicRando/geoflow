@@ -1,6 +1,6 @@
 package html
 
-import io.ktor.html.*
+import io.ktor.html.Template
 import kotlinx.html.*
 
 /** Utility function to apply any HTML template */

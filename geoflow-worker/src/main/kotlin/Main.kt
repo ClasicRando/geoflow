@@ -66,10 +66,10 @@ fun startKjob(isMongo: Boolean): KJob {
  * task result is an [error][TaskResult.Error], the database record is updated with the message and stacktrace.
  */
 suspend fun JobContextWithProps<SystemJob>.executeSystemJob(kJob: KJob) {
-    try {
+    runCatching {
         val pipelineRunTaskId = props[SystemJob.pipelineRunTaskId]
         val runId = props[SystemJob.runId]
-        when(val result = runTask(pipelineRunTaskId)) {
+        when (val result = runTask(pipelineRunTaskId)) {
             is TaskResult.Success -> {
                 Database.runWithConnection {
                     PipelineRunTasks.update(
@@ -109,7 +109,7 @@ suspend fun JobContextWithProps<SystemJob>.executeSystemJob(kJob: KJob) {
                 }
             }
         }
-    } catch (t: Throwable) {
+    }.getOrElse { t ->
         withContext(NonCancellable) {
             val pipelineRunTaskId = props[SystemJob.pipelineRunTaskId]
             Database.runWithConnection {

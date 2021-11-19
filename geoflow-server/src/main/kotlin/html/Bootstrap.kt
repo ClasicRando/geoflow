@@ -4,7 +4,7 @@ import database.enums.FileCollectType
 import database.tables.SourceTables
 import kotlinx.html.*
 
-const val messageBoxId = "msgBox"
+const val MESSAGE_BOX_ID = "msgBox"
 
 /**
  * Creates a basic Bootstrap modal with an [id][modalId], [header text][headerText], [body message][bodyMessage] and
@@ -39,7 +39,7 @@ fun FlowContent.basicModal(modalId: String, headerText: String, bodyMessage: Str
                     }
                     button(classes = "btn btn-secondary") {
                         type = ButtonType.button
-                        onClick = "${okClickFunction}()"
+                        onClick = "$okClickFunction()"
                         +"OK"
                     }
                 }
@@ -88,7 +88,7 @@ fun FlowContent.dataDisplayModal(modalId: String, headerText: String) {
  */
 fun FlowContent.messageBoxModal() {
     div(classes = "modal fade") {
-        id = messageBoxId
+        id = MESSAGE_BOX_ID
         attributes["data-backdrop"] = "static"
         attributes["data-keyboard"] = "false"
         attributes["tabindex"] = "-1"
@@ -119,7 +119,7 @@ fun FlowContent.messageBoxModal() {
     script {
         addParamsAsJsGlobalVariables(
             mapOf(
-                "messageBoxId" to messageBoxId,
+                "messageBoxId" to MESSAGE_BOX_ID,
             )
         )
     }
@@ -171,9 +171,9 @@ fun FlowContent.confirmModal(confirmModalId: String, confirmMessage: String, res
     }
 }
 
-private const val sourceTableModalId = "sourceTableData"
-private const val sourceTablesTableId = "sourceTables"
-private const val deleteSourceTableConfirmId = "deleteSourceTable"
+private const val SOURCE_TABLES_MODAL_ID = "sourceTableData"
+private const val SOURCE_TABLES_TABLE_ID = "sourceTables"
+private const val DELETE_SOURCE_TABLE_CONFIRM_ID = "deleteSourceTable"
 
 /**
  * Creates a modal to show the source tables for a given pipeline run in a [basicTable]. This function also adds the
@@ -182,7 +182,7 @@ private const val deleteSourceTableConfirmId = "deleteSourceTable"
  */
 fun FlowContent.sourceTablesModal(runId: Long) {
     div(classes = "modal fade") {
-        id = sourceTableModalId
+        id = SOURCE_TABLES_MODAL_ID
         attributes["data-backdrop"] = "static"
         attributes["data-keyboard"] = "false"
         attributes["tabindex"] = "-1"
@@ -198,9 +198,9 @@ fun FlowContent.sourceTablesModal(runId: Long) {
                     }
                 }
                 div(classes = "modal-body") {
-                    id = "${sourceTableModalId}Body"
+                    id = "${SOURCE_TABLES_MODAL_ID}Body"
                     basicTable(
-                        sourceTablesTableId,
+                        SOURCE_TABLES_TABLE_ID,
                         "/api/source-tables/$runId",
                         SourceTables.tableDisplayFields,
                         tableButtons = listOf(
@@ -227,7 +227,7 @@ fun FlowContent.sourceTablesModal(runId: Long) {
         }
     }
     div(classes = "modal fade") {
-        id = "${sourceTableModalId}EditRow"
+        id = "${SOURCE_TABLES_MODAL_ID}EditRow"
         attributes["data-backdrop"] = "static"
         attributes["data-keyboard"] = "false"
         attributes["tabindex"] = "-1"
@@ -244,7 +244,7 @@ fun FlowContent.sourceTablesModal(runId: Long) {
                 div(classes = "modal-body") {
                     form {
                         action = ""
-                        id = "${sourceTableModalId}EditRowBody"
+                        id = "${SOURCE_TABLES_MODAL_ID}EditRowBody"
                         div(classes = "form-group row") {
                             div(classes = "col") {
                                 div(classes = "form-group") {
@@ -388,7 +388,7 @@ fun FlowContent.sourceTablesModal(runId: Long) {
         }
     }
     confirmModal(
-        deleteSourceTableConfirmId,
+        DELETE_SOURCE_TABLE_CONFIRM_ID,
         "Are you sure you want to delete this record?",
         "deleteSourceTable",
     )
