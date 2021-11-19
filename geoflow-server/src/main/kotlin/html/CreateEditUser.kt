@@ -38,6 +38,7 @@ object CreateEditUser {
                     }
                     select(classes = "custom-select") {
                         id = rolesSelect
+                        name = rolesSelect
                         multiple = true
                         for (role in Database.runWithConnectionBlocking { Roles.getRecords(it) }) {
                             if (role.name == "admin") {
@@ -53,6 +54,7 @@ object CreateEditUser {
                 div(classes = "form-group") {
                     checkBoxInput {
                         id = isAdmin
+                        name = isAdmin
                         checked = false
                     }
                     label {
@@ -92,6 +94,9 @@ object CreateEditUser {
                         name = "repeatPassword"
                         required = true
                     }
+                }
+                submitInput(classes = "btn btn-primary") {
+                    value = "Create"
                 }
             }
         }.withScript {
