@@ -1,5 +1,9 @@
 package database.tables
 
+import database.submitQuery
+import kotlinx.serialization.Serializable
+import java.sql.Connection
+
 /**
  * Table used to store the available roles that a user can hold
  */
@@ -15,4 +19,15 @@ object Roles: DbTable("roles") {
             OIDS = FALSE
         );
     """.trimIndent()
+
+    /** Data class to represent a single database record */
+    @Serializable
+    data class Role(val name: String, val description: String)
+
+    /**
+     * Returns a list of all roles currently available to users
+     */
+    fun getRecords(connection: Connection): List<Role> {
+        return connection.submitQuery("SELECT name, description FROM $tableName")
+    }
 }
