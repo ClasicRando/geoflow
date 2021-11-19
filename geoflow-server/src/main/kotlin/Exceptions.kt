@@ -1,4 +1,5 @@
-import kotlin.reflect.full.createType
+import kotlin.reflect.full.isSubtypeOf
+import kotlin.reflect.typeOf
 
 /** Exception thrown when a user requests a route that they are not authorized to access. */
 class UnauthorizedRouteAccessException(val route: String): Exception()
@@ -19,8 +20,9 @@ fun require(value: Boolean, throwable: () -> Throwable) {
 @JvmName("requireGeneric")
 inline fun <reified T: Throwable> require(value: Boolean, lazyMessage: () -> String) {
     if (!value) {
+        val type = typeOf<T>()
         val constructor = T::class.constructors
-            .firstOrNull { it.parameters.size == 1 && it.parameters[0].type == String::class.createType() }
+            .firstOrNull { it.parameters.size == 1 && type.isSubtypeOf(it.parameters[0].type) }
             ?: throw IllegalArgumentException("Defined Throwable does not have a single String parameter constructor")
         val message = lazyMessage()
         throw constructor.call(message)

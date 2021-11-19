@@ -22,7 +22,7 @@ import java.util.zip.ZipFile
 @Suppress("BlockingMethodInNonBlockingContext")
 suspend fun downloadFile(
     url: String,
-    outputPath: String,
+    outputPath: File,
     filename: String = url.substringAfterLast('/')
 ) {
     HttpClient(CIO).use { client ->
@@ -42,7 +42,7 @@ suspend fun downloadFile(
  * @throws IOException if an I/O error has occurred
  */
 @Suppress("BlockingMethodInNonBlockingContext")
-suspend fun downloadZip(url: String, outputPath: String): List<String> {
+suspend fun downloadZip(url: String, outputPath: File): List<String> {
     val resultFiles = mutableListOf<String>()
     HttpClient(CIO).use { client ->
         client.get<HttpStatement>(url).execute { response ->

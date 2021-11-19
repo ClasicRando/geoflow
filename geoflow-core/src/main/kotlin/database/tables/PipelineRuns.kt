@@ -254,8 +254,9 @@ object PipelineRuns: DbTable("pipeline_runs"), ApiExposed, Triggers {
             LEFT JOIN ${InternalUsers.tableName} t6
             ON     t1.qa_user_oid = t6.user_oid
             WHERE  COALESCE(t1.${state}_user_oid, ?) = ?
+            AND    workflow_operation = ?
         """.trimIndent()
-        return connection.submitQuery(sql = sql, userId, userId)
+        return connection.submitQuery(sql = sql, userId, userId, state)
     }
 
     /**

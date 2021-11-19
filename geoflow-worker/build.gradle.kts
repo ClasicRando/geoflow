@@ -8,7 +8,6 @@ val kjobVersion: String by project
 val coroutinesVersion: String by project
 val slf4Version: String by project
 val kotlinLoggingVersion: String by project
-val ktormVersion: String by project
 
 dependencies {
     implementation(project(":geoflow-core"))
@@ -28,8 +27,6 @@ dependencies {
     // https://mvnrepository.com/artifact/org.slf4j/slf4j-simple
     implementation("org.slf4j:slf4j-simple:$slf4Version")
     implementation("io.github.microutils:kotlin-logging-jvm:$kotlinLoggingVersion")
-    // https://mvnrepository.com/artifact/org.ktorm/ktorm-core
-    implementation("org.ktorm:ktorm-core:$ktormVersion")
 }
 
 tasks.test {

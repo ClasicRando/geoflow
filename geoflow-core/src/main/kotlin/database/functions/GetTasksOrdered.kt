@@ -1,7 +1,8 @@
 package database.functions
 
 import java.sql.Connection
-import kotlin.reflect.full.createType
+import kotlin.reflect.full.withNullability
+import kotlin.reflect.typeOf
 
 /**
  * Table Function to retrieve all tasks belonging to a pipeline run, ordered by relative parent child order.
@@ -29,8 +30,8 @@ import kotlin.reflect.full.createType
 object GetTasksOrdered: PlPgSqlTableFunction(
     name = "get_tasks_ordered",
     parameterTypes = listOf(
-        Long::class.createType(),
-        String::class.createType(nullable = true),
+        typeOf<Long>(),
+        typeOf<String>().withNullability(true),
     ),
 ) {
 

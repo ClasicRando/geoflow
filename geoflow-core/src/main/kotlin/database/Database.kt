@@ -8,12 +8,8 @@ import com.github.michaelbull.jdbc.transaction
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
-import kotlinx.serialization.ExperimentalSerializationApi
-import kotlinx.serialization.decodeFromString
-import kotlinx.serialization.json.Json
 import mu.KotlinLogging
 import org.apache.commons.dbcp2.BasicDataSource
-import java.io.File
 import java.sql.Connection
 import java.sql.SQLException
 import kotlin.coroutines.CoroutineContext
@@ -23,15 +19,11 @@ import kotlin.coroutines.CoroutineContext
  * that DataSource.
  */
 object Database {
-    @OptIn(ExperimentalSerializationApi::class)
     private val dataSource = BasicDataSource().apply {
-        val json = File(System.getProperty("user.dir"), "db_config.json").readText()
-        Json.decodeFromString<ConnectionProperties>(json).let { props ->
-            driverClassName = props.className
-            url = props.url
-            username = props.username
-            password = props.password
-        }
+        driverClassName = System.getenv("CLASSNAME")
+        url = System.getenv("URL")
+        username = System.getenv("DBUSER")
+        password = System.getenv("PASSWORD")
         defaultAutoCommit = true
     }
 

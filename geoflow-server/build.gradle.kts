@@ -6,7 +6,6 @@ plugins {
 version = "0.1"
 val kotlinVersion: String by project
 val kjobVersion: String by project
-val ktormVersion: String by project
 val ktorVersion: String by project
 val htmlJvmVersion: String by project
 val slf4Version: String by project
@@ -22,8 +21,6 @@ dependencies {
     implementation("it.justwrote:kjob-core:$kjobVersion")
     // https://mvnrepository.com/artifact/it.justwrote/kjob-mongo
     implementation("it.justwrote:kjob-mongo:$kjobVersion")
-    // https://mvnrepository.com/artifact/org.ktorm/ktorm-core
-    implementation("org.ktorm:ktorm-core:$ktormVersion")
     implementation("io.ktor:ktor-server-core:$ktorVersion")
     implementation("io.ktor:ktor-server-cio:$ktorVersion")
     implementation("io.ktor:ktor-html-builder:$ktorVersion")

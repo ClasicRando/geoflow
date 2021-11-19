@@ -4,6 +4,7 @@ import database.submitQuery
 import java.sql.Connection
 import kotlin.reflect.KType
 import kotlin.reflect.full.createType
+import kotlin.reflect.full.isSubtypeOf
 
 /**
  * Base implementation of plpgsql table functions.
@@ -43,7 +44,7 @@ abstract class PlPgSqlTableFunction(
             if (param == null) {
                 !pType.isMarkedNullable
             } else {
-                param::class.createType() != pType
+                !param::class.createType().isSubtypeOf(pType)
             }
         }
         if (paramMismatch != null) {

@@ -1,6 +1,5 @@
 import auth.UserSession
 import database.Database
-import database.enums.TaskRunType
 import database.enums.TaskStatus
 import database.tables.*
 import html.index
@@ -138,22 +137,13 @@ fun Route.api() = route("/api") {
             val pipelineRunTask = Database.runWithConnection {
                 PipelineRunTasks.getRecordForRun(it, user.username, runId)
             }
-            if (pipelineRunTask.taskRunType == TaskRunType.User) {
-                getUserPipelineTask(pipelineRunTask.pipelineRunTaskId, pipelineRunTask.taskClassName)
-                    .runTask()
-                mapOf("success" to "Completed ${pipelineRunTask.pipelineRunTaskId}")
-            } else {
-                Database.runWithConnection {
-                    PipelineRunTasks.setStatus(it, pipelineRunTask.pipelineRunTaskId, TaskStatus.Scheduled)
-                }
-                kjob.schedule(SystemJob) {
-                    props[it.pipelineRunTaskId] = pipelineRunTask.pipelineRunTaskId
-                    props[it.runId] = runId
-                    props[it.taskClassName] = pipelineRunTask.taskClassName
-                    props[it.runNext] = false
-                }
-                mapOf("success" to "Scheduled ${pipelineRunTask.pipelineRunTaskId}")
+            kjob.schedule(SystemJob) {
+                props[it.pipelineRunTaskId] = pipelineRunTask.pipelineRunTaskId
+                props[it.runId] = runId
+                props[it.taskClassName] = pipelineRunTask.taskClassName
+                props[it.runNext] = false
             }
+            mapOf("success" to "Scheduled ${pipelineRunTask.pipelineRunTaskId}")
         }.getOrElse { t ->
             call.application.environment.log.info("/api/run-task", t)
             mapOf("error" to t.message)
@@ -177,22 +167,16 @@ fun Route.api() = route("/api") {
             val pipelineRunTask = Database.runWithConnection {
                 PipelineRunTasks.getRecordForRun(it, user.username, runId)
             }
-            if (pipelineRunTask.taskRunType == TaskRunType.User) {
-                getUserPipelineTask(pipelineRunTask.pipelineRunTaskId, pipelineRunTask.taskClassName)
-                    .runTask()
-                mapOf("success" to "Completed ${pipelineRunTask.pipelineRunTaskId}")
-            } else {
-                Database.runWithConnection {
-                    PipelineRunTasks.setStatus(it, pipelineRunTask.pipelineRunTaskId, TaskStatus.Scheduled)
-                }
-                kjob.schedule(SystemJob) {
-                    props[it.pipelineRunTaskId] = pipelineRunTask.pipelineRunTaskId
-                    props[it.runId] = runId
-                    props[it.taskClassName] = pipelineRunTask.taskClassName
-                    props[it.runNext] = true
-                }
-                mapOf("success" to "Scheduled ${pipelineRunTask.pipelineRunTaskId}")
+            Database.runWithConnection {
+                PipelineRunTasks.setStatus(it, pipelineRunTask.pipelineRunTaskId, TaskStatus.Scheduled)
             }
+            kjob.schedule(SystemJob) {
+                props[it.pipelineRunTaskId] = pipelineRunTask.pipelineRunTaskId
+                props[it.runId] = runId
+                props[it.taskClassName] = pipelineRunTask.taskClassName
+                props[it.runNext] = true
+            }
+            mapOf("success" to "Scheduled ${pipelineRunTask.pipelineRunTaskId}")
         }.getOrElse { t ->
             call.application.environment.log.info("/api/run-all", t)
             mapOf("error" to t.message)

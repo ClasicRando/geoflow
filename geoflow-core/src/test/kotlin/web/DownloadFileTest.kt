@@ -11,11 +11,11 @@ import kotlin.test.assertTrue
 @TestInstance(TestInstance.Lifecycle.PER_CLASS)
 class DownloadFileTest {
 
-    private val outputPath = "${System.getProperty("user.dir")}/test-files"
+    private val outputPath = File("${System.getProperty("user.dir")}/test-files")
 
     @AfterAll
     fun clearDownloadsFolder() {
-        File(outputPath).walk().forEach { file ->
+        outputPath.walk().forEach { file ->
             file.delete()
         }
         println("Deleted All download files")
