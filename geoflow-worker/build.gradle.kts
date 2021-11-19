@@ -11,7 +11,7 @@ val kotlinLoggingVersion: String by project
 
 dependencies {
     implementation(project(":geoflow-core"))
-    testImplementation(kotlin("test", "1.5.30"))
+    testImplementation(kotlin("test"))
     // https://mvnrepository.com/artifact/org.jetbrains.kotlin/kotlin-reflect
     implementation("org.jetbrains.kotlin:kotlin-reflect:$kotlinVersion")
     // https://mvnrepository.com/artifact/it.justwrote/kjob-core
