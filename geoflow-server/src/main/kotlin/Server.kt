@@ -131,6 +131,7 @@ fun Application.module() {
             pipelineStatus()
             pipelineTasks()
             sockets()
+            users()
         }
         /** Require form authentication while posting to '/login' end point. Collections username and creates session */
         authenticate("auth-form") {

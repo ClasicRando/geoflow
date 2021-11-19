@@ -2,6 +2,7 @@ import auth.UserSession
 import database.Database
 import database.enums.TaskStatus
 import database.tables.*
+import html.createUser
 import html.index
 import html.pipelineStatus
 import html.pipelineTasks
@@ -64,6 +65,16 @@ fun Route.pipelineTasks() = route("/tasks/{runId}") {
     get {
         call.respondHtml {
             pipelineTasks(call.parameters.getOrFail("runId").toLong())
+        }
+    }
+}
+
+fun Route.users() = route("/users") {
+    route("/create") {
+        get {
+            call.respondHtml {
+                createUser()
+            }
         }
     }
 }
@@ -136,6 +147,9 @@ fun Route.api() = route("/api") {
         val response = runCatching {
             val pipelineRunTask = Database.runWithConnection {
                 PipelineRunTasks.getRecordForRun(it, user.username, runId)
+            }
+            Database.runWithConnection {
+                PipelineRunTasks.setStatus(it, pipelineRunTask.pipelineRunTaskId, TaskStatus.Scheduled)
             }
             kjob.schedule(SystemJob) {
                 props[it.pipelineRunTaskId] = pipelineRunTask.pipelineRunTaskId
