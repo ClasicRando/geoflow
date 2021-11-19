@@ -1,3 +1,4 @@
+@file:Suppress("TooManyFunctions")
 package database.extensions
 
 import java.sql.Connection
@@ -166,6 +167,23 @@ fun Connection.runUpdate(
 }
 
 /**
+ * Shorthand for running an update [sql] command using the provided [parameters]. Returns the update affected count
+ *
+ * @throws java.sql.SQLException if the statement preparation or execution throw an exception
+ */
+fun Connection.runUpdate(
+    sql: String,
+    parameters: Collection<Any?>,
+): Int {
+    return prepareStatement(sql).use { statement ->
+        for (parameter in parameters.withIndex()) {
+            statement.setObject(parameter.index + 1, parameter.value)
+        }
+        statement.executeUpdate()
+    }
+}
+
+/**
  * Shorthand for running DML statements that do not return any counts (ie INSERT or DELETE). Uses the [sql] command
  * and [parameters] to execute the statement
  *
@@ -221,6 +239,31 @@ inline fun <reified T> Connection.runReturning(
 inline fun <reified T> Connection.runReturningFirstOrNull(
     sql: String,
     vararg parameters: Any?,
+): T? {
+    return prepareStatement(sql).use { statement ->
+        for (parameter in parameters.withIndex()) {
+            statement.setObject(parameter.index + 1, parameter.value)
+        }
+        statement.execute()
+        statement.resultSet.useFirstOrNull { rs ->
+            rs.rowToClass()
+        }
+    }
+}
+
+/**
+ * Returns an instance of type [T] as the first result of the RETURNING DML [sql] command provided. If the
+ * [ResultSet][java.sql.ResultSet] is null or empty, null is returned.
+ *
+ * @throws java.sql.SQLException if the statement preparation or execution throw an exception
+ * @throws IllegalStateException see [rowToClass]
+ * @throws IllegalArgumentException see [rowToClass]
+ * @throws TypeCastException see [rowToClass]
+ */
+@Suppress("UNCHECKED_CAST")
+inline fun <reified T> Connection.runReturningFirstOrNull(
+    sql: String,
+    parameters: Collection<Any?>,
 ): T? {
     return prepareStatement(sql).use { statement ->
         for (parameter in parameters.withIndex()) {
