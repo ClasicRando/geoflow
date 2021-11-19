@@ -33,6 +33,8 @@ interface ApiExposed {
 
 /**
  * Data Class to hold the trigger create statement and trigger function create statement
+ * @param trigger create statement of trigger
+ * @param triggerFunction function create statement that is called by the trigger
  */
 data class Trigger(val trigger: String, val triggerFunction: String)
 
