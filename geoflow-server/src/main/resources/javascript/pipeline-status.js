@@ -14,4 +14,6 @@ function handleRowClick(row) {
         redirect(`/tasks/${row.run_id}`);
     }
 }
-$(`#${tableId}`).on('click-row.bs.table', (e, row, element, field) => { handleRowClick(row) });
+$(document).ready(function() {
+    $(`#${tableId}`).on('click-row.bs.table', (e, row, element, field) => { handleRowClick(row) });
+});

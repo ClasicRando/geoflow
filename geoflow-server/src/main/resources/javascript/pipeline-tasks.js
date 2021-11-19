@@ -1,4 +1,7 @@
-let tasksSubscriber = subscriberTables[taskTableId];
+let tasksSubscriber;
+$(document).ready(function() {
+    tasksSubscriber = subscriberTables[taskTableId];
+});
 
 function getRunId() {
     return window.location.href.match(/(?<=\/)[^/]+$/g)[0]||'';
