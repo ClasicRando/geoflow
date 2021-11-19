@@ -4,7 +4,8 @@ import java.sql.Connection
 import java.sql.PreparedStatement
 
 /**
- * Returns a list of type [T] as a result of the [sql] query with statement [parameters] applied.
+ * Returns a list of type [T] as a result of the [sql] query with statement [parameters] applied. Parameters are
+ * provided as vararg parameters of [Any] type including null.
  *
  * Executes the statement built using the [sql] query and [parameters], using the [ResultSet][java.sql.ResultSet] to
  * collection rows using the provided generic type [T]. A list is built using each [ResultSet][java.sql.ResultSet] row
@@ -18,6 +19,33 @@ import java.sql.PreparedStatement
 inline fun <reified T> Connection.submitQuery(
     sql: String,
     vararg parameters: Any?,
+): List<T> {
+    return prepareStatement(sql).use { statement ->
+        for (parameter in parameters.withIndex()) {
+            statement.setObject(parameter.index + 1, parameter.value)
+        }
+        statement.executeQuery().use { rs ->
+            rs.collectRows()
+        }
+    }
+}
+
+/**
+ * Returns a list of type [T] as a result of the [sql] query with statement [parameters] applied. Parameters are
+ * provided as a defined [List] of [Any] type including null.
+ *
+ * Executes the statement built using the [sql] query and [parameters], using the [ResultSet][java.sql.ResultSet] to
+ * collection rows using the provided generic type [T]. A list is built using each [ResultSet][java.sql.ResultSet] row
+ * using [T] to infer the extraction methods from the row. See [rowToClass] for more details on row extraction.
+ *
+ * @throws java.sql.SQLException if the statement preparation or execution throw an exception
+ * @throws IllegalStateException see [rowToClass]
+ * @throws IllegalArgumentException see [rowToClass]
+ * @throws TypeCastException see [rowToClass]
+ */
+inline fun <reified T> Connection.submitQuery(
+    sql: String,
+    parameters: Collection<Any?>,
 ): List<T> {
     return prepareStatement(sql).use { statement ->
         for (parameter in parameters.withIndex()) {
