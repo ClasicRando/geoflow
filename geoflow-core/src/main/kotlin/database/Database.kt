@@ -41,6 +41,10 @@ object Database {
         }
     }
 
+    fun <T> runWithConnectionBlocking(func: (Connection) -> T): T {
+        return dataSource.connection.use(func)
+    }
+
     suspend inline fun <reified T> runWithConnection(crossinline func: (Connection) -> T): T {
         return withContext(scope.coroutineContext) {
             useConnection {
