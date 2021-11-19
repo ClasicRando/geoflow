@@ -1,7 +1,10 @@
 package database.tables
 
 import at.favre.lib.crypto.bcrypt.BCrypt
+import database.getList
 import database.queryFirstOrNull
+import database.runReturningFirstOrNull
+import requireNotEmpty
 import java.sql.Connection
 
 /**
@@ -47,6 +50,8 @@ object InternalUsers: DbTable("internal_users") {
      *
      * If the user cannot be found or the password is incorrect, the [Failure][ValidationResponse.Failure] object is
      * returned. Otherwise, [Success][ValidationResponse.Success] is returned
+     *
+     * @throws [java.sql.SQLException] when the connection throws an error
      */
     fun validateUser(connection: Connection, username: String, password: String): ValidationResponse {
         val sql = "SELECT password FROM $tableName WHERE username = ?"
@@ -63,6 +68,7 @@ object InternalUsers: DbTable("internal_users") {
      * Returns the [InternalUser] entity if the username can be found.
      *
      * @throws IllegalArgumentException when the query returns an empty result
+     * @throws [java.sql.SQLException] when the connection throws an error
      */
     fun getUser(connection: Connection, username: String): InternalUser {
         return connection.prepareStatement(
@@ -76,14 +82,44 @@ object InternalUsers: DbTable("internal_users") {
                         rs.getString(2),
                         rs.getString(3),
                         rs.getString(4),
-                        (rs.getArray(5).array as Array<*>).mapNotNull {
-                            if (it is String) it else null
-                        }
+                        rs.getArray(5).getList(),
                     )
                 } else {
                     null
                 }
             }
         } ?: throw IllegalArgumentException("User cannot be found")
+    }
+
+    /**
+     * Attempts to create a new user from the provided [params], returning the new user_oid if successful
+     *
+     * @throws IllegalArgumentException when various requirements are not met, such as
+     * - [params] does not contain fullName, username, roles or password
+     * - fullName, username or password lists do not contain exactly 1 element
+     * - roles is empty
+     * @throws [java.sql.SQLException] when the connection throws an error
+     */
+    fun createUser(connection: Connection, params: Map<String, List<String>>): Long? {
+        val fullName = params["fullName"] ?: throw IllegalArgumentException("New user must have a name provided")
+        val username = params["username"] ?: throw IllegalArgumentException("New user must have a username provided")
+        val roles = params["roles"] ?: throw IllegalArgumentException("New user must have roles provided")
+        val password = params["password"] ?: throw IllegalArgumentException("New user must have a password provided")
+        require(fullName.size == 1) { "New user must have a single name provided" }
+        require(username.size == 1) { "New user must have a single username provided" }
+        requireNotEmpty(roles) { "New user must have 1 or more role" }
+        require(password.size == 1) { "New user must have a single password provided" }
+        val sql = """
+            INSERT INTO $tableName(name,username,password,roles)
+            VALUES(?,?,crypt(?,gen_salt('bf')),ARRAY[${"?,".repeat(roles.size).trim(',')}])
+            RETURNING user_oid
+        """.trimIndent()
+        return connection.runReturningFirstOrNull<Long>(
+            sql = sql,
+            fullName[0],
+            username[0],
+            password[0],
+            *roles.toTypedArray(),
+        )
     }
 }
