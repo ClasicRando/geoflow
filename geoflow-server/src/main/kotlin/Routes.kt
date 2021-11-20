@@ -261,7 +261,7 @@ fun Route.api() = route("/api") {
         /** Updates a source table record (specified by the stOid) with the provided parameters */
         patch {
             val user = call.sessions.get<UserSession>()!!
-            val params = call.request.queryParameters.names().associateWith { call.request.queryParameters[it] }
+            val params = call.request.queryParameters.names().associateWith { call.request.queryParameters[it]!! }
             val response = runCatching {
                 val (stOid, updateCount) = Database.runWithConnection {
                     SourceTables.updateSourceTable(it, user.username, params)
@@ -277,7 +277,7 @@ fun Route.api() = route("/api") {
         /** Creates a new source table record with the provided parameters */
         post {
             val user = call.sessions.get<UserSession>()!!
-            val params = call.request.queryParameters.names().associateWith { call.request.queryParameters[it] }
+            val params = call.request.queryParameters.names().associateWith { call.request.queryParameters[it]!! }
             val response = runCatching {
                 val stOid = Database.runWithConnection {
                     SourceTables.insertSourceTable(it, user.username, params)

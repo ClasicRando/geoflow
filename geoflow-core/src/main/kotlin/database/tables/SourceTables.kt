@@ -17,10 +17,14 @@ import kotlinx.serialization.Serializable
 import java.sql.Connection
 import java.util.SortedMap
 import database.extensions.submitQuery
+import java.sql.ResultSet
 
+/**
+ * Table used to store the source table and file information used for all pipeline runs. Parent to [SourceTableColumns]
+ */
 object SourceTables : DbTable("source_tables"), ApiExposed {
 
-    override val tableDisplayFields = mapOf(
+    override val tableDisplayFields: Map<String, Map<String, String>> = mapOf(
         "table_name" to mapOf("editable" to "true", "sortable" to "true"),
         "file_id" to mapOf("name" to "File ID", "editable" to "true", "sortable" to "true"),
         "file_name" to mapOf("editable" to "true", "sortable" to "true"),
@@ -38,7 +42,8 @@ object SourceTables : DbTable("source_tables"), ApiExposed {
         "action" to mapOf("formatter" to "actionFormatter"),
     )
 
-    override val createStatement = """
+    @Suppress("MaxLineLength")
+    override val createStatement: String = """
         CREATE TABLE IF NOT EXISTS public.source_tables
         (
             st_oid bigint PRIMARY KEY GENERATED ALWAYS AS IDENTITY,
@@ -71,34 +76,49 @@ object SourceTables : DbTable("source_tables"), ApiExposed {
     /** API response data class for JSON serialization */
     @Serializable
     data class Record(
+        /** unique ID of the pipeline run */
         @SerialName("st_oid")
         val stOid: Long,
+        /** database table name the file (and sub table if needed) */
         @SerialName("table_name")
         val tableName: String,
+        /** filed id of the source table. Used as a runId specific code */
         @SerialName("file_id")
         val fileId: String,
+        /** source filename for the source table */
         @SerialName("file_name")
         val fileName: String,
+        /** if the file has sub tables (ie mdb or excel), the name if used to collect the right data */
         @SerialName("sub_table")
         val subTable: String?,
+        /** classification of the loader type for the file. Name of the enum value */
         @SerialName("loader_type")
         val loaderType: String,
+        /** delimiter of the data, if required */
         @SerialName("delimiter")
         val delimiter: String?,
+        /** flag denoting if the data is qualified, if required */
         @SerialName("qualified")
         val qualified: Boolean,
+        /** encoding of the file */
         @SerialName("encoding")
         val encoding: String,
+        /** url to obtain the data */
         @SerialName("url")
         val url: String?,
+        /** comments about the source table */
         @SerialName("comments")
         val comments: String?,
+        /** scanned record count of the source table */
         @SerialName("record_count")
         val recordCount: Int,
+        /** collection method to obtain the file. Name of the enum value */
         @SerialName("collect_type")
         val collectType: String,
+        /** flag denoting if the source table has been analyzed */
         @SerialName("analyze")
         val analyze: Boolean,
+        /** flag denoting if the source table has been loaded */
         @SerialName("load")
         val load: Boolean,
     )
@@ -117,42 +137,43 @@ object SourceTables : DbTable("source_tables"), ApiExposed {
         return connection.submitQuery(sql = sql, runId)
     }
 
-    private fun getStatementArguments(map: Map<String, String?>): SortedMap<String, Any?> {
-        return sequence<Pair<String, Any?>> {
+    /**
+     * Builds a [SortedMap] to provide ordered key value pairs for record updating/inserting
+     */
+    @Suppress("ComplexMethod")
+    private fun getStatementArguments(map: Map<String, String>): SortedMap<String, Any?> {
+        return buildMap {
             for ((key, value) in map.entries) {
                 when (key){
                     "table_name" -> {
-                        val tableName = value ?: throw IllegalArgumentException("Table name cannot be null")
-                        yield(key to tableName)
+                        set(key, value)
                     }
                     "file_id" -> {
-                        val fileId = value ?: throw IllegalArgumentException("File ID cannot be null")
-                        yield(key to fileId)
+                        set(key, value)
                     }
                     "file_name" -> {
-                        val fileName = value ?: throw IllegalArgumentException("Filename cannot be null")
-                        val loaderType = LoaderType.getLoaderType(fileName)
+                        val loaderType = LoaderType.getLoaderType(value)
                         if (loaderType == LoaderType.MDB || loaderType == LoaderType.Excel) {
                             val subTable = map["sub_table"] ?: throw IllegalArgumentException(
                                 "Sub Table must be not null for the provided filename"
                             )
-                            yield("sub_table" to subTable)
+                            set("sub_table", subTable)
                         }
-                        yield(key to fileName)
-                        yield("loader_type" to loaderType.pgObject)
+                        set(key, value)
+                        set("loader_type", loaderType.pgObject)
                     }
-                    "delimiter" -> yield(key to value.takeIf { it == null || it.isNotBlank() })
-                    "url" -> yield(key to value.takeIf { it == null || it.isNotBlank() })
-                    "comments" -> yield(key to value.takeIf { it == null || it.isNotBlank() })
+                    "delimiter" -> set(key, value.takeIf { it.isNotBlank() })
+                    "url" -> set(key, value.takeIf { it.isNotBlank() })
+                    "comments" -> set(key, value.takeIf { it.isNotBlank() })
                     "collect_type" -> {
-                        yield(key to FileCollectType.valueOf(value ?: "").pgObject)
+                        set(key, FileCollectType.valueOf(value).pgObject)
                     }
-                    "qualified" -> yield(key to value.equals("on"))
-                    "analyze" -> yield(key to value.equals("on"))
-                    "load" -> yield(key to value.equals("on"))
+                    "qualified" -> set(key, value == "on")
+                    "analyze" -> set(key, value == "on")
+                    "load" -> set(key, value == "on")
                 }
             }
-        }.toMap().toSortedMap()
+        }.toSortedMap()
     }
 
     /**
@@ -167,7 +188,7 @@ object SourceTables : DbTable("source_tables"), ApiExposed {
     fun updateSourceTable(
         connection: Connection,
         username: String,
-        params: Map<String, String?>
+        params: Map<String, String>
     ): Pair<Long, Int> {
         val runId = params["runId"]
             ?.toLong()
@@ -182,7 +203,10 @@ object SourceTables : DbTable("source_tables"), ApiExposed {
             SET    ${sortedMap.keys.joinToString { key -> "$key = ?" }}
             WHERE  st_oid = ?
         """.trimIndent()
-        val updateCount = connection.runUpdate(sql = sql, *sortedMap.values.toTypedArray(), stOid)
+        val updateCount = connection.runUpdate(
+            sql = sql,
+            parameters = sortedMap.values.plus(stOid)
+        )
         return stOid to updateCount
     }
 
@@ -195,7 +219,11 @@ object SourceTables : DbTable("source_tables"), ApiExposed {
      * - the insert command returns null meaning a record was not inserted
      * @throws NumberFormatException when the runId or stOid are not Long strings
      */
-    fun insertSourceTable(connection: Connection, username: String, params: Map<String, String?>): Long {
+    fun insertSourceTable(
+        connection: Connection,
+        username: String,
+        params: Map<String, String>,
+    ): Long {
         val runId = params["runId"]
             ?.toLong()
             ?: throw IllegalArgumentException("runId must be a non-null parameter in the url")
@@ -206,8 +234,10 @@ object SourceTables : DbTable("source_tables"), ApiExposed {
             VALUES (?,${"?,".repeat(sortedMap.size).trim(',')})
             RETURNING st_oid
         """.trimIndent()
-        return connection.runReturningFirstOrNull(sql = sql, runId, *sortedMap.values.toTypedArray())
-            ?: throw IllegalArgumentException("Error while trying to insert record. Null returned")
+        return connection.runReturningFirstOrNull(
+            sql = sql,
+            parameters = listOf(runId) + sortedMap.values
+        ) ?: throw IllegalArgumentException("Error while trying to insert record. Null returned")
     }
 
     /**
@@ -231,46 +261,66 @@ object SourceTables : DbTable("source_tables"), ApiExposed {
         return stOid
     }
 
-    data class AnalyzeFiles(val fileName: String, val analyzeInfo: List<AnalyzeInfo>)
-
-    fun filesToAnalyze(connection: Connection, runId: Long): List<AnalyzeFiles> {
-        return connection.prepareStatement("""
-            SELECT file_name,
-                   array_agg(st_oid order by st_oid) st_oids,
-                   array_agg(table_name order by st_oid) table_names,
-                   array_agg(sub_table order by st_oid) sub_Tables,
-                   array_agg(delimiter order by st_oid) "delimiter",
-                   array_agg(qualified order by st_oid) qualified
-            FROM   $tableName
-            WHERE  run_id = ?
-            AND    "analyze"
-            GROUP BY file_name
-        """.trimIndent()).use { statement ->
-            statement.setLong(1, runId)
-            statement.executeQuery().use { rs ->
-                buildList {
-                    while (rs.next()) {
-                        val stOids = rs.getArray(2).getList<Long>()
-                        val tableNames = rs.getArray(3).getList<String>()
-                        val subTables = rs.getArray(4).getListWithNulls<String>()
-                        val delimiters = rs.getArray(5).getListWithNulls<String>()
-                        val qualified = rs.getArray(6).getList<Boolean>()
-                        val info = stOids.mapIndexed { i, stOid ->
-                            AnalyzeInfo(
-                                stOid = stOid,
-                                tableName = tableNames[i],
-                                subTable = subTables[i],
-                                delimiter = delimiters[i]?.get(i) ?: defaultDelimiter,
-                                qualified = qualified[i],
-                            )
-                        }
-                        add(AnalyzeFiles(fileName = rs.getString(1), analyzeInfo = info))
-                    }
+    /** Record representing the files required to analyze */
+    @TableRecord
+    data class AnalyzeFiles(
+        /** name of file to be analyzed */
+        val fileName: String,
+        /** information provided about analyzing. List of sub table entries */
+        val analyzeInfo: List<AnalyzeInfo>,
+    ) {
+        @Suppress("UNUSED")
+        companion object {
+            /** SQL query used to generate the parent class */
+            val sql: String = """
+                SELECT file_name,
+                       array_agg(st_oid order by st_oid) st_oids,
+                       array_agg(table_name order by st_oid) table_names,
+                       array_agg(sub_table order by st_oid) sub_Tables,
+                       array_agg(delimiter order by st_oid) "delimiters",
+                       array_agg(qualified order by st_oid) qualified
+                FROM   $tableName
+                WHERE  run_id = ?
+                AND    "analyze"
+                GROUP BY file_name
+            """.trimIndent()
+            private const val FILENAME = 1
+            private const val ST_OIDS = 2
+            private const val TABLE_NAMES = 3
+            private const val SUB_TABLES = 4
+            private const val DELIMITERS = 5
+            private const val QUALIFIED = 6
+            /** Function used to process a [ResultSet] into a Table record */
+            fun fromResultSet(rs: ResultSet): AnalyzeFiles {
+                val stOids = rs.getArray(ST_OIDS).getList<Long>()
+                val tableNames = rs.getArray(TABLE_NAMES).getList<String>()
+                val subTables = rs.getArray(SUB_TABLES).getListWithNulls<String>()
+                val delimiters = rs.getArray(DELIMITERS).getListWithNulls<String>()
+                val qualified = rs.getArray(QUALIFIED).getList<Boolean>()
+                val info = stOids.mapIndexed { i, stOid ->
+                    AnalyzeInfo(
+                        stOid = stOid,
+                        tableName = tableNames[i],
+                        subTable = subTables[i],
+                        delimiter = delimiters[i]?.get(i) ?: defaultDelimiter,
+                        qualified = qualified[i],
+                    )
                 }
+                return AnalyzeFiles(fileName = rs.getString(FILENAME), analyzeInfo = info)
             }
         }
     }
 
+    /** Returns a list of files to analyze using the [runId] provided */
+    fun filesToAnalyze(connection: Connection, runId: Long): List<AnalyzeFiles> {
+        return connection.submitQuery(sql = AnalyzeFiles.sql, runId)
+    }
+
+    /**
+     * Finalizes the analysis process by inserting or updating [SourceTableColumns] records for all the source tables
+     * as well as updating all source tables to *analyze = false*
+     */
+    @Suppress("MagicNumber")
     fun finishAnalyze(connection: Connection, data: Map<Long, AnalyzeResult>) {
         val columnSql = """
             INSERT INTO ${SourceTableColumns.tableName}(st_oid,name,type,max_length,min_length,label,column_index)
@@ -323,58 +373,74 @@ object SourceTables : DbTable("source_tables"), ApiExposed {
         }
     }
 
-    data class LoadFiles(val fileName: String, val loaders: List<LoadingInfo>)
-
-    fun filesToLoad(connection: Connection, runId: Long): List<LoadFiles> {
-        return connection.prepareStatement("""
-            with t1 as (
-                SELECT t1.st_oid,
-                       'CREATE table '||t1.table_name||' ('||
-                       STRING_AGG(t2.name::text,' text,'::text order by t2.column_index)||
-                       ' text)' create_statement
-                FROM   $tableName t1
-                JOIN   ${SourceTableColumns.tableName} t2
+    /** Record representing the files required to load */
+    @TableRecord
+    data class LoadFiles(
+        /** name of file to be loaded */
+        val fileName: String,
+        /** information provided about loading. List of sub table entries */
+        val loaders: List<LoadingInfo>,
+    ) {
+        @Suppress("UNUSED")
+        companion object {
+            /** SQL query used to generate the parent class */
+            val sql: String = """
+                with t1 as (
+                    SELECT t1.st_oid,
+                           'CREATE table '||t1.table_name||' ('||
+                           STRING_AGG(t2.name::text,' text,'::text order by t2.column_index)||
+                           ' text)' create_statement
+                    FROM   $tableName t1
+                    JOIN   ${SourceTableColumns.tableName} t2
+                    ON     t1.st_oid = t2.st_oid
+                    WHERE  t1.run_id = ?
+                    AND    t1.load
+                    GROUP BY t1.st_oid
+                )
+                SELECT t2.file_name,
+                       array_agg(t1.st_oid order by t1.st_oid) st_oids,
+                       array_agg(t2.table_name order by t1.st_oid) table_names,
+                       array_agg(t2.sub_table order by t1.st_oid) sub_Tables,
+                       array_agg(t2.delimiter order by t1.st_oid) "delimiters",
+                       array_agg(t2.qualified order by t1.st_oid) qualified,
+                       array_agg(t1.create_statement order by t1.st_oid) create_statements
+                FROM   t1
+                JOIN   $tableName t2
                 ON     t1.st_oid = t2.st_oid
-                WHERE  t1.run_id = ?
-                AND    t1.load
-                GROUP BY t1.st_oid
-            )
-            SELECT t2.file_name,
-                   array_agg(t1.st_oid order by t1.st_oid) st_oids,
-                   array_agg(t2.table_name order by t1.st_oid) table_names,
-                   array_agg(t2.sub_table order by t1.st_oid) sub_Tables,
-                   array_agg(t2.delimiter order by t1.st_oid) "delimiter",
-                   array_agg(t2.qualified order by t1.st_oid) qualified,
-                   array_agg(t1.create_statement order by t1.st_oid) create_statements
-            FROM   t1
-            JOIN   $tableName t2
-            ON     t1.st_oid = t2.st_oid
-            GROUP BY file_name;
-        """.trimIndent()).use { statement ->
-            statement.setLong(1, runId)
-            statement.executeQuery().use { rs ->
-                buildList {
-                    while (rs.next()) {
-                        val stOids = rs.getArray(2).getList<Long>()
-                        val tableNames = rs.getArray(3).getList<String>()
-                        val subTables = rs.getArray(4).getListWithNulls<String>()
-                        val delimiters = rs.getArray(5).getListWithNulls<String>()
-                        val areQualified = rs.getArray(6).getList<Boolean>()
-                        val createStatements = rs.getArray(7).getList<String>()
-                        val info = stOids.mapIndexed { i, stOid ->
-                            LoadingInfo(
-                                stOid,
-                                tableName = tableNames[i],
-                                createStatement = createStatements[i],
-                                delimiter = delimiters[i]?.get(i) ?: defaultDelimiter,
-                                qualified = areQualified[i],
-                                subTable = subTables[i],
-                            )
-                        }
-                        add(LoadFiles(fileName = rs.getString(1), loaders = info))
-                    }
+                GROUP BY file_name;
+            """.trimIndent()
+            private const val FILENAME = 1
+            private const val ST_OIDS = 2
+            private const val TABLE_NAMES = 3
+            private const val SUB_TABLES = 4
+            private const val DELIMITERS = 5
+            private const val QUALIFIED = 6
+            private const val CREATE_STATEMENTS = 7
+            /** Function used to process a [ResultSet] into a Table record */
+            fun fromResultSet(rs: ResultSet): LoadFiles {
+                val stOids = rs.getArray(ST_OIDS).getList<Long>()
+                val tableNames = rs.getArray(TABLE_NAMES).getList<String>()
+                val subTables = rs.getArray(SUB_TABLES).getListWithNulls<String>()
+                val delimiters = rs.getArray(DELIMITERS).getListWithNulls<String>()
+                val areQualified = rs.getArray(QUALIFIED).getList<Boolean>()
+                val createStatements = rs.getArray(CREATE_STATEMENTS).getList<String>()
+                val info = stOids.mapIndexed { i, stOid ->
+                    LoadingInfo(
+                        stOid,
+                        tableName = tableNames[i],
+                        createStatement = createStatements[i],
+                        delimiter = delimiters[i]?.get(i) ?: defaultDelimiter,
+                        qualified = areQualified[i],
+                        subTable = subTables[i],
+                    )
                 }
+                return LoadFiles(fileName = rs.getString(FILENAME), loaders = info)
             }
         }
+    }
+
+    /** Returns a list of files to load using the [runId] provided */
+    fun filesToLoad(connection: Connection, runId: Long): List<LoadFiles> {
+        return connection.submitQuery(sql = LoadFiles.sql, runId)
     }
 }
