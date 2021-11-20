@@ -9,13 +9,13 @@ import java.sql.Connection
  */
 object WorkflowOperations : DbTable("workflow_operations"), DefaultData, ApiExposed {
 
-    override val tableDisplayFields = mapOf(
+    override val tableDisplayFields: Map<String, Map<String, String>> = mapOf(
         "name" to mapOf("name" to "Operation"),
     )
 
     override val defaultRecordsFileName: String = "workflow_operations.csv"
 
-    override val createStatement = """
+    override val createStatement: String = """
         CREATE TABLE IF NOT EXISTS public.workflow_operations
         (
             code text PRIMARY KEY COLLATE pg_catalog."default",
@@ -29,7 +29,12 @@ object WorkflowOperations : DbTable("workflow_operations"), DefaultData, ApiExpo
         );
     """.trimIndent()
 
-    /** API response data class for JSON serialization */
+    /**
+     * API response data class for JSON serialization
+     *
+     * @param name workflow operation name
+     * @param href endpoint of workflow operation on server
+     */
     @Serializable
     data class Record(val name: String, val href: String)
 
@@ -48,6 +53,6 @@ object WorkflowOperations : DbTable("workflow_operations"), DefaultData, ApiExpo
             $whereClause
             ORDER BY $tableName.workflow_order
         """.trimIndent()
-        return connection.submitQuery(sql = sql, *roles.minus("admin").toTypedArray())
+        return connection.submitQuery(sql = sql, parameters = roles.minus("admin"))
     }
 }
