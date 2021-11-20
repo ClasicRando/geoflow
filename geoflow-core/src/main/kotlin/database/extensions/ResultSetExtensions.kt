@@ -1,15 +1,43 @@
 package database.extensions
 
+import database.tables.TableRecord
 import formatInstantDateTime
 import kotlinx.serialization.Serializable
+import org.reflections.Reflections
+import org.reflections.util.ConfigurationBuilder
+import org.reflections.scanners.Scanners.TypesAnnotated
 import requireState
 import java.sql.ResultSet
 import java.sql.Timestamp
+import kotlin.reflect.KClass
+import kotlin.reflect.KFunction
 import kotlin.reflect.full.companionObject
+import kotlin.reflect.full.createType
+import kotlin.reflect.full.functions
 import kotlin.reflect.full.hasAnnotation
 import kotlin.reflect.full.isSubtypeOf
-import kotlin.reflect.full.withNullability
-import kotlin.reflect.typeOf
+
+/**
+ * Registration of Classes annotated with 'TableRecord' meaning in the class' companion object there is a function to
+ * parse a [ResultSet] to an instance of the annotated class. Used in [rowToClass]
+ */
+val resultSetTransformers: Map<KClass<out Any>, KFunction<*>> by lazy {
+    val config = ConfigurationBuilder()
+        .forPackage("database.tables")
+        .setScanners(TypesAnnotated)
+    Reflections(config)
+        .getTypesAnnotatedWith(TableRecord::class.java)
+        .associate { type ->
+            val kotlinType = type.kotlin.createType()
+            val function = type.kotlin.companionObject?.functions?.firstOrNull {
+                it.name == "fromResultSet" && it.returnType.isSubtypeOf(kotlinType)
+            }
+            requireNotNull(function) {
+                "Type must have a static function named 'fromResultSet' that returns the parent Class"
+            }
+            type.kotlin to function
+        }
+}
 
 /**
  * Returns an instance of the provided type [T] using the current [ResultSet] row.
@@ -34,6 +62,7 @@ import kotlin.reflect.typeOf
 inline fun <reified T> ResultSet.rowToClass(): T {
     require(!isClosed) { "ResultSet is closed" }
     require(!isAfterLast) { "ResultSet has no more rows to return" }
+    require(!isBeforeFirst) { "ResultSet must be at or after first record" }
     if (T::class.isData) {
         val constructor = T::class.constructors.first()
         val row = buildList {
@@ -58,19 +87,13 @@ inline fun <reified T> ResultSet.rowToClass(): T {
             constructor.call(*row)
         }
     }
-    requireNotNull(T::class.companionObject) { "Type must have a companion object" }
-    val resultSetType = typeOf<ResultSet>()
-    val genericType = typeOf<T>()
-    val companion = T::class.companionObject!!
-    val function = companion.members.firstOrNull {
-        val checks = it.parameters.size == 2 && resultSetType.isSubtypeOf(it.parameters[1].type)
-        checks && genericType.isSubtypeOf(it.returnType.withNullability(genericType.isMarkedNullable))
-    }
+    val function = resultSetTransformers[T::class]
     return if (function != null) {
+        val companion = T::class.companionObject!!
         val instance = companion.objectInstance ?: companion.java.getDeclaredField("INSTANCE")
         function.call(instance, this) as T
     } else {
-        requireState(metaData.columnCount != 1) {
+        requireState(metaData.columnCount == 1) {
             "Fallback to extract single value from result set failed since columnCount != 1"
         }
         getObject(1) as T
@@ -88,7 +111,7 @@ inline fun <T> ResultSet?.useFirstOrNull(block: (ResultSet) -> T): T? = use {
         this == null -> null
         next() -> {
             require(!isClosed) { "ResultSet is closed" }
-            require(isBeforeFirst) { "ResultSet has already been initialized" }
+            require(isFirst) { "ResultSet has already been initialized" }
             block(this)
         }
         else -> null
