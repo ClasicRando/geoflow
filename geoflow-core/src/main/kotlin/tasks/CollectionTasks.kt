@@ -25,31 +25,31 @@ private val downloadCollectNames = listOf(FileCollectType.Download.name, FileCol
  * User task to validate that the user has confirmed details of run instance
  */
 @UserTask
-const val CONFIRM_RUN_INSTANCE = 1L
+const val CONFIRM_RUN_INSTANCE: Long = 1L
 
 /**
  * User task to remind the user to collect all files noted in the task message
  */
 @UserTask
-const val COLLECT_MISSING_FILES = 5L
+const val COLLECT_MISSING_FILES: Long = 5L
 
 /**
  * User task to validate that the user has confirmed the record date of the pipeline run is correct
  */
 @UserTask
-const val CONFIRM_RECORD_DATE = 6L
+const val CONFIRM_RECORD_DATE: Long = 6L
 
 /**
  * User task to notify the user the source table options are invalid
  */
 @UserTask
-const val FIX_SOURCE_TABLE_OPTIONS = 9L
+const val FIX_SOURCE_TABLE_OPTIONS: Long = 9L
 
 /**
  * User task to notify the user that this data source has never been loaded before
  */
 @UserTask
-const val FIRST_PIPELINE_DETECTED = 10L
+const val FIRST_PIPELINE_DETECTED: Long = 10L
 
 /**
  * System task that backs up the source files to a zip file.
@@ -123,9 +123,10 @@ private fun checkSourceFolder(
  * Collects all source tables associated with the run and walks the 'files' folder to find existing and required files.
  * Finding all missing files that are required and separates those files as downloadable (Download or REST collect type)
  * or collectable (all other file types that require manual intervention to collect). Once the missing file requirements
- * are found, the appropriate tasks ([downloadMissingFiles] and [COLLECT_MISSING_FILES]) are added as children tasks with
- * a second [scanSourceFolder] task to valid after the missing files are resolved.
+ * are found, the appropriate tasks ([downloadMissingFiles] and [COLLECT_MISSING_FILES]) are added as children tasks
+ * with a second [scanSourceFolder] task to valid after the missing files are resolved.
  */
+@Suppress("LongMethod")
 @SystemTask(taskId = 3)
 fun scanSourceFolder(connection: Connection, prTask: PipelineRunTasks.PipelineRunTask): String? {
     val pipelineRun = PipelineRuns.getRun(connection, prTask.runId)
@@ -214,7 +215,11 @@ suspend fun downloadMissingFiles(connection: Connection, prTask: PipelineRunTask
             AND    collect_type in (?,?)
             AND    url IS NOT NULL
         """.trimIndent()
-    for (url in connection.submitQuery<String>(sql, prTask.runId, *filenames, *downloadCollectTypes)) {
+    val urls = connection.submitQuery<String>(
+        sql = sql,
+        parameters = listOf(prTask.runId) + filenames + downloadCollectTypes
+    )
+    for (url in urls) {
         when {
             url.contains("/arcgis/rest/", ignoreCase = true) -> {
                 scrapeArcGisService(
@@ -280,6 +285,7 @@ fun backupFilesToZip(connection: Connection, prTask: PipelineRunTasks.PipelineRu
  * --------------
  * - add more file validation steps
  */
+@Suppress("MagicNumber")
 @SystemTask(taskId = 8)
 fun validateSourceTables(connection: Connection, prTask: PipelineRunTasks.PipelineRunTask) {
     UpdateFiles.call(connection, prTask.runId)
