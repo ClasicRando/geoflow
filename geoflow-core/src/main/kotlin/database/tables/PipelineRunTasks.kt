@@ -21,7 +21,7 @@ import java.time.Instant
  */
 object PipelineRunTasks: DbTable("pipeline_run_tasks"), ApiExposed, Triggers {
 
-    override val tableDisplayFields = mapOf(
+    override val tableDisplayFields: Map<String, Map<String, String>> = mapOf(
         "task_status" to mapOf("name" to "Status", "formatter" to "statusFormatter"),
         "task_name" to mapOf("name" to "Task Name"),
         "task_run_type" to mapOf("name" to "Run Type"),
@@ -30,7 +30,7 @@ object PipelineRunTasks: DbTable("pipeline_run_tasks"), ApiExposed, Triggers {
         "actions" to mapOf("formatter" to "taskActionFormatter"),
     )
 
-    override val createStatement = """
+    override val createStatement: String = """
         CREATE TABLE IF NOT EXISTS public.pipeline_run_tasks
         (
             pr_task_id bigint PRIMARY KEY GENERATED ALWAYS AS IDENTITY,
@@ -95,8 +95,13 @@ object PipelineRunTasks: DbTable("pipeline_run_tasks"), ApiExposed, Triggers {
         WHERE  pr_task_id = ?
     """
 
+    /**  */
+    @Suppress("LongParameterList", "UNUSED")
+    @TableRecord
     class PipelineRunTask private constructor(
+        /** unique ID of the pipeline run task */
         val pipelineRunTaskId: Long,
+        /** ID of the pipeline run this task belongs to */
         val runId: Long,
         taskStart: Timestamp?,
         taskCompleted: Timestamp?,
@@ -106,17 +111,26 @@ object PipelineRunTasks: DbTable("pipeline_run_tasks"), ApiExposed, Triggers {
         taskState: String,
         taskRunType: String,
         taskClassName: String,
+        /** Message of task. Analogous to a warning message */
         val taskMessage: String?,
+        /** pipeline run task ID of the parent to this task */
         val parentTaskId: Long,
+        /** order within the child list of the parent task */
         val parentTaskOrder: Int,
         taskStatus: String,
+        /** workflow operation that the task belongs to for the specified pipeline run */
         val workflowOperation: String,
+        /** Stack trace for the exception thrown (if any) during task run */
         val taskStackTrace: String?,
     ) {
-        val taskStart = taskStart?.toInstant()
-        val taskCompleted = taskCompleted?.toInstant()
-        val taskStatus = TaskStatus.valueOf(taskStatus)
-        val task = Tasks.Task(
+        /** [Instant] when the task run started. Converted from the provided [Timestamp] */
+        val taskStart: Instant? = taskStart?.toInstant()
+        /** [Instant] when the task run completed. Converted from the provided [Timestamp] */
+        val taskCompleted: Instant? = taskCompleted?.toInstant()
+        /** Current status of the task. Converted from the provided string into the enum value */
+        val taskStatus: TaskStatus = TaskStatus.valueOf(taskStatus)
+        /** Generic task the underlines the pipeline run task */
+        val task: Tasks.Task = Tasks.Task(
             taskId = taskId,
             name = taskName,
             description = taskDescription,
@@ -125,28 +139,47 @@ object PipelineRunTasks: DbTable("pipeline_run_tasks"), ApiExposed, Triggers {
             taskClassName = taskClassName,
         )
 
+        @Suppress("UNUSED")
         companion object {
+            private const val PR_TASK_ID = 1
+            private const val RUN_ID = 2
+            private const val TASK_START = 3
+            private const val TASK_COMPLETED = 4
+            private const val TASK_ID = 5
+            private const val TASK_NAME = 6
+            private const val TASK_DESCRIPTION = 7
+            private const val TASK_STATE = 8
+            private const val TASK_RUN_TYPE = 9
+            private const val TASK_CLASS_NAME = 10
+            private const val TASK_MESSAGE = 11
+            private const val PARENT_TASK_ID = 12
+            private const val PARENT_TASK_ORDER = 13
+            private const val TASK_STATUS = 14
+            private const val WORKFLOW_OPERATION = 15
+            private const val TASK_STACK_TRACE = 16
+
+            /** Function used to process a [ResultSet] into a Table record */
             fun fromResultSet(rs: ResultSet): PipelineRunTask {
                 require(!rs.isBeforeFirst) { "ResultSet must be at or after first record" }
                 require(!rs.isClosed) { "ResultSet is closed" }
                 require(!rs.isAfterLast) { "ResultSet has no more rows to return" }
                 return PipelineRunTask(
-                    pipelineRunTaskId = rs.getLong(1),
-                    runId = rs.getLong(2),
-                    taskStart = rs.getTimestamp(3),
-                    taskCompleted = rs.getTimestamp(4),
-                    taskId = rs.getLong(5),
-                    taskName = rs.getString(6),
-                    taskDescription = rs.getString(7),
-                    taskState = rs.getString(8),
-                    taskRunType = rs.getString(9),
-                    taskClassName = rs.getString(10),
-                    taskMessage = rs.getString(11),
-                    parentTaskId = rs.getLong(12),
-                    parentTaskOrder = rs.getInt(13),
-                    taskStatus = rs.getString(14),
-                    workflowOperation = rs.getString(15),
-                    taskStackTrace = rs.getString(16),
+                    pipelineRunTaskId = rs.getLong(PR_TASK_ID),
+                    runId = rs.getLong(RUN_ID),
+                    taskStart = rs.getTimestamp(TASK_START),
+                    taskCompleted = rs.getTimestamp(TASK_COMPLETED),
+                    taskId = rs.getLong(TASK_ID),
+                    taskName = rs.getString(TASK_NAME),
+                    taskDescription = rs.getString(TASK_DESCRIPTION),
+                    taskState = rs.getString(TASK_STATE),
+                    taskRunType = rs.getString(TASK_RUN_TYPE),
+                    taskClassName = rs.getString(TASK_CLASS_NAME),
+                    taskMessage = rs.getString(TASK_MESSAGE),
+                    parentTaskId = rs.getLong(PARENT_TASK_ID),
+                    parentTaskOrder = rs.getInt(PARENT_TASK_ORDER),
+                    taskStatus = rs.getString(TASK_STATUS),
+                    workflowOperation = rs.getString(WORKFLOW_OPERATION),
+                    taskStackTrace = rs.getString(TASK_STACK_TRACE),
                 )
             }
         }
@@ -165,6 +198,7 @@ object PipelineRunTasks: DbTable("pipeline_run_tasks"), ApiExposed, Triggers {
     }
 
     /** Returns the [PipelineRunTask] specified by the provided [pipelineRunTaskId] or null if no record can be found */
+    @Suppress("UNUSED")
     fun getRecord(connection: Connection, pipelineRunTaskId: Long): PipelineRunTask? {
         return connection.queryFirstOrNull(
             sql = genericSql,
@@ -254,36 +288,52 @@ object PipelineRunTasks: DbTable("pipeline_run_tasks"), ApiExposed, Triggers {
     /** API response data class for JSON serialization */
     @Serializable
     data class Record(
+        /** Order of the task within the current view of all tasks for a provided pipeline run */
         @SerialName("task_order")
         val taskOrder: Long,
+        /** unique ID of the pipeline run task */
         @SerialName("pipeline_run_task_id")
         val pipelineRunTaskId: Long,
+        /** ID of the pipeline run this task belongs to */
         @SerialName("run_id")
         val runId: Long,
+        /** Formatted timestamp of the starting instant of the task run */
         @SerialName("task_start")
         val taskStart: String?,
+        /** Formatted timestamp of the completion instant of the task run */
         @SerialName("task_completed")
         val taskCompleted: String?,
+        /** unique ID of the generic underlining task run */
         @SerialName("task_id")
         val taskId: Long,
+        /** Message of task. Analogous to a warning message */
         @SerialName("task_message")
         val taskMessage: String?,
+        /** Current status of the task. Name of the enum value */
         @SerialName("task_status")
         val taskStatus: String,
+        /** pipeline run task ID of the parent to this task */
         @SerialName("parent_task_id")
         val parentTaskId: Long,
+        /** order within the child list of the parent task */
         @SerialName("parent_task_order")
         val parentTaskOrder: Int,
+        /** workflow operation that the task belongs to for the specified pipeline run */
         @SerialName("workflow_operation")
         val workflowOperation: String,
+        /** Stack trace for the exception thrown (if any) during task run */
         @SerialName("task_stack_trace")
         val taskStackTrace: String?,
+        /** Name of the underlining task run */
         @SerialName("task_name")
         val taskName: String,
+        /** Description of the underlining task */
         @SerialName("task_description")
         val taskDescription: String,
+        /** Class name of the underlining task */
         @SerialName("task_class_name")
         val taskClassName: String,
+        /** Run type of the underling task. Name of the enum value */
         @SerialName("task_run_type")
         val taskRunType: String,
     )
@@ -298,9 +348,13 @@ object PipelineRunTasks: DbTable("pipeline_run_tasks"), ApiExposed, Triggers {
 
     /** Holds minimal details of the next available task to run */
     data class NextTask(
+        /** unique ID of the pipeline run task */
         val pipelineRunTaskId: Long,
+        /** unique ID of the generic underlining task run */
         val taskId: Long,
+        /** Run type of the underling task as the enum value */
         val taskRunType: TaskRunType,
+        /** Class name of the underlining task */
         val taskClassName: String,
     )
 
@@ -342,6 +396,11 @@ object PipelineRunTasks: DbTable("pipeline_run_tasks"), ApiExposed, Triggers {
 
     private object NonUpdatedField
 
+    /**
+     * Generic update where some fields can be excluded from the function call and the update will not include them.
+     * Uses empty singleton to do referential checking to see which fields were provided for update.
+     */
+    @Suppress("LongParameterList", "ComplexMethod")
     fun update(
         connection: Connection,
         pipelineRunTaskId: Long,
@@ -356,35 +415,35 @@ object PipelineRunTasks: DbTable("pipeline_run_tasks"), ApiExposed, Triggers {
             updates["task_status"] = if (taskStatus is TaskStatus) {
                 taskStatus.pgObject
             } else {
-                throw IllegalArgumentException("taskStatus must be a TaskStatus")
+                error("taskStatus must be a TaskStatus")
             }
         }
         if (taskStart !== NonUpdatedField) {
             updates["task_start"] = when (taskStart) {
                 is Timestamp? -> taskStart
                 is Instant? -> taskStart?.let { Timestamp(it.toEpochMilli()) }
-                else -> throw IllegalArgumentException("taskStart must be an Instant or Timestamp")
+                else -> error("taskStart must be an Instant or Timestamp")
             }
         }
         if (taskCompleted !== NonUpdatedField) {
             updates["task_completed"] = when (taskCompleted) {
                 is Timestamp? -> taskCompleted
                 is Instant? -> taskCompleted?.let { Timestamp(it.toEpochMilli()) }
-                else -> throw IllegalArgumentException("taskCompleted must be an Instant or Timestamp")
+                else -> error("taskCompleted must be an Instant or Timestamp")
             }
         }
         if (taskMessage !== NonUpdatedField) {
             updates["task_message"] = if (taskMessage is String?) {
                 taskMessage
             } else {
-                throw IllegalArgumentException("taskMessage must be a String")
+                error("taskMessage must be a String")
             }
         }
         if (taskStackTrace !== NonUpdatedField) {
             updates["task_stack_trace"] = if (taskStackTrace is String?) {
                 taskStackTrace
             } else {
-                throw IllegalArgumentException("taskStackTrace must be a String")
+                error("taskStackTrace must be a String")
             }
         }
         val sortedMap = updates.toSortedMap()
@@ -393,6 +452,9 @@ object PipelineRunTasks: DbTable("pipeline_run_tasks"), ApiExposed, Triggers {
             SET    ${sortedMap.entries.joinToString { "${it.key} = ?" }}
             WHERE  pr_task_id = ?
         """.trimIndent()
-        connection.runUpdate(sql = sql, *sortedMap.values.toTypedArray(), pipelineRunTaskId)
+        connection.runUpdate(
+            sql = sql,
+            parameters = sortedMap.values.plus(pipelineRunTaskId)
+        )
     }
 }

@@ -16,9 +16,13 @@ import java.sql.Date
 import java.sql.ResultSet
 import java.time.LocalDate
 
+/**
+ * Table used to store runs of generic pipelines. Holds details about the run while linking to the backing data source
+ * to contain reference to what data is to be loaded.
+ */
 object PipelineRuns : DbTable("pipeline_runs"), ApiExposed, Triggers {
 
-    override val tableDisplayFields = mapOf(
+    override val tableDisplayFields: Map<String, Map<String, String>> = mapOf(
         "ds_id" to mapOf("name" to "Data Source ID"),
         "ds_code" to mapOf("name" to "Data Source Code"),
         "record_date" to mapOf(),
@@ -29,7 +33,7 @@ object PipelineRuns : DbTable("pipeline_runs"), ApiExposed, Triggers {
         "qa_user" to mapOf("name" to "QA User"),
     )
 
-    override val createStatement = """
+    override val createStatement: String = """
         CREATE TABLE IF NOT EXISTS public.pipeline_runs
         (
             run_id bigint PRIMARY KEY GENERATED ALWAYS AS IDENTITY,
@@ -111,58 +115,99 @@ object PipelineRuns : DbTable("pipeline_runs"), ApiExposed, Triggers {
         ),
     )
 
+    /** Table record for [PipelineRuns] */
+    @Suppress("LongParameterList", "UNUSED")
+    @TableRecord
     class PipelineRun private constructor(
+        /** unique ID of the pipeline run */
         val runId: Long,
+        /** ID of the data source this run is owned by */
         val dsId: Long,
+        /** reference code of the data source */
         val dsCode: String,
         filesLocation: String,
         recordDate: Date,
+        /** current workflow operation of the run */
         val workflowOperation: String,
         operationState: String,
+        /** ID of the user that performed or is performing the collection. Null if not currently known/assigned */
         val collectionUserOid: Long?,
+        /** ID of the user that performed or is performing the load. Null if not currently known/assigned */
         val loadUserOid: Long?,
+        /** ID of the user that performed or is performing the check. Null if not currently known/assigned */
         val checkUserOid: Long?,
+        /** ID of the user that performed or is performing the qa. Null if not currently known/assigned */
         val qaUserOid: Long?,
+        /** Number of records found in the main production data */
         val productionCount: Int,
+        /** Number of records found in the main staging data */
         val stagingCount: Int,
+        /** Number of records matched to production's main data */
         val matchCount: Int,
+        /** Number of records not matched to production's main data */
         val newCount: Int,
         plottingStats: PGobject,
+        /** Flag denoting if the run has child details */
         val hasChildTables: Boolean,
         mergeType: String,
     ) {
-        val operationState = OperationState.valueOf(operationState)
+        /** Current state of the run within the given workflow operation. Gets enum value using name */
+        val operationState: OperationState = OperationState.valueOf(operationState)
+        /** Record date of the dataset used for loading. Represents the max record date if varying date's per file */
         val recordDate: LocalDate = recordDate.toLocalDate()
-        val plottingStats = Json.decodeFromString<Map<String, Int>>(plottingStats.value ?: "")
-        val mergeType = MergeType.valueOf(mergeType)
-        val runFilesLocation = "$filesLocation/${formatLocalDateDefault(this.recordDate)}/files"
-        val runZipLocation = "$filesLocation/${formatLocalDateDefault(this.recordDate)}/zip"
-        val backupZip = "${dsCode}_${formatLocalDateDefault(this.recordDate)}"
+        /** jsonb fields converted to [Map]. Describes the plotting statistics of the staging data */
+        val plottingStats: Map<String, Int> = Json.decodeFromString(plottingStats.value ?: "")
+        /** Current merge state of the run. Gets enum value using name */
+        val mergeType: MergeType = MergeType.valueOf(mergeType)
+        /** Generated file location for the current pipeline run */
+        val runFilesLocation: String = "$filesLocation/${formatLocalDateDefault(this.recordDate)}/files"
+        /** Generated zip location for the current pipeline run */
+        val runZipLocation: String = "$filesLocation/${formatLocalDateDefault(this.recordDate)}/zip"
+        /** Generated zip file name for the current pipeline run */
+        val backupZip: String = "${dsCode}_${formatLocalDateDefault(this.recordDate)}"
 
+        @Suppress("UNUSED")
         companion object {
+            private const val RUN_ID = 1
+            private const val DS_ID = 2
+            private const val DS_CODE = 3
+            private const val FILES_LOCATION = 4
+            private const val RECORD_DATE = 5
+            private const val WORKFLOW_OPERATION = 6
+            private const val OPERATION_STATE = 7
+            private const val COLLECTION_USER = 8
+            private const val LOAD_USER = 9
+            private const val CHECK_USER = 10
+            private const val QA_USER = 11
+            private const val PRODUCTION_COUNT = 12
+            private const val STAGING_COUNT = 13
+            private const val MATCH_COUNT = 14
+            private const val NEW_COUNT = 15
+            private const val PLOTTING_STATS = 16
+            private const val HAS_CHILDREN_TABLES = 17
+            private const val MERGE_TYPE = 18
+
+            /** Function used to process a [ResultSet] into a Table record */
             fun fromResultSet(rs: ResultSet): PipelineRun {
-                require(!rs.isBeforeFirst) { "ResultSet must be at or after first record" }
-                require(!rs.isClosed) { "ResultSet is closed" }
-                require(!rs.isAfterLast) { "ResultSet has no more rows to return" }
                 return PipelineRun(
-                    runId = rs.getLong(1),
-                    dsId = rs.getLong(2),
-                    dsCode = rs.getString(3),
-                    filesLocation = rs.getString(4),
-                    recordDate = rs.getDate(5),
-                    workflowOperation = rs.getString(6),
-                    operationState = rs.getString(7),
-                    collectionUserOid = rs.getLong(8),
-                    loadUserOid = rs.getLong(9),
-                    checkUserOid = rs.getLong(10),
-                    qaUserOid = rs.getLong(11),
-                    productionCount = rs.getInt(12),
-                    stagingCount = rs.getInt(13),
-                    matchCount = rs.getInt(14),
-                    newCount = rs.getInt(15),
-                    plottingStats = rs.getObject(16) as PGobject,
-                    hasChildTables = rs.getBoolean(17),
-                    mergeType = rs.getString(18),
+                    runId = rs.getLong(RUN_ID),
+                    dsId = rs.getLong(DS_ID),
+                    dsCode = rs.getString(DS_CODE),
+                    filesLocation = rs.getString(FILES_LOCATION),
+                    recordDate = rs.getDate(RECORD_DATE),
+                    workflowOperation = rs.getString(WORKFLOW_OPERATION),
+                    operationState = rs.getString(OPERATION_STATE),
+                    collectionUserOid = rs.getLong(COLLECTION_USER),
+                    loadUserOid = rs.getLong(LOAD_USER),
+                    checkUserOid = rs.getLong(CHECK_USER),
+                    qaUserOid = rs.getLong(QA_USER),
+                    productionCount = rs.getInt(PRODUCTION_COUNT),
+                    stagingCount = rs.getInt(STAGING_COUNT),
+                    matchCount = rs.getInt(MATCH_COUNT),
+                    newCount = rs.getInt(NEW_COUNT),
+                    plottingStats = rs.getObject(PLOTTING_STATS) as PGobject,
+                    hasChildTables = rs.getBoolean(HAS_CHILDREN_TABLES),
+                    mergeType = rs.getString(MERGE_TYPE),
                 )
             }
         }
@@ -207,22 +252,31 @@ object PipelineRuns : DbTable("pipeline_runs"), ApiExposed, Triggers {
     /** API response data class for JSON serialization */
     @Serializable
     data class Record(
+        /** unique ID of the pipeline run */
         @SerialName("run_id")
         val runId: Long,
+        /** ID of the data source this run is owned by */
         @SerialName("ds_id")
         val dsId: Long,
+        /** reference code of the data source */
         @SerialName("ds_code")
         val dsCode: String,
+        /** Record date of the dataset used for loading. Represents the max record date if varying date's per file */
         @SerialName("record_date")
         val recordDate: String,
+        /** Current state of the run within the given workflow operation. Gets enum value using name */
         @SerialName("operation_state")
         val operationState: String,
+        /** Name of the user that performed or is performing the collection. Null if not currently known/assigned */
         @SerialName("collection_user")
         val collectionUser: String?,
+        /** Name of the user that performed or is performing the load. Null if not currently known/assigned */
         @SerialName("load_user")
         val loadUser: String?,
+        /** Name of the user that performed or is performing the check. Null if not currently known/assigned */
         @SerialName("check_user")
         val checkUser: String?,
+        /** Name of the user that performed or is performing the qa. Null if not currently known/assigned */
         @SerialName("qa_user")
         val qaUser: String?,
     )
