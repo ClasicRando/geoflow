@@ -44,21 +44,23 @@ object Actions : DbTable("actions"), ApiExposed, DefaultData {
 
     override val defaultRecordsFileName: String = "actions.csv"
 
-    /**
-     * API response data class for JSON serialization
-     * @param name action name
-     * @param description action description
-     * @param href endpoint that allows for an action to be performed
-     */
+    /** API response data class for JSON serialization */
     @Serializable
-    data class Record(val name: String, val description: String, val href: String)
+    data class Action(
+        /** action name */
+        val name: String,
+        /** action description */
+        val description: String,
+        /** endpoint that allows for an action to be performed */
+        val href: String,
+    )
 
     /**
      * API function to get a list of all user actions based upon the [roles] of the current user
      *
      * @throws IllegalStateException When any row item is null
      */
-    fun userActions(connection: Connection, roles: List<String>): List<Record> {
+    fun userActions(connection: Connection, roles: List<String>): List<Action> {
         val whereClause = if ("admin" !in roles) {
             " WHERE $tableName.role in (${"?,".repeat(roles.size).trim(',')})"
         } else ""
