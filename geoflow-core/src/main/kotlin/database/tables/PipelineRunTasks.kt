@@ -85,9 +85,9 @@ object PipelineRunTasks: DbTable("pipeline_run_tasks"), ApiExposed, Triggers {
         )
     )
 
-    /**  */
+    /** Table record for [PipelineRunTasks] */
     @Suppress("LongParameterList", "UNUSED")
-    @TableRecord
+    @QueryResultRecord
     class PipelineRunTask private constructor(
         /** unique ID of the pipeline run task */
         val pipelineRunTaskId: Long,
@@ -158,7 +158,7 @@ object PipelineRunTasks: DbTable("pipeline_run_tasks"), ApiExposed, Triggers {
             private const val WORKFLOW_OPERATION = 15
             private const val TASK_STACK_TRACE = 16
 
-            /** Function used to process a [ResultSet] into a Table record */
+            /** Function used to process a [ResultSet] into a result record */
             fun fromResultSet(rs: ResultSet): PipelineRunTask {
                 require(!rs.isBeforeFirst) { "ResultSet must be at or after first record" }
                 require(!rs.isClosed) { "ResultSet is closed" }

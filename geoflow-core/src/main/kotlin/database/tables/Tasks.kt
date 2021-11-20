@@ -34,8 +34,8 @@ object Tasks : DbTable("tasks") {
         );
     """.trimIndent()
 
-    /** */
-    @TableRecord
+    /** Table record for [Tasks] */
+    @QueryResultRecord
     class Task (
         /** unique ID of the task */
         val taskId: Long,
@@ -66,7 +66,7 @@ object Tasks : DbTable("tasks") {
             private const val STATE = 4
             private const val TASK_RUN_TYPE = 5
             private const val TASK_CLASS_NAME = 6
-            /** Function used to process a [ResultSet] into a Table record */
+            /** Function used to process a [ResultSet] into a result record */
             fun fromResultSet(rs: ResultSet): Task {
                 return Task(
                     taskId = rs.getLong(TASK_ID),

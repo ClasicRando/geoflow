@@ -40,8 +40,8 @@ object InternalUsers : DbTable("internal_users") {
         }
     }
 
-    /** Table record for [InternalUsers]. Represents the fields of the table */
-    @TableRecord
+    /** Record for [InternalUsers]. Represents the fields of the table */
+    @QueryResultRecord
     class InternalUser private constructor(
         /** unique id of the user */
         val userOid: Long,
@@ -63,7 +63,7 @@ object InternalUsers : DbTable("internal_users") {
             private const val USERNAME = 3
             private const val PASSWORD = 4
             private const val ROLES = 5
-            /** Function to extract a row from a [ResultSet] to get a table record */
+            /** Function to extract a row from a [ResultSet] to get a result record */
             fun fromResultSet(rs: ResultSet): InternalUser {
                 return InternalUser(
                     rs.getLong(USER_OID),

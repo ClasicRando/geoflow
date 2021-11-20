@@ -262,7 +262,7 @@ object SourceTables : DbTable("source_tables"), ApiExposed {
     }
 
     /** Record representing the files required to analyze */
-    @TableRecord
+    @QueryResultRecord
     data class AnalyzeFiles(
         /** name of file to be analyzed */
         val fileName: String,
@@ -290,7 +290,7 @@ object SourceTables : DbTable("source_tables"), ApiExposed {
             private const val SUB_TABLES = 4
             private const val DELIMITERS = 5
             private const val QUALIFIED = 6
-            /** Function used to process a [ResultSet] into a Table record */
+            /** Function used to process a [ResultSet] into a result record */
             fun fromResultSet(rs: ResultSet): AnalyzeFiles {
                 val stOids = rs.getArray(ST_OIDS).getList<Long>()
                 val tableNames = rs.getArray(TABLE_NAMES).getList<String>()
@@ -374,7 +374,7 @@ object SourceTables : DbTable("source_tables"), ApiExposed {
     }
 
     /** Record representing the files required to load */
-    @TableRecord
+    @QueryResultRecord
     data class LoadFiles(
         /** name of file to be loaded */
         val fileName: String,
@@ -416,7 +416,7 @@ object SourceTables : DbTable("source_tables"), ApiExposed {
             private const val DELIMITERS = 5
             private const val QUALIFIED = 6
             private const val CREATE_STATEMENTS = 7
-            /** Function used to process a [ResultSet] into a Table record */
+            /** Function used to process a [ResultSet] into a result record */
             fun fromResultSet(rs: ResultSet): LoadFiles {
                 val stOids = rs.getArray(ST_OIDS).getList<Long>()
                 val tableNames = rs.getArray(TABLE_NAMES).getList<String>()

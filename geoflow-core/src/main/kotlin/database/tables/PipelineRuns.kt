@@ -117,7 +117,7 @@ object PipelineRuns : DbTable("pipeline_runs"), ApiExposed, Triggers {
 
     /** Table record for [PipelineRuns] */
     @Suppress("LongParameterList", "UNUSED")
-    @TableRecord
+    @QueryResultRecord
     class PipelineRun private constructor(
         /** unique ID of the pipeline run */
         val runId: Long,
@@ -206,7 +206,7 @@ object PipelineRuns : DbTable("pipeline_runs"), ApiExposed, Triggers {
             private const val HAS_CHILDREN_TABLES = 17
             private const val MERGE_TYPE = 18
 
-            /** Function used to process a [ResultSet] into a Table record */
+            /** Function used to process a [ResultSet] into a result record */
             fun fromResultSet(rs: ResultSet): PipelineRun {
                 return PipelineRun(
                     runId = rs.getLong(RUN_ID),

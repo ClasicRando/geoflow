@@ -1,6 +1,6 @@
 package database.extensions
 
-import database.tables.TableRecord
+import database.tables.QueryResultRecord
 import formatInstantDateTime
 import kotlinx.serialization.Serializable
 import org.reflections.Reflections
@@ -26,7 +26,7 @@ val resultSetTransformers: Map<KClass<out Any>, KFunction<*>> by lazy {
         .forPackage("database.tables")
         .setScanners(TypesAnnotated)
     Reflections(config)
-        .getTypesAnnotatedWith(TableRecord::class.java)
+        .getTypesAnnotatedWith(QueryResultRecord::class.java)
         .associate { type ->
             val kotlinType = type.kotlin.createType()
             val function = type.kotlin.companionObject?.functions?.firstOrNull {
