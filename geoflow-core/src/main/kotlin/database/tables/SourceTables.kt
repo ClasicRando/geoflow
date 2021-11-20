@@ -3,7 +3,7 @@ package database.tables
 import loading.AnalyzeInfo
 import loading.AnalyzeResult
 import loading.LoadingInfo
-import loading.defaultDelimiter
+import loading.DEFAULT_DELIMITER
 import database.enums.FileCollectType
 import database.enums.LoaderType
 import database.extensions.executeNoReturn
@@ -302,7 +302,7 @@ object SourceTables : DbTable("source_tables"), ApiExposed {
                         stOid = stOid,
                         tableName = tableNames[i],
                         subTable = subTables[i],
-                        delimiter = delimiters[i]?.get(i) ?: defaultDelimiter,
+                        delimiter = delimiters[i]?.get(i) ?: DEFAULT_DELIMITER,
                         qualified = qualified[i],
                     )
                 }
@@ -429,7 +429,7 @@ object SourceTables : DbTable("source_tables"), ApiExposed {
                         stOid,
                         tableName = tableNames[i],
                         createStatement = createStatements[i],
-                        delimiter = delimiters[i]?.get(i) ?: defaultDelimiter,
+                        delimiter = delimiters[i]?.get(i) ?: DEFAULT_DELIMITER,
                         qualified = areQualified[i],
                         subTable = subTables[i],
                     )
