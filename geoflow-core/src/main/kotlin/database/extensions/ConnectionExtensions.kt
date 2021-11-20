@@ -46,7 +46,7 @@ inline fun <reified T> Connection.submitQuery(
  */
 inline fun <reified T> Connection.submitQuery(
     sql: String,
-    parameters: Collection<Any?>,
+    parameters: Iterable<Any?>,
 ): List<T> {
     return prepareStatement(sql).use { statement ->
         for (parameter in parameters.withIndex()) {
@@ -173,7 +173,7 @@ fun Connection.runUpdate(
  */
 fun Connection.runUpdate(
     sql: String,
-    parameters: Collection<Any?>,
+    parameters: Iterable<Any?>,
 ): Int {
     return prepareStatement(sql).use { statement ->
         for (parameter in parameters.withIndex()) {
@@ -273,5 +273,38 @@ inline fun <reified T> Connection.runReturningFirstOrNull(
         statement.resultSet.useFirstOrNull { rs ->
             rs.rowToClass()
         }
+    }
+}
+
+/**
+ * Utility function to flatten a value into an [Iterable] of [IndexedValue]. If the value is not an [Iterable] then
+ * the value is converted to an [IndexedValue] and returned as an [Iterable] with a single item
+ */
+private fun getParams(param: Any?): Iterable<IndexedValue<Any?>> {
+    return if (param is Iterable<*>) {
+        param.withIndex()
+    }
+    else {
+        listOf(IndexedValue(1, param))
+    }
+}
+
+/**
+ * Runs a batch update using the [sql] update provided and treating each element of the [parameters] [Iterable] as a
+ * batch used for the update. If the item type of [parameters] is not an [Iterable] then each item gets treated as a
+ * single item in the batch.
+ */
+fun Connection.runBatchUpdate(
+    sql: String,
+    parameters: Iterable<Any?>,
+) {
+    prepareStatement(sql).use { statement ->
+        for (params in parameters) {
+            for ((i, param) in getParams(params)) {
+                statement.setObject(i, param)
+            }
+            statement.addBatch()
+        }
+        statement.executeBatch()
     }
 }
