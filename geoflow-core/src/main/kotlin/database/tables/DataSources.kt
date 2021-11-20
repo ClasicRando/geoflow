@@ -13,7 +13,7 @@ package database.tables
  */
 object DataSources : DbTable("data_sources") {
 
-    override val createStatement = """
+    override val createStatement: String = """
         CREATE TABLE IF NOT EXISTS public.data_sources
         (
             ds_id bigint PRIMARY KEY GENERATED ALWAYS AS IDENTITY,
