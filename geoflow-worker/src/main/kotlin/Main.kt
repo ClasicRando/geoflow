@@ -19,6 +19,7 @@ import java.time.Instant
 private val logger = KotlinLogging.logger {}
 
 /** Utility to start Kjob using a MongoDB or stored in memory (for testing). */
+@Suppress("MagicNumber")
 fun startKjob(isMongo: Boolean): KJob {
     return if (isMongo) {
         kjob(Mongo) {
@@ -65,6 +66,7 @@ fun startKjob(isMongo: Boolean): KJob {
  * updated and if the 'runNext' property is true then the next task for the pipeline run is scheduled to run. If the
  * task result is an [error][TaskResult.Error], the database record is updated with the message and stacktrace.
  */
+@Suppress("LongMethod")
 suspend fun JobContextWithProps<SystemJob>.executeSystemJob(kJob: KJob) {
     runCatching {
         val pipelineRunTaskId = props[SystemJob.pipelineRunTaskId]
