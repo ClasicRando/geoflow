@@ -1,11 +1,11 @@
 package database.tables
 
-import at.favre.lib.crypto.bcrypt.BCrypt
 import database.extensions.getList
 import database.extensions.queryFirstOrNull
 import database.extensions.runReturningFirstOrNull
 import requireNotEmpty
 import java.sql.Connection
+import java.sql.ResultSet
 
 /**
  * Table used to store users of the web server interface of the application
@@ -15,7 +15,7 @@ import java.sql.Connection
  */
 object InternalUsers : DbTable("internal_users") {
 
-    override val createStatement = """
+    override val createStatement: String = """
         CREATE TABLE IF NOT EXISTS public.internal_users
         (
             user_oid bigint PRIMARY KEY GENERATED ALWAYS AS IDENTITY,
@@ -31,19 +31,48 @@ object InternalUsers : DbTable("internal_users") {
 
     /** Validation response as a sealed interface of success or failure (standard message) */
     sealed interface ValidationResponse {
+        /** Object to denote a successful validation of user */
         object Success : ValidationResponse
+        /** Object to denote a failed validation of user */
         object Failure : ValidationResponse {
-            const val ERROR_MESSAGE = "Incorrect username or password"
+            /** Stock error message on validation failure */
+            const val ERROR_MESSAGE: String = "Incorrect username or password"
         }
     }
 
-    data class InternalUser(
+    /** Table record for [InternalUsers]. Represents the fields of the table */
+    @TableRecord
+    class InternalUser private constructor(
+        /** unique id of the user */
         val userOid: Long,
+        /** full name of the user */
         val name: String,
+        /** public username */
         val username: String,
-        val password: String,
+        /** hashed password of the user */
+        private val password: String,
+        /** list of roles of the user. Provides access to endpoints or abilities in the api */
         val roles: List<String>,
-    )
+    ) {
+        @Suppress("UNUSED")
+        companion object {
+            private const val USER_OID = 1
+            private const val NAME = 2
+            private const val USERNAME = 3
+            private const val PASSWORD = 4
+            private const val ROLES = 5
+            /** Function to extract a row from a [ResultSet] to get a table record */
+            fun fromResultSet(rs: ResultSet): InternalUser {
+                return InternalUser(
+                    rs.getLong(USER_OID),
+                    rs.getString(NAME),
+                    rs.getString(USERNAME),
+                    rs.getString(PASSWORD),
+                    rs.getArray(ROLES).getList(),
+                )
+            }
+        }
+    }
 
     /**
      * Tries to look up the username provided and validate the password if the user can be found.
@@ -54,14 +83,16 @@ object InternalUsers : DbTable("internal_users") {
      * @throws [java.sql.SQLException] when the connection throws an error
      */
     fun validateUser(connection: Connection, username: String, password: String): ValidationResponse {
-        val sql = "SELECT password FROM $tableName WHERE username = ?"
-        return connection.queryFirstOrNull<String>(sql, username)?.let { userPassword ->
-            if (BCrypt.verifyer().verify(password.toCharArray(), userPassword).verified) {
-                ValidationResponse.Success
-            } else {
-                ValidationResponse.Failure
-            }
-        } ?: ValidationResponse.Failure
+        val sql = """
+            SELECT (password = crypt(?,password))
+            FROM   $tableName
+            WHERE  username = ?
+        """.trimIndent()
+        return if (connection.queryFirstOrNull<Boolean>(sql, password, username) == true) {
+            ValidationResponse.Success
+        } else {
+            ValidationResponse.Failure
+        }
     }
 
     /**
@@ -71,24 +102,10 @@ object InternalUsers : DbTable("internal_users") {
      * @throws [java.sql.SQLException] when the connection throws an error
      */
     fun getUser(connection: Connection, username: String): InternalUser {
-        return connection.prepareStatement(
-            "SELECT * FROM $tableName WHERE username = ?"
-        ).use { statement ->
-            statement.setString(1, username)
-            statement.executeQuery().use { rs ->
-                if (rs.next()) {
-                    InternalUser(
-                        rs.getLong(1),
-                        rs.getString(2),
-                        rs.getString(3),
-                        rs.getString(4),
-                        rs.getArray(5).getList(),
-                    )
-                } else {
-                    null
-                }
-            }
-        } ?: throw IllegalArgumentException("User cannot be found")
+        return connection.queryFirstOrNull(
+            sql = "SELECT * FROM $tableName WHERE username = ?",
+            username
+        ) ?: throw IllegalArgumentException("User cannot be found")
     }
 
     /**
@@ -101,14 +118,14 @@ object InternalUsers : DbTable("internal_users") {
      * @throws [java.sql.SQLException] when the connection throws an error
      */
     fun createUser(connection: Connection, params: Map<String, List<String>>): Long? {
-        val fullName = params["fullName"] ?: throw IllegalArgumentException("New user must have a name provided")
-        val username = params["username"] ?: throw IllegalArgumentException("New user must have a username provided")
+        val fullName = params["fullName"]?.get(0)
+        val username = params["username"]?.get(0)
         val roles = params["roles"] ?: throw IllegalArgumentException("New user must have roles provided")
-        val password = params["password"] ?: throw IllegalArgumentException("New user must have a password provided")
-        require(fullName.size == 1) { "New user must have a single name provided" }
-        require(username.size == 1) { "New user must have a single username provided" }
+        val password = params["password"]?.get(0)
+        requireNotNull(fullName) { "New user must have a single name provided" }
+        requireNotNull(username) { "New user must have a single username provided" }
         requireNotEmpty(roles) { "New user must have 1 or more role" }
-        require(password.size == 1) { "New user must have a single password provided" }
+        requireNotNull(password) { "New user must have a single password provided" }
         val sql = """
             INSERT INTO $tableName(name,username,password,roles)
             VALUES(?,?,crypt(?,gen_salt('bf')),ARRAY[${"?,".repeat(roles.size).trim(',')}])
@@ -116,10 +133,7 @@ object InternalUsers : DbTable("internal_users") {
         """.trimIndent()
         return connection.runReturningFirstOrNull<Long>(
             sql = sql,
-            fullName[0],
-            username[0],
-            password[0],
-            *roles.toTypedArray(),
+            parameters = listOf(fullName, username, password) + roles,
         )
     }
 }
