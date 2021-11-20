@@ -2,14 +2,13 @@ package database.tables
 
 import database.enums.TaskRunType
 import database.extensions.queryFirstOrNull
-import tasks.UserTask
-import tasks.SystemTask
+import database.extensions.submitQuery
 import java.sql.Connection
 import java.sql.ResultSet
 
 /**
- * Table used to store generic tasks that link to a function ([SystemTask]) or a const value ([UserTask]) for execution
- * in the worker application.
+ * Table used to store generic tasks that link to a function ([SystemTask][tasks.SystemTask]) or a const value
+ * ([UserTask][tasks.UserTask]) for execution in the worker application.
  *
  * Metadata stored describes the task intent, hints as to the workflow state the task is intended to work within, and
  * defines the type of run operation the task entails (as mentioned above).
@@ -58,7 +57,6 @@ object Tasks : DbTable("tasks") {
             val sql: String = """
                 SELECT task_id, name, description, state, task_run_type, task_class_name
                 FROM   $tableName
-                WHERE  task_id = ?
             """.trimIndent()
             private const val TASK_ID = 1
             private const val NAME = 2
@@ -82,6 +80,11 @@ object Tasks : DbTable("tasks") {
 
     /** Returns a Task record for the given [taskId]. Returns null if no result is found */
     fun getRecord(connection: Connection, taskId: Long): Task? {
-        return connection.queryFirstOrNull(sql = "${Task.sql} LIMIT 1", taskId)
+        return connection.queryFirstOrNull(sql = "${Task.sql} WHERE task_id = ? LIMIT 1", taskId)
+    }
+
+    /** Returns a list of [Task]s where the run type is User */
+    fun getUserTasks(connection: Connection): List<Task> {
+        return connection.submitQuery(sql = "${Task.sql} WHERE task_run_type = ?", TaskRunType.User.pgObject)
     }
 }
