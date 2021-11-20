@@ -1,9 +1,9 @@
 package database.tables
 
-import data_loader.AnalyzeInfo
-import data_loader.AnalyzeResult
-import data_loader.LoadingInfo
-import data_loader.defaultDelimiter
+import loading.AnalyzeInfo
+import loading.AnalyzeResult
+import loading.LoadingInfo
+import loading.defaultDelimiter
 import database.enums.FileCollectType
 import database.enums.LoaderType
 import database.extensions.executeNoReturn

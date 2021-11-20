@@ -1,10 +1,10 @@
 package tasks
 
-import data_loader.AnalyzeResult
-import data_loader.LoadingInfo
-import data_loader.analyzeFile
-import data_loader.checkTableExists
-import data_loader.loadFile
+import loading.AnalyzeResult
+import loading.LoadingInfo
+import loading.analyzeFile
+import loading.checkTableExists
+import loading.loadFile
 import database.extensions.runBatchUpdate
 import database.tables.PipelineRunTasks
 import database.tables.PipelineRuns

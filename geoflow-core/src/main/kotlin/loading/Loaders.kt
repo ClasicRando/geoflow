@@ -1,4 +1,4 @@
-package data_loader
+package loading
 
 import com.linuxense.javadbf.DBFReader
 import com.univocity.parsers.csv.CsvParser
@@ -23,6 +23,7 @@ import java.time.format.DateTimeFormatter
 import java.util.Date
 import kotlin.math.floor
 
+/** */
 const val defaultDelimiter = ','
 private val logger = KotlinLogging.logger {}
 /** Map of jdbc type constants to the name they represent */

@@ -1,7 +1,7 @@
 package database
 
-import data_loader.checkTableExists
-import data_loader.loadDefaultData
+import loading.checkTableExists
+import loading.loadDefaultData
 import database.functions.Constraints
 import database.functions.PlPgSqlTableFunction
 import database.procedures.SqlProcedure
