@@ -1,6 +1,7 @@
 package jobs
 
 import it.justwrote.kjob.Job
+import it.justwrote.kjob.Prop
 import tasks.SystemTask
 
 /**
@@ -12,8 +13,14 @@ import tasks.SystemTask
  * No execution code is included here, but it can be found in Main.kt of the geoflow-worker module.
  */
 object SystemJob : Job("system-job") {
-    val runId = long("runId")
-    val pipelineRunTaskId = long("pipelineRunTaskId")
-    val taskClassName = string("taskClassName")
-    val runNext = bool("runNext")
+    /** run_id of the pipeline run task to be executed */
+    val runId: Prop<SystemJob, Long> = long("runId")
+    /** pr_task_id ID of the pipeline run task to be executed */
+    val pipelineRunTaskId: Prop<SystemJob, Long> = long("pipelineRunTaskId")
+    /** class name of the task to be run */
+    val taskClassName: Prop<SystemJob, String> = string("taskClassName")
+    /**
+     * flag denoting if the next task should be run if the current task has no errors and the next task is a System task
+     */
+    val runNext: Prop<SystemJob, Boolean> = bool("runNext")
 }
