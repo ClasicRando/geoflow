@@ -7,7 +7,7 @@ package database.tables
  */
 object Pipelines : DbTable("pipelines") {
 
-    override val createStatement = """
+    override val createStatement: String = """
         CREATE TABLE IF NOT EXISTS public.pipelines
         (
             pipeline_id bigint PRIMARY KEY GENERATED ALWAYS AS IDENTITY,
