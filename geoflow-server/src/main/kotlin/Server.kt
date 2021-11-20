@@ -4,7 +4,6 @@ import auth.UserSession
 import database.Database
 import database.tables.InternalUsers
 import html.errorPage
-import html.login
 import io.ktor.application.call
 import io.ktor.application.Application
 import io.ktor.application.install
@@ -12,33 +11,34 @@ import io.ktor.application.log
 import io.ktor.auth.form
 import io.ktor.auth.session
 import io.ktor.auth.Authentication
+import io.ktor.auth.FormAuthenticationProvider
+import io.ktor.auth.SessionAuthenticationProvider
 import io.ktor.auth.authenticate
 import io.ktor.auth.UserIdPrincipal
-import io.ktor.auth.principal
 import io.ktor.features.ContentNegotiation
 import io.ktor.features.StatusPages
 import io.ktor.features.MissingRequestParameterException
 import io.ktor.html.respondHtml
 import io.ktor.response.respondRedirect
-import io.ktor.routing.get
-import io.ktor.routing.post
 import io.ktor.routing.routing
 import io.ktor.serialization.json
 import io.ktor.sessions.Sessions
 import io.ktor.sessions.cookie
-import io.ktor.sessions.sessions
-import io.ktor.sessions.clear
-import io.ktor.sessions.set
 import io.ktor.sessions.SessionStorageMemory
 import io.ktor.websocket.WebSockets
+import it.justwrote.kjob.KJob
 import it.justwrote.kjob.Mongo
 import it.justwrote.kjob.job.JobExecutionType
 import it.justwrote.kjob.kjob
+import mu.KLogger
 import mu.KotlinLogging
+import org.slf4j.Logger
 
-val logger = KotlinLogging.logger {}
+/** logger used for the KJob instance */
+val logger: KLogger = KotlinLogging.logger {}
 /** Kjob instance used by the server to schedule jobs for the worker application */
-val kjob = kjob(Mongo) {
+@Suppress("MagicNumber")
+val kjob: KJob = kjob(Mongo) {
     nonBlockingMaxJobs = 1
     blockingMaxJobs = 1
     maxRetries = 0
@@ -57,6 +57,64 @@ val kjob = kjob(Mongo) {
     expireLockInMinutes = 5L
 }.start()
 
+/** */
+private fun FormAuthenticationProvider.Configuration.configure(log: Logger) {
+    userParamName = "username"
+    passwordParamName = "password"
+    validate { credentials ->
+        val validateResult = Database.runWithConnection {
+            InternalUsers.validateUser(it, credentials.name, credentials.password)
+        }
+        when (validateResult) {
+            is InternalUsers.ValidationResponse.Success -> UserIdPrincipal(credentials.name)
+            is InternalUsers.ValidationResponse.Failure -> {
+                log.info(validateResult.ERROR_MESSAGE)
+                null
+            }
+        }
+    }
+    challenge("/login?message=invalid")
+}
+
+/** */
+private fun SessionAuthenticationProvider.Configuration<UserSession>.configure(log: Logger) {
+    validate { session ->
+        if (session.isExpired) {
+            log.info("Session for ${session.username} expired")
+            null
+        } else {
+            session
+        }
+    }
+    challenge { session ->
+        val redirect = when {
+            session == null -> "/login"
+            session.isExpired -> "/login?message=expired"
+            else -> "/login?message=error"
+        }
+        call.respondRedirect(redirect)
+    }
+}
+
+/** */
+private fun StatusPages.Configuration.configure() {
+    exception<MissingRequestParameterException> { cause ->
+        call.respondHtml {
+            errorPage("Missing parameter ${cause.parameterName} in url. ${cause.message}")
+        }
+    }
+    exception<UnauthorizedRouteAccessException> { cause ->
+        call.respondHtml {
+            errorPage("The current user does not have access to the desired route, ${cause.route}")
+        }
+    }
+    exception<Throwable> { cause ->
+        call.respondHtml {
+            errorPage(cause.message ?: "")
+        }
+    }
+}
+
 /** Main entry of the server application. Initializes the server engine. */
 fun main(args: Array<String>): Unit = io.ktor.server.cio.EngineMain.main(args)
 
@@ -69,39 +127,10 @@ fun Application.module() {
      */
     install(Authentication) {
         form("auth-form") {
-            userParamName = "username"
-            passwordParamName = "password"
-            validate { credentials ->
-                val validateResult = Database.runWithConnection {
-                    InternalUsers.validateUser(it, credentials.name, credentials.password)
-                }
-                when (validateResult) {
-                    is InternalUsers.ValidationResponse.Success -> UserIdPrincipal(credentials.name)
-                    is InternalUsers.ValidationResponse.Failure -> {
-                        log.info(validateResult.ERROR_MESSAGE)
-                        null
-                    }
-                }
-            }
-            challenge("/login?message=invalid")
+            configure(log)
         }
         session<UserSession>("auth-session") {
-            validate { session ->
-                if (session.isExpired) {
-                    log.info("Session for ${session.username} expired")
-                    null
-                } else {
-                    session
-                }
-            }
-            challenge { session ->
-                val redirect = when {
-                    session == null -> "/login"
-                    session.isExpired -> "/login?message=expired"
-                    else -> "/login?message=error"
-                }
-                call.respondRedirect(redirect)
-            }
+            configure(log)
         }
     }
     /** Install session handling. Stores cookies in memory for now. Will change later in development */
@@ -117,23 +146,9 @@ fun Application.module() {
     }
     /** Install WebSockets for pub/sub pattern. */
     install(WebSockets) { }
-    /** Install exception handling to display standard status pages for defined exception and throwables. */
+    /** Install exception handling to display standard status pages for defined exceptions and throwables. */
     install(StatusPages) {
-        exception<MissingRequestParameterException> { cause ->
-            call.respondHtml {
-                errorPage("Missing parameter ${cause.parameterName} in url. ${cause.message}")
-            }
-        }
-        exception<UnauthorizedRouteAccessException> { cause ->
-            call.respondHtml {
-                errorPage("The current user does not have access to the desired route, ${cause.route}")
-            }
-        }
-        exception<Throwable> { cause ->
-            call.respondHtml {
-                errorPage(cause.message ?: "")
-            }
-        }
+        configure()
     }
     /** Base routing of application */
     routing {
@@ -148,49 +163,11 @@ fun Application.module() {
             sockets()
             users()
         }
-        /** Require form authentication while posting to '/login' end point. Collections username and creates session */
+        /** Require form authentication while posting to '/login' end point */
         authenticate("auth-form") {
-            post("/login") {
-                val username = call.principal<UserIdPrincipal>()?.name ?: ""
-                val redirect = runCatching {
-                    val user = Database.runWithConnection {
-                        InternalUsers.getUser(it, username)
-                    }
-                    call.sessions.set(
-                        UserSession(
-                            userId = user.userOid,
-                            username = username,
-                            name = user.name,
-                            roles = user.roles
-                        )
-                    )
-                    "/index"
-                }.getOrElse { t ->
-                    log.info("Error session-auth", t)
-                    "/login?message=lookup"
-                }
-                call.respondRedirect(redirect)
-            }
+            loginPost()
         }
-        /** Open login to anyone and response with login page. */
-        get("/login") {
-            call.respondHtml {
-                val message = call.request.queryParameters["message"] ?: ""
-                login(
-                    when (message) {
-                        "invalid" -> "Invalid username or password"
-                        "lookup" -> "Lookup error for session creation"
-                        "expired" -> "Session has expired"
-                        "error" -> "Session error. Please login again"
-                        else -> ""
-                    }
-                )
-            }
-        }
-        /** Upon logout request, remove current session and redirect to login. */
-        get("/logout") {
-            call.sessions.clear<UserSession>()
-            call.respondRedirect("/login")
-        }
+        loginGet()
+        logout()
     }
 }
