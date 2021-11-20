@@ -168,6 +168,25 @@ object PipelineRuns : DbTable("pipeline_runs"), ApiExposed, Triggers {
 
         @Suppress("UNUSED")
         companion object {
+            /** SQL query used to generate the parent class */
+            val sql: String = """
+                SELECT t1.run_id, t1.ds_id, t2.code, t2.files_location, t1.record_Date, t1.workflow_operation,
+                       t1.operation_state, t1.collection_user_oid, t1.load_user_oid, t1.check_user_oid, t1.qa_user_oid,
+                       t1.production_count, t1.staging_count, t1.match_count, t1.new_count, t1.plotting_stats,
+                       t1.has_child_tables, t1.merge_type
+                FROM   $tableName t1
+                JOIN   ${DataSources.tableName} t2
+                ON     t1.ds_id = t2.ds_id
+                LEFT JOIN ${InternalUsers.tableName} t3
+                ON     t1.collection_user_oid = t3.user_oid
+                LEFT JOIN ${InternalUsers.tableName} t4
+                ON     t1.load_user_oid = t4.user_oid
+                LEFT JOIN ${InternalUsers.tableName} t5
+                ON     t1.check_user_oid = t5.user_oid
+                LEFT JOIN ${InternalUsers.tableName} t6
+                ON     t1.qa_user_oid = t6.user_oid
+                WHERE  t1.run_id = ?
+            """.trimIndent()
             private const val RUN_ID = 1
             private const val DS_ID = 2
             private const val DS_CODE = 3
@@ -220,7 +239,7 @@ object PipelineRuns : DbTable("pipeline_runs"), ApiExposed, Triggers {
      * @throws IllegalArgumentException when the username does not link to a user in [InternalUsers]
      */
     fun checkUserRun(connection: Connection, runId: Long, username: String): Boolean {
-        return connection.prepareStatement("""
+        val sql = """
             WITH user_record as (
                 SELECT *
                 FROM   ${InternalUsers.tableName}
@@ -240,7 +259,8 @@ object PipelineRuns : DbTable("pipeline_runs"), ApiExposed, Triggers {
             ON     'admin' = ANY(t6.roles)
             WHERE  t1.run_id = ?
             AND    COALESCE(t2.user_oid,t3.user_oid,t4.user_oid,t5.user_oid,t6.user_oid) IS NOT NULL
-        """.trimIndent()).use { statement ->
+        """.trimIndent()
+        return connection.prepareStatement(sql).use { statement ->
             statement.setString(1, username)
             statement.setLong(2, runId)
             statement.executeQuery().use { rs ->
@@ -338,25 +358,7 @@ object PipelineRuns : DbTable("pipeline_runs"), ApiExposed, Triggers {
      * records
      */
     fun getRun(connection: Connection, runId: Long): PipelineRun? {
-        val sql = """
-            SELECT t1.run_id, t1.ds_id, t2.code, t2.files_location, t1.record_Date, t1.workflow_operation,
-                   t1.operation_state, t1.collection_user_oid, t1.load_user_oid, t1.check_user_oid, t1.qa_user_oid,
-                   t1.production_count, t1.staging_count, t1.match_count, t1.new_count, t1.plotting_stats,
-                   t1.has_child_tables, t1.merge_type
-            FROM   $tableName t1
-            JOIN   ${DataSources.tableName} t2
-            ON     t1.ds_id = t2.ds_id
-            LEFT JOIN ${InternalUsers.tableName} t3
-            ON     t1.collection_user_oid = t3.user_oid
-            LEFT JOIN ${InternalUsers.tableName} t4
-            ON     t1.load_user_oid = t4.user_oid
-            LEFT JOIN ${InternalUsers.tableName} t5
-            ON     t1.check_user_oid = t5.user_oid
-            LEFT JOIN ${InternalUsers.tableName} t6
-            ON     t1.qa_user_oid = t6.user_oid
-            WHERE  t1.run_id = ?
-        """.trimIndent()
-        return connection.queryFirstOrNull(sql = sql, runId)
+        return connection.queryFirstOrNull(sql = PipelineRun.sql, runId)
     }
 
     /**

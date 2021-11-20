@@ -85,16 +85,6 @@ object PipelineRunTasks: DbTable("pipeline_run_tasks"), ApiExposed, Triggers {
         )
     )
 
-    private val genericSql = """
-        SELECT t1.pr_task_id, t1.run_id, t1.task_start, t1.task_completed, t1.task_id, t2.name, t2.description,
-               t2.state, t2.task_run_type, t2.task_class_name, t1.task_message, t1.parent_task_id,
-               t1.parent_task_order, t1.task_status, t1.workflow_operation, t1.task_stack_trace
-        FROM   $tableName t1
-        JOIN   tasks t2
-        ON     t1.task_id = t2.task_id
-        WHERE  pr_task_id = ?
-    """
-
     /**  */
     @Suppress("LongParameterList", "UNUSED")
     @TableRecord
@@ -141,6 +131,16 @@ object PipelineRunTasks: DbTable("pipeline_run_tasks"), ApiExposed, Triggers {
 
         @Suppress("UNUSED")
         companion object {
+            /**  */
+            val sql: String = """
+                SELECT t1.pr_task_id, t1.run_id, t1.task_start, t1.task_completed, t1.task_id, t2.name, t2.description,
+                       t2.state, t2.task_run_type, t2.task_class_name, t1.task_message, t1.parent_task_id,
+                       t1.parent_task_order, t1.task_status, t1.workflow_operation, t1.task_stack_trace
+                FROM   $tableName t1
+                JOIN   tasks t2
+                ON     t1.task_id = t2.task_id
+                WHERE  pr_task_id = ?
+            """.trimIndent()
             private const val PR_TASK_ID = 1
             private const val RUN_ID = 2
             private const val TASK_START = 3
@@ -192,7 +192,7 @@ object PipelineRunTasks: DbTable("pipeline_run_tasks"), ApiExposed, Triggers {
      */
     fun getWithLock(connection: Connection, pipelineRunTaskId: Long): PipelineRunTask {
         return connection.queryFirstOrNull(
-            sql = "$genericSql FOR UPDATE",
+            sql = "${PipelineRunTask.sql} FOR UPDATE",
             pipelineRunTaskId
         ) ?: throw IllegalArgumentException("ID provided did not match a record in the database")
     }
@@ -201,7 +201,7 @@ object PipelineRunTasks: DbTable("pipeline_run_tasks"), ApiExposed, Triggers {
     @Suppress("UNUSED")
     fun getRecord(connection: Connection, pipelineRunTaskId: Long): PipelineRunTask? {
         return connection.queryFirstOrNull(
-            sql = genericSql,
+            sql = PipelineRunTask.sql,
             pipelineRunTaskId,
         )
     }

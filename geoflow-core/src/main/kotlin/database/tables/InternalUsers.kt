@@ -56,6 +56,8 @@ object InternalUsers : DbTable("internal_users") {
     ) {
         @Suppress("UNUSED")
         companion object {
+            /** SQL query used to generate the parent class */
+            val sql: String = "SELECT * FROM $tableName WHERE username = ?"
             private const val USER_OID = 1
             private const val NAME = 2
             private const val USERNAME = 3
@@ -103,7 +105,7 @@ object InternalUsers : DbTable("internal_users") {
      */
     fun getUser(connection: Connection, username: String): InternalUser {
         return connection.queryFirstOrNull(
-            sql = "SELECT * FROM $tableName WHERE username = ?",
+            sql = InternalUser.sql,
             username
         ) ?: throw IllegalArgumentException("User cannot be found")
     }
