@@ -3,17 +3,27 @@ package web
 import com.univocity.parsers.csv.CsvParserSettings
 import com.univocity.parsers.csv.CsvWriter
 import com.univocity.parsers.csv.CsvWriterSettings
-import io.ktor.client.*
-import io.ktor.client.engine.cio.*
-import io.ktor.client.features.json.*
-import io.ktor.client.features.json.serializer.*
-import io.ktor.client.request.*
+import io.ktor.client.HttpClient
+import io.ktor.client.engine.cio.CIO
+import io.ktor.client.features.json.JsonFeature
+import io.ktor.client.features.json.serializer.KotlinxSerializer
+import io.ktor.client.request.get
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.asFlow
 import kotlinx.coroutines.flow.map
 import kotlinx.serialization.ExperimentalSerializationApi
 import kotlinx.serialization.encodeToString
-import kotlinx.serialization.json.*
+import kotlinx.serialization.json.Json
+import kotlinx.serialization.json.JsonObject
+import kotlinx.serialization.json.JsonPrimitive
+import kotlinx.serialization.json.boolean
+import kotlinx.serialization.json.contentOrNull
+import kotlinx.serialization.json.decodeFromJsonElement
+import kotlinx.serialization.json.int
+import kotlinx.serialization.json.jsonArray
+import kotlinx.serialization.json.jsonObject
+import kotlinx.serialization.json.jsonPrimitive
 import mu.KotlinLogging
 import web.ArcGisServiceMetadata.Companion.fromUrl
 import java.io.File
@@ -27,18 +37,31 @@ import kotlin.math.ceil
  * request. Scraping should be done using the scrapeArcGisService function but if you need access to the queries used to
  * fetch the service's data, you can use the [queries] property.
  */
+@Suppress("LongParameterList")
 class ArcGisServiceMetadata private constructor(
+    /** base url of the REST service */
     val url: String,
+    /** name of the service */
     val name: String,
+    /** number of features within the service */
     val sourceCount: Int,
+    /** max number of records the service allows to be scraped at once */
     val maxRecordCount: Int,
+    /** flag denoting if the service supports pagination */
     val pagination: Boolean,
+    /** flag denoting if the service supports statistics */
     val stats: Boolean,
+    /** name of the server type */
     val serverType: String,
+    /** name of the geometry type */
     val geoType: String,
+    /** list of field names */
     val fields: List<String>,
+    /** name of the oid field. If no field type matches OID then the field is empty */
     val oidField: String,
+    /** Max and min OID values if the OID field exists and the values are required for scraping */
     val maxMinOid: Pair<Int, Int>,
+    /** flag denoting if the OID field exists and is incremental */
     val incrementalOid: Boolean,
 ) {
     /** Scrape chunk size. Uses service max record count but caps that value to 10000 */
@@ -53,17 +76,18 @@ class ArcGisServiceMetadata private constructor(
     private val geoText = if (isTable) "" else "&geometryType=$geoType&outSR=4269"
     private val logger = KotlinLogging.logger {}
     /** Settings used to write temp csv files for each query. Specifies what headers are used */
-    val csvSettings = CsvWriterSettings().apply {
+    @Suppress("SpreadOperator")
+    val csvSettings: CsvWriterSettings = CsvWriterSettings().apply {
         setHeaders(*fields.toTypedArray())
     }
     /** Settings used to parse temp csv files for each query. Specifies that the csv files have a header */
-    val csvParserSettings = CsvParserSettings().apply {
+    val csvParserSettings: CsvParserSettings = CsvParserSettings().apply {
         isHeaderExtractionEnabled = true
     }
     /**
      * Sequence of query url strings for each scraping method. Returns an empty sequence when no method available
      */
-    val queries = when {
+    private val queries: Sequence<String> = when {
         pagination -> (0 until paginationQueryCount)
             .asSequence()
             .map { url + paginationQuery(it) }
@@ -93,7 +117,7 @@ class ArcGisServiceMetadata private constructor(
     }
 
     /** Cold flow of query responses mapped to temp csv files */
-    fun fetchQueries() = queries.asFlow().map { query ->
+    fun fetchQueries(): Flow<File> = queries.asFlow().map { query ->
         logger.info("Fetching query: $query")
         fetchQuery(query)
     }
@@ -125,6 +149,36 @@ class ArcGisServiceMetadata private constructor(
     }
 
     /**
+     * Tries to fetch the [url] query response and returns the response if successful within the [maxTries]
+     *
+     * @throws IllegalStateException when [maxTries] is exceeded or a response was returned with an error key
+     */
+    private suspend fun HttpClient.tryUntilSuccess(url: String): JsonObject {
+        var tryNumber = 1
+        var invalidResponse = true
+        var jsonResponse = JsonObject(mapOf())
+        while (invalidResponse) {
+            if (tryNumber > maxTries) {
+                error("Too many tries to fetch query. $url")
+            }
+            val json: JsonObject = get(url)
+            if ("features" !in json) {
+                if ("error" in json) {
+                    tryNumber++
+                    delay(delayMilli)
+                    continue
+                } else {
+                    error("Response was not an error but no features found")
+                }
+            } else {
+                invalidResponse = false
+                jsonResponse = json
+            }
+        }
+        return jsonResponse
+    }
+
+    /**
      * Uses [url] query to fetch a JSON response and transform each feature to a writeable csv record. Returns a
      * reference to a temp file that can be used to build the entire services features.
      *
@@ -134,32 +188,12 @@ class ArcGisServiceMetadata private constructor(
     @OptIn(ExperimentalSerializationApi::class)
     @Suppress("BlockingMethodInNonBlockingContext")
     private suspend fun fetchQuery(url: String): File {
-        var tryNumber = 1
-        var invalidResponse = true
-        var jsonResponse = JsonObject(mapOf())
-        HttpClient(CIO) {
+        val jsonResponse = HttpClient(CIO) {
             install(JsonFeature) {
                 serializer = KotlinxSerializer()
             }
         }.use { client ->
-            while (invalidResponse) {
-                if (tryNumber > maxTries) {
-                    error("Too many tries to fetch query. $url")
-                }
-                val json: JsonObject = client.get(url)
-                if ("features" !in json) {
-                    if ("error" in json) {
-                        tryNumber++
-                        delay(delayMilli)
-                        continue
-                    } else {
-                        error("Response was not an error but no features found")
-                    }
-                } else {
-                    invalidResponse = false
-                    jsonResponse = json
-                }
-            }
+            client.tryUntilSuccess(url)
         }
         return File.createTempFile("temp", ".csv").also { file ->
             file.deleteOnExit()
@@ -197,6 +231,7 @@ class ArcGisServiceMetadata private constructor(
          * Only method to obtain a class instance. Since the class requires data obtained from an HTTP request, the
          * class creation method has to be suspendable to avoid the class constructor blocking the current thread.
          */
+        @Suppress("LongMethod", "ComplexMethod")
         suspend fun fromUrl(url: String): ArcGisServiceMetadata {
             return HttpClient(CIO) {
                 install(JsonFeature) {
