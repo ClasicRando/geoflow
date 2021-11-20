@@ -29,21 +29,21 @@ object WorkflowOperations : DbTable("workflow_operations"), DefaultData, ApiExpo
         );
     """.trimIndent()
 
-    /**
-     * API response data class for JSON serialization
-     *
-     * @param name workflow operation name
-     * @param href endpoint of workflow operation on server
-     */
+    /** API response data class for JSON serialization */
     @Serializable
-    data class Record(val name: String, val href: String)
+    data class WorkflowOperation(
+        /** workflow operation name */
+        val name: String,
+        /** endpoint of workflow operation on server */
+        val href: String,
+    )
 
     /**
      * Returns a JSON serializable response of operations available to a user
      *
      * @throws IllegalStateException when either QueryRowSet value is null
      */
-    fun userOperations(connection: Connection, roles: List<String>): List<Record> {
+    fun userOperations(connection: Connection, roles: List<String>): List<WorkflowOperation> {
         val whereClause = if ("admin" !in roles) {
             " WHERE $tableName.role in (${"?,".repeat(roles.size).trim(',')})"
         } else ""
