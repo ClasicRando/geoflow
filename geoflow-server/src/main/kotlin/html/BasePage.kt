@@ -3,7 +3,23 @@ package html
 import io.ktor.html.Template
 import io.ktor.html.Placeholder
 import io.ktor.html.insert
-import kotlinx.html.*
+import kotlinx.html.FlowContent
+import kotlinx.html.script
+import kotlinx.html.HTML
+import kotlinx.html.STYLE
+import kotlinx.html.a
+import kotlinx.html.body
+import kotlinx.html.div
+import kotlinx.html.head
+import kotlinx.html.lang
+import kotlinx.html.li
+import kotlinx.html.link
+import kotlinx.html.meta
+import kotlinx.html.nav
+import kotlinx.html.style
+import kotlinx.html.title
+import kotlinx.html.ul
+import kotlinx.html.unsafe
 
 /**
  * Base template for all standard pages in the application. Contains a links, scripts and placeholders for later
@@ -13,8 +29,11 @@ import kotlinx.html.*
  * itself so more placeholders can be filled after the initial fill.
  */
 class BasePage private constructor (
+    /** placeholder for style component of the page */
     val styles: Placeholder<STYLE> = Placeholder(),
+    /** placeholder for general content of the page */
     val content: Placeholder<FlowContent> = Placeholder(),
+    /** placeholder for script content of the page */
     val script: Placeholder<FlowContent> = Placeholder(),
 ) : Template<HTML> {
 
@@ -37,6 +56,7 @@ class BasePage private constructor (
     }
 
     /** Method from [Template] to create HTML document. Contains most of the layout with some placeholders */
+    @Suppress("LongMethod")
     override fun HTML.apply() {
         lang = "en-US"
         head {

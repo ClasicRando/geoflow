@@ -2,9 +2,25 @@ package html
 
 import database.enums.FileCollectType
 import database.tables.SourceTables
-import kotlinx.html.*
+import kotlinx.html.ButtonType
+import kotlinx.html.FlowContent
+import kotlinx.html.button
+import kotlinx.html.checkBoxInput
+import kotlinx.html.div
+import kotlinx.html.form
+import kotlinx.html.h5
+import kotlinx.html.id
+import kotlinx.html.label
+import kotlinx.html.onClick
+import kotlinx.html.option
+import kotlinx.html.p
+import kotlinx.html.script
+import kotlinx.html.select
+import kotlinx.html.style
+import kotlinx.html.textInput
 
-const val MESSAGE_BOX_ID = "msgBox"
+/** ID of the generic messagebox modal */
+const val MESSAGE_BOX_ID: String = "msgBox"
 
 /**
  * Creates a basic Bootstrap modal with an [id][modalId], [header text][headerText], [body message][bodyMessage] and
@@ -180,6 +196,7 @@ private const val DELETE_SOURCE_TABLE_CONFIRM_ID = "deleteSourceTable"
  * modal to edit table entries (including the [confirmModal] after editing). Only call this function once per webpage
  * templating to avoid having more than 1 modal popup during show call.
  */
+@Suppress("LongMethod")
 fun FlowContent.sourceTablesModal(runId: Long) {
     div(classes = "modal fade") {
         id = SOURCE_TABLES_MODAL_ID

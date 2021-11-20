@@ -1,29 +1,48 @@
 package html
 
 import io.ktor.html.Template
-import kotlinx.html.*
+import kotlinx.html.FormMethod
+import kotlinx.html.HTML
+import kotlinx.html.body
+import kotlinx.html.div
+import kotlinx.html.form
+import kotlinx.html.h3
+import kotlinx.html.head
+import kotlinx.html.id
+import kotlinx.html.label
+import kotlinx.html.lang
+import kotlinx.html.link
+import kotlinx.html.meta
+import kotlinx.html.p
+import kotlinx.html.passwordInput
+import kotlinx.html.script
+import kotlinx.html.style
+import kotlinx.html.submitInput
+import kotlinx.html.textInput
+import kotlinx.html.title
 
 /** Utility function to apply any HTML template */
-fun HTML.applyTemplate(template: Template<HTML>) = with(template) {
+fun HTML.applyTemplate(template: Template<HTML>): Unit = with(template) {
     apply()
 }
 
 /** Base page applies static Index template */
-fun HTML.index() = applyTemplate(Index.page)
+fun HTML.index(): Unit = applyTemplate(Index.page)
 
 /** Create user page template */
-fun HTML.createUser() = applyTemplate(CreateEditUser.createUser())
+fun HTML.createUser(): Unit = applyTemplate(CreateEditUser.createUser())
 
 /** PipelineStatus page with template created from [workflowCode] */
-fun HTML.pipelineStatus(workflowCode: String) = applyTemplate(PipelineStatus.withWorkflowCode(workflowCode))
+fun HTML.pipelineStatus(workflowCode: String): Unit = applyTemplate(PipelineStatus.withWorkflowCode(workflowCode))
 
 /** PipelineTasks page with template created from [runId] */
-fun HTML.pipelineTasks(runId: Long) = applyTemplate(PipelineTasks.withRunId(runId))
+fun HTML.pipelineTasks(runId: Long): Unit = applyTemplate(PipelineTasks.withRunId(runId))
 
 /** BasePage template with simple message inserted */
-fun HTML.errorPage(message: String) = applyTemplate(BasePage.withContent { +message })
+fun HTML.errorPage(message: String): Unit = applyTemplate(BasePage.withContent { +message })
 
 /** Simple login form page with an optional message if session expired or past login attempt was unsuccessful */
+@Suppress("LongMethod")
 fun HTML.login(message: String = "") {
     lang = "en-US"
     head {

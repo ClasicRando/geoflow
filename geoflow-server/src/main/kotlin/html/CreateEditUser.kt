@@ -3,7 +3,21 @@ package html
 import database.Database
 import database.tables.Roles
 import io.ktor.html.Template
-import kotlinx.html.*
+import kotlinx.html.FormMethod
+import kotlinx.html.HTML
+import kotlinx.html.checkBoxInput
+import kotlinx.html.div
+import kotlinx.html.form
+import kotlinx.html.h3
+import kotlinx.html.id
+import kotlinx.html.label
+import kotlinx.html.option
+import kotlinx.html.passwordInput
+import kotlinx.html.script
+import kotlinx.html.select
+import kotlinx.html.style
+import kotlinx.html.submitInput
+import kotlinx.html.textInput
 
 /** Page for creating a new user and editing an existing user */
 object CreateEditUser {
@@ -11,6 +25,8 @@ object CreateEditUser {
     private const val isAdmin = "isAdmin"
     private const val rolesSelect = "roles"
 
+    /** Creates a [BasePage] with a form in the content section to collect information on the new user */
+    @Suppress("LongMethod")
     fun createUser(): Template<HTML> {
         return BasePage.withContent {
             form {
