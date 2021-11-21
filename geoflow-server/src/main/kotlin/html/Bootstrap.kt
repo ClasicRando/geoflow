@@ -79,7 +79,7 @@ inline fun FlowContent.formModal(
         attributes["tabindex"] = "-1"
         attributes["aria-labelledby"] = "staticBackdropLabel"
         attributes["aria-hidden"] = "true"
-        div(classes = "modal-dialog modal-dialog-centered") {
+        div(classes = "modal-dialog modal-dialog-centered modal-dialog-scrollable") {
             div(classes = "modal-content") {
                 div(classes = "modal-header") {
                     h5(classes = "modal-title") {
