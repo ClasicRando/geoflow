@@ -57,8 +57,6 @@ object Actions : DbTable("actions"), ApiExposed, DefaultData {
 
     /**
      * API function to get a list of all user actions based upon the [roles] of the current user
-     *
-     * @throws IllegalStateException When any row item is null
      */
     fun userActions(connection: Connection, roles: List<String>): List<Action> {
         val whereClause = if ("admin" !in roles) {
