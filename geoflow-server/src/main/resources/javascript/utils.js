@@ -171,11 +171,11 @@ function sourceTableRecordSorting(sortName, sortOrder, data) {
 }
 
 function boolFormatter(value, row) {
-    return value ? '<i class="fa fa-check"></i>' : '';
+    return value ? '<i class="fas fa-check"></i>' : '';
 }
 
 function actionFormatter(value, row) {
-    return `<span style="display: inline;"><i class="fa fa-edit p-1 inTableButton" onclick="editSourceTableRow(${row.st_oid})"></i><i class="fa fa-trash p-1 inTableButton" onclick="confirmSourceTableDelete(${row.st_oid})"></i></span>`;
+    return `<span style="display: inline;"><i class="fas fa-edit p-1 inTableButton" onclick="editSourceTableRow(${row.st_oid})"></i><i class="fas fa-trash p-1 inTableButton" onclick="confirmSourceTableDelete(${row.st_oid})"></i></span>`;
 }
 
 function clickableTd(value, row, index) {
