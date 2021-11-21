@@ -3,6 +3,9 @@ package database.tables
 import database.extensions.getList
 import database.extensions.queryFirstOrNull
 import database.extensions.runReturningFirstOrNull
+import database.extensions.submitQuery
+import kotlinx.serialization.SerialName
+import kotlinx.serialization.Serializable
 import requireNotEmpty
 import java.sql.Connection
 import java.sql.ResultSet
@@ -13,7 +16,15 @@ import java.sql.ResultSet
  * General user definition with username, password (hashed) and roles provided to the user. This table is only used
  * during the user validation/login phase. After that point, the session contains the user information needed
  */
-object InternalUsers : DbTable("internal_users") {
+object InternalUsers : DbTable("internal_users"), ApiExposed {
+
+    override val tableDisplayFields: Map<String, Map<String, String>> = mapOf(
+        "user_oid" to mapOf("name" to "User ID"),
+        "name" to mapOf("name" to "Full Name"),
+        "username" to mapOf(),
+        "is_admin" to mapOf("name" to "Admin?", "formatter" to ""),
+        "roles" to mapOf(),
+    )
 
     override val createStatement: String = """
         CREATE TABLE IF NOT EXISTS public.internal_users
@@ -136,6 +147,27 @@ object InternalUsers : DbTable("internal_users") {
         return connection.runReturningFirstOrNull<Long>(
             sql = sql,
             parameters = listOf(fullName, username, password) + roles,
+        )
+    }
+
+    /** API response data class for JSON serialization */
+    @Serializable
+    data class User(
+        /** unique id of the user */
+        @SerialName("user_oid")
+        val userOid: Long,
+        /** full name of the user */
+        val name: String,
+        /** public username */
+        val username: String,
+        /** list of roles of the user */
+        val roles: String,
+    )
+
+    /** API function to get a list of all users for the application */
+    fun getUsers(connection: Connection): List<User> {
+        return connection.submitQuery(
+            sql = "SELECT user_oid, name, username, array_to_string(roles, ',') FROM $tableName"
         )
     }
 }
