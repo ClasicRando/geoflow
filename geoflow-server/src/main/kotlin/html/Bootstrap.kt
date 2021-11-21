@@ -3,6 +3,7 @@ package html
 import database.enums.FileCollectType
 import database.tables.SourceTables
 import kotlinx.html.ButtonType
+import kotlinx.html.FORM
 import kotlinx.html.FlowContent
 import kotlinx.html.button
 import kotlinx.html.checkBoxInput
@@ -45,6 +46,50 @@ fun FlowContent.basicModal(modalId: String, headerText: String, bodyMessage: Str
                 div(classes = "modal-body") {
                     p {
                         +bodyMessage
+                    }
+                }
+                div(classes = "modal-footer") {
+                    button(classes = "btn btn-secondary") {
+                        type = ButtonType.button
+                        attributes["data-dismiss"] = "modal"
+                        +"Close"
+                    }
+                    button(classes = "btn btn-secondary") {
+                        type = ButtonType.button
+                        onClick = "$okClickFunction()"
+                        +"OK"
+                    }
+                }
+            }
+        }
+    }
+}
+
+/** Generic modal with the ability to add a custom form body */
+inline fun FlowContent.formModal(
+    modalId: String,
+    headerText: String,
+    okClickFunction: String,
+    crossinline body: FORM.() -> Unit,
+) {
+    div(classes = "modal fade") {
+        id = modalId
+        attributes["data-backdrop"] = "static"
+        attributes["data-keyboard"] = "false"
+        attributes["tabindex"] = "-1"
+        attributes["aria-labelledby"] = "staticBackdropLabel"
+        attributes["aria-hidden"] = "true"
+        div(classes = "modal-dialog modal-dialog-centered") {
+            div(classes = "modal-content") {
+                div(classes = "modal-header") {
+                    h5(classes = "modal-title") {
+                        id = "staticBackdropLabel"
+                        +headerText
+                    }
+                }
+                div(classes = "modal-body") {
+                    form {
+                        body()
                     }
                 }
                 div(classes = "modal-footer") {
