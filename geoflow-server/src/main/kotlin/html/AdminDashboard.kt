@@ -24,6 +24,7 @@ object AdminDashboard {
     private const val USER_CREATE_MODAL = "userCreate"
     private const val IS_ADMIN = "isAdmin"
     private const val ROLES_SELECT = "roles"
+    private const val CREATE_USER_FORM_ID = "createUserForm"
 
     private val tableButtons = listOf(
         TableButton(
@@ -50,6 +51,7 @@ object AdminDashboard {
                     headerText = "Create User",
                     okClickFunction = "postCreateUser",
                 ) {
+                    id = CREATE_USER_FORM_ID
                     action = ""
                     h3 {
                         +"Create New User"
@@ -62,7 +64,6 @@ object AdminDashboard {
                         textInput(classes = "form-control") {
                             id = "fullName"
                             name = "fullName"
-                            required = true
                         }
                     }
                     div(classes = "form-group") {
@@ -104,7 +105,6 @@ object AdminDashboard {
                         textInput(classes = "form-control") {
                             id = "username"
                             name = "username"
-                            required = true
                         }
                     }
                     div(classes = "form-group") {
@@ -115,7 +115,6 @@ object AdminDashboard {
                         passwordInput(classes = "form-control") {
                             id = "password"
                             name = "password"
-                            required = true
                         }
                     }
                     div(classes = "form-group") {
@@ -126,12 +125,12 @@ object AdminDashboard {
                         passwordInput(classes = "form-control") {
                             id = "repeatPassword"
                             name = "repeatPassword"
-                            required = true
                         }
                     }
                 }
             }
         }
+        messageBoxModal()
     }.withScript {
         script {
             addParamsAsJsGlobalVariables(
@@ -139,6 +138,7 @@ object AdminDashboard {
                     "userCreateModal" to USER_CREATE_MODAL,
                     "isAdmin" to IS_ADMIN,
                     "rolesSelect" to ROLES_SELECT,
+                    "createUserForm" to CREATE_USER_FORM_ID,
                 )
             )
         }
