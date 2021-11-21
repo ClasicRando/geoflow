@@ -26,6 +26,4 @@ data class UserSession(
     /** getter that checks if the current [Instant] is after the expiration epoch second */
     val isExpired: Boolean
         get() = Instant.now().isAfter(Instant.ofEpochSecond(expiration))
-    /** Checks if provided [role] can be found in [roles] list. Always returns true if user is admin */
-    fun hasRole(role: String): Boolean = "admin" in roles || role in roles
 }
