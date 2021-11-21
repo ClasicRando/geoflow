@@ -91,6 +91,9 @@ class BasePage private constructor (
                 src = "https://cdn.jsdelivr.net/npm/jquery/dist/jquery.min.js"
             }
             script {
+                src = "https://cdn.jsdelivr.net/npm/jquery-validation@1.19.3/dist/jquery.validate.min.js"
+            }
+            script {
                 src = "/assets/utils.js"
             }
             style {
@@ -106,6 +109,13 @@ class BasePage private constructor (
                         }
                         .inTableButton:hover {
                             border: 1px solid;
+                        }
+                        .validInput {
+                            border-color: #28a745;
+                        }
+                        .invalidInput {
+                            color: #dc3545;
+                            border-color: #dc3545;
                         }
                     """.trimIndent())
                 }
