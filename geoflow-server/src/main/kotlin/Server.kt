@@ -162,6 +162,7 @@ fun Application.module() {
             pipelineTasks()
             sockets()
             users()
+            adminDashboard()
         }
         /** Require form authentication while posting to '/login' end point */
         authenticate("auth-form") {

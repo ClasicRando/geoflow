@@ -1,4 +1,7 @@
+@file:Suppress("TooManyFunctions")
+
 import auth.UserSession
+import auth.requireUserRole
 import database.Database
 import database.enums.TaskStatus
 import database.tables.PipelineRunTasks
@@ -7,6 +10,7 @@ import database.tables.SourceTables
 import database.tables.InternalUsers
 import database.tables.Actions
 import database.tables.WorkflowOperations
+import html.adminDashboard
 import html.createUser
 import html.index
 import html.login
@@ -18,7 +22,6 @@ import io.ktor.auth.principal
 import io.ktor.html.respondHtml
 import io.ktor.http.content.static
 import io.ktor.http.content.resources
-import io.ktor.request.uri
 import io.ktor.request.receiveParameters
 import io.ktor.response.respondRedirect
 import io.ktor.response.respond
@@ -109,15 +112,14 @@ fun Route.index() {
 fun Route.pipelineStatus() {
     route("/pipeline-status/{code}") {
         get {
+            call.requireUserRole("admin")
             val code = call.parameters.getOrFail("code")
-            require(call.sessions.get<UserSession>()!!.hasRole(code)) {
-                UnauthorizedRouteAccessException(call.request.uri)
-            }
             call.respondHtml {
                 pipelineStatus(code)
             }
         }
         post {
+            call.requireUserRole("admin")
             val params = call.receiveParameters()
             val runId = params.getOrFail("run_id").toLong()
             @Suppress("TooGenericExceptionCaught")
@@ -150,17 +152,13 @@ fun Route.users() {
     route("/users") {
         route("/create") {
             get {
-                require(call.sessions.get<UserSession>()!!.hasRole("admin")) {
-                    UnauthorizedRouteAccessException(call.request.uri)
-                }
+                call.requireUserRole("admin")
                 call.respondHtml {
                     createUser()
                 }
             }
             post {
-                require(call.sessions.get<UserSession>()!!.hasRole("admin")) {
-                    UnauthorizedRouteAccessException(call.request.uri)
-                }
+                call.requireUserRole("admin")
                 val parameters = call.receiveParameters().toMap()
                 Database.runWithConnection {
                     InternalUsers.createUser(it, parameters)
@@ -168,6 +166,18 @@ fun Route.users() {
                     call.application.environment.log.info("Created new user $userOid")
                 }
                 call.respondRedirect("/index")
+            }
+        }
+    }
+}
+
+/** Admin Dashboard route for viewing admin details */
+fun Route.adminDashboard() {
+    route("/admin-dashboard") {
+        get {
+            call.requireUserRole("admin")
+            call.respondHtml {
+                adminDashboard()
             }
         }
     }
@@ -369,6 +379,18 @@ fun Route.api() {
                     call.application.environment.log.info("/api/source-tables", t)
                     val message = "Failed to delete stOid ${params["stOid"]}"
                     mapOf("error" to "$message. ${t.message}")
+                }
+                call.respond(response)
+            }
+        }
+        route("/users") {
+            get {
+                val response = runCatching {
+                    call.requireUserRole("admin")
+                    Database.runWithConnection { InternalUsers.getUsers(it) }
+                }.getOrElse { t ->
+                    call.application.environment.log.info("/api/users", t)
+                    mapOf("error" to "Failed to get users. ${t.message}")
                 }
                 call.respond(response)
             }
