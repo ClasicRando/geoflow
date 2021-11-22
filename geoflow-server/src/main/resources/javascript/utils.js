@@ -43,15 +43,23 @@ function post(params) {
     form.submit();
 }
 
-function postJSON(url, data) {
+function fetchJSON(method, url, data) {
     const options = {
-        method: 'POST',
+        method: method,
         headers: {
             'Content-Type': 'application/json',
         },
         body: JSON.stringify(data),
     };
     return fetch(url, options);
+}
+
+function patchJSON(url, data) {
+    return fetchJSON('PATCH', url, data);
+}
+
+function postJSON(url, data) {
+    return fetchJSON('POST', url, data);
 }
 
 function postValue(url, func = function(value) {console.log(value)}) {
