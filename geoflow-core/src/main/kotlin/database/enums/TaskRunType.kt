@@ -16,7 +16,7 @@ enum class TaskRunType {
 
     /** [PGobject] representation of the enum value */
     val pgObject: PGobject = PGobject().apply {
-        type = "file_collect_type"
+        type = "task_run_type"
         value = name
     }
 }
