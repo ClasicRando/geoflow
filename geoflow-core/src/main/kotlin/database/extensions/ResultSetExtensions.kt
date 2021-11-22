@@ -129,7 +129,7 @@ inline fun <T> ResultSet?.useFirstOrNull(block: (ResultSet) -> T): T? = use {
  */
 inline fun <reified T> ResultSet.collectRows(): List<T> {
     require(!isClosed) { "ResultSet is closed" }
-    require(isBeforeFirst) { "ResultSet has already been initialized" }
+    require(row == 0) { "ResultSet has already been initialized" }
     return buildList {
         while (next()) {
             add(rowToClass())
