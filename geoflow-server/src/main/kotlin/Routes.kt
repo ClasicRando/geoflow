@@ -383,6 +383,22 @@ fun Route.api() {
                 }
                 call.respond(response)
             }
+            patch {
+                val response = runCatching {
+                    val user = call.receive<InternalUsers.RequestUser>()
+                    val updateCount = Database.runWithConnection { InternalUsers.updateUser(it, user) }
+                    val message = if (updateCount == 1) {
+                        "Updated user, ${user.username} (${user.userOid})"
+                    } else {
+                        "Attempted to update user, ${user.username} (${user.userOid}) but no records affected"
+                    }
+                    mapOf("success" to message)
+                }.getOrElse { t ->
+                    call.application.log.info("POST /api/users", t)
+                    mapOf("error" to "Failed to create new user. ${t.message}")
+                }
+                call.respond(response)
+            }
         }
     }
 }

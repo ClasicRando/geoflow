@@ -3,6 +3,7 @@ package database.tables
 import database.extensions.getList
 import database.extensions.queryFirstOrNull
 import database.extensions.runReturningFirstOrNull
+import database.extensions.runUpdate
 import database.extensions.submitQuery
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
@@ -160,6 +161,30 @@ object InternalUsers : DbTable("internal_users"), ApiExposed {
             user.username,
             user.password,
             user.roles,
+        )
+    }
+
+    /**
+     * Attempts to create a new user from the provided [user], returning the new user_oid if successful
+     *
+     * @throws IllegalArgumentException when the password provided is null
+     * @throws [java.sql.SQLException] when the connection throws an error
+     */
+    fun updateUser(connection: Connection, user: RequestUser): Int {
+        requireNotNull(user.userOid) { "user_oid must not be null" }
+        val sql = """
+            UPDATE $tableName
+            SET    name = ?,
+                   username = ?,
+                   roles = ARRAY[${"?,".repeat(user.roles.size).trim(',')}]
+            WHERE  user_oid = ?
+        """.trimIndent()
+        return connection.runUpdate(
+            sql = sql,
+            user.name,
+            user.username,
+            user.roles,
+            user.userOid,
         )
     }
 
