@@ -25,7 +25,7 @@ import java.sql.Connection
  * have been analyzed, the column stats are inserted (or updated if they already exist) into the [SourceTableColumns]
  * table and the [SourceTables] record is updated to show it has been analyzed.
  */
-@SystemTask(taskId = 12)
+@SystemTask(taskId = 12, taskName = "Analyze Files")
 suspend fun analyzeFiles(connection: Connection, prTask: PipelineRunTasks.PipelineRunTask) {
     val pipelineRun = PipelineRuns.getRun(connection, prTask.runId)
         ?: throw IllegalArgumentException("Run ID must not be null")
@@ -50,7 +50,7 @@ suspend fun analyzeFiles(connection: Connection, prTask: PipelineRunTasks.Pipeli
  * file might have multiple sub tables so each source table record is grouped by filename. After the files have been
  * loaded, the [SourceTables] record is updated to show it has been loaded.
  */
-@SystemTask(taskId = 13)
+@SystemTask(taskId = 13, taskName = "Load Files")
 suspend fun loadFiles(connection: Connection, prTask: PipelineRunTasks.PipelineRunTask) {
     val pipelineRun = PipelineRuns.getRun(connection, prTask.runId)
         ?: throw IllegalArgumentException("Run ID must not be null")

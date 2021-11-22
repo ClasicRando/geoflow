@@ -24,31 +24,31 @@ private val downloadCollectNames = listOf(FileCollectType.Download.name, FileCol
 /**
  * User task to validate that the user has confirmed details of run instance
  */
-@UserTask
+@UserTask(taskName = "Confirm Run Instance")
 const val CONFIRM_RUN_INSTANCE: Long = 1L
 
 /**
  * User task to remind the user to collect all files noted in the task message
  */
-@UserTask
+@UserTask(taskName = "Collect Missing Files")
 const val COLLECT_MISSING_FILES: Long = 5L
 
 /**
  * User task to validate that the user has confirmed the record date of the pipeline run is correct
  */
-@UserTask
+@UserTask(taskName = "Confirm Record Date")
 const val CONFIRM_RECORD_DATE: Long = 6L
 
 /**
  * User task to notify the user the source table options are invalid
  */
-@UserTask
+@UserTask(taskName = "Fix Source Table Options")
 const val FIX_SOURCE_TABLE_OPTIONS: Long = 9L
 
 /**
  * User task to notify the user that this data source has never been loaded before
  */
-@UserTask
+@UserTask(taskName = "First Pipeline Detected")
 const val FIRST_PIPELINE_DETECTED: Long = 10L
 
 /**
@@ -57,7 +57,7 @@ const val FIRST_PIPELINE_DETECTED: Long = 10L
  * Uses the link to the folder containing the source files for the current pipeline run and copies all files to a
  * single zip file for backup.
  */
-@SystemTask(taskId = 2)
+@SystemTask(taskId = 2, taskName = "Build Pipeline Run")
 fun buildPipelineRun(connection: Connection, prTask: PipelineRunTasks.PipelineRunTask) {
     val lastRun = PipelineRuns.lastRun(connection, prTask.pipelineRunTaskId)
     if (lastRun == null) {
@@ -127,7 +127,7 @@ private fun checkSourceFolder(
  * with a second [scanSourceFolder] task to valid after the missing files are resolved.
  */
 @Suppress("LongMethod")
-@SystemTask(taskId = 3)
+@SystemTask(taskId = 3, taskName = "Scan Source Folder")
 fun scanSourceFolder(connection: Connection, prTask: PipelineRunTasks.PipelineRunTask): String? {
     val pipelineRun = PipelineRuns.getRun(connection, prTask.runId)
         ?: throw IllegalArgumentException("Run cannot be null")
@@ -196,7 +196,7 @@ fun scanSourceFolder(connection: Connection, prTask: PipelineRunTasks.PipelineRu
  *
  * Finds all file names that were passed as a message to the task and attempts to download all the returned URLs
  */
-@SystemTask(taskId = 4)
+@SystemTask(taskId = 4, taskName = "Download Missing Files")
 suspend fun downloadMissingFiles(connection: Connection, prTask: PipelineRunTasks.PipelineRunTask) {
     val pipelineRun = PipelineRuns.getRun(connection, prTask.runId)
         ?: throw IllegalArgumentException("Run cannot be null")
@@ -249,7 +249,7 @@ suspend fun downloadMissingFiles(connection: Connection, prTask: PipelineRunTask
  * Uses the link to the folder containing the source files for the current pipeline run and copies all files to a
  * single zip file for backup.
  */
-@SystemTask(taskId = 7)
+@SystemTask(taskId = 7, taskName = "Backup Files to Zip Folder")
 fun backupFilesToZip(connection: Connection, prTask: PipelineRunTasks.PipelineRunTask) {
     val pipelineRun = PipelineRuns.getRun(connection, prTask.runId)
         ?: throw IllegalArgumentException("Run cannot be null")
@@ -286,7 +286,7 @@ fun backupFilesToZip(connection: Connection, prTask: PipelineRunTasks.PipelineRu
  * - add more file validation steps
  */
 @Suppress("MagicNumber")
-@SystemTask(taskId = 8)
+@SystemTask(taskId = 8, taskName = "Validate Source Tables")
 fun validateSourceTables(connection: Connection, prTask: PipelineRunTasks.PipelineRunTask) {
     UpdateFiles.call(connection, prTask.runId)
     val sql = """
@@ -316,7 +316,7 @@ fun validateSourceTables(connection: Connection, prTask: PipelineRunTasks.Pipeli
 /**
  * System task to validate the pipeline run has at least 1 [SourceTables] record entry
  */
-@SystemTask(taskId = 11)
+@SystemTask(taskId = 11, taskName = "Validate First Pipeline")
 fun validateFirstPipeline(connection: Connection, prTask: PipelineRunTasks.PipelineRunTask) {
     val sourceTableCount = connection.queryFirstOrNull<Long>(
         sql = "SELECT COUNT(0) FROM ${SourceTables.tableName} WHERE run_id = ?",
