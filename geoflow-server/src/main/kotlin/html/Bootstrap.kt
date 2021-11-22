@@ -93,6 +93,9 @@ inline fun FlowContent.formModal(
                     }
                 }
                 div(classes = "modal-footer") {
+                    p(classes = "invalidInput") {
+                        id = "${modalId}ResponseErrorMessage"
+                    }
                     button(classes = "btn btn-secondary") {
                         type = ButtonType.button
                         attributes["data-dismiss"] = "modal"
