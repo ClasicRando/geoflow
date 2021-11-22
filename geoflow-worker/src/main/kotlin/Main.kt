@@ -90,7 +90,6 @@ suspend fun JobContextWithProps<SystemJob>.executeSystemJob(kJob: KJob) {
                                 kJob.schedule(SystemJob) {
                                     props[it.runId] = runId
                                     props[it.pipelineRunTaskId] = nextTask.taskId
-                                    props[it.taskClassName] = nextTask.taskClassName
                                     props[it.runNext] = true
                                 }
                             }

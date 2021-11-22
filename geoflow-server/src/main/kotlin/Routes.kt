@@ -37,7 +37,6 @@ import io.ktor.sessions.get
 import io.ktor.sessions.sessions
 import io.ktor.sessions.set
 import io.ktor.util.getOrFail
-import io.ktor.util.toMap
 import jobs.SystemJob
 
 /** Open login to anyone and respond with login page. */
@@ -113,7 +112,6 @@ fun Route.index() {
 fun Route.pipelineStatus() {
     route("/pipeline-status/{code}") {
         get {
-            call.requireUserRole("admin")
             val code = call.parameters.getOrFail("code")
             call.respondHtml {
                 pipelineStatus(code)
@@ -237,7 +235,6 @@ fun Route.api() {
                 kjob.schedule(SystemJob) {
                     props[it.pipelineRunTaskId] = pipelineRunTask.pipelineRunTaskId
                     props[it.runId] = runId
-                    props[it.taskClassName] = pipelineRunTask.taskClassName
                     props[it.runNext] = false
                 }
                 mapOf("success" to "Scheduled ${pipelineRunTask.pipelineRunTaskId}")
@@ -270,7 +267,6 @@ fun Route.api() {
                 kjob.schedule(SystemJob) {
                     props[it.pipelineRunTaskId] = pipelineRunTask.pipelineRunTaskId
                     props[it.runId] = runId
-                    props[it.taskClassName] = pipelineRunTask.taskClassName
                     props[it.runNext] = true
                 }
                 mapOf("success" to "Scheduled ${pipelineRunTask.pipelineRunTaskId}")

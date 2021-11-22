@@ -100,7 +100,6 @@ object PipelineRunTasks: DbTable("pipeline_run_tasks"), ApiExposed, Triggers {
         taskDescription: String,
         taskState: String,
         taskRunType: String,
-        taskClassName: String,
         /** Message of task. Analogous to a warning message */
         val taskMessage: String?,
         /** pipeline run task ID of the parent to this task */
@@ -126,7 +125,6 @@ object PipelineRunTasks: DbTable("pipeline_run_tasks"), ApiExposed, Triggers {
             description = taskDescription,
             state = taskState,
             taskRunType = taskRunType,
-            taskClassName = taskClassName,
         )
 
         @Suppress("UNUSED")
@@ -134,8 +132,8 @@ object PipelineRunTasks: DbTable("pipeline_run_tasks"), ApiExposed, Triggers {
             /**  */
             val sql: String = """
                 SELECT t1.pr_task_id, t1.run_id, t1.task_start, t1.task_completed, t1.task_id, t2.name, t2.description,
-                       t2.state, t2.task_run_type, t2.task_class_name, t1.task_message, t1.parent_task_id,
-                       t1.parent_task_order, t1.task_status, t1.workflow_operation, t1.task_stack_trace
+                       t2.state, t2.task_run_type, t1.task_message, t1.parent_task_id, t1.parent_task_order,
+                       t1.task_status, t1.workflow_operation, t1.task_stack_trace
                 FROM   $tableName t1
                 JOIN   tasks t2
                 ON     t1.task_id = t2.task_id
@@ -150,13 +148,12 @@ object PipelineRunTasks: DbTable("pipeline_run_tasks"), ApiExposed, Triggers {
             private const val TASK_DESCRIPTION = 7
             private const val TASK_STATE = 8
             private const val TASK_RUN_TYPE = 9
-            private const val TASK_CLASS_NAME = 10
-            private const val TASK_MESSAGE = 11
-            private const val PARENT_TASK_ID = 12
-            private const val PARENT_TASK_ORDER = 13
-            private const val TASK_STATUS = 14
-            private const val WORKFLOW_OPERATION = 15
-            private const val TASK_STACK_TRACE = 16
+            private const val TASK_MESSAGE = 10
+            private const val PARENT_TASK_ID = 11
+            private const val PARENT_TASK_ORDER = 12
+            private const val TASK_STATUS = 13
+            private const val WORKFLOW_OPERATION = 14
+            private const val TASK_STACK_TRACE = 15
 
             /** Function used to process a [ResultSet] into a result record */
             fun fromResultSet(rs: ResultSet): PipelineRunTask {
@@ -173,7 +170,6 @@ object PipelineRunTasks: DbTable("pipeline_run_tasks"), ApiExposed, Triggers {
                     taskDescription = rs.getString(TASK_DESCRIPTION),
                     taskState = rs.getString(TASK_STATE),
                     taskRunType = rs.getString(TASK_RUN_TYPE),
-                    taskClassName = rs.getString(TASK_CLASS_NAME),
                     taskMessage = rs.getString(TASK_MESSAGE),
                     parentTaskId = rs.getLong(PARENT_TASK_ID),
                     parentTaskOrder = rs.getInt(PARENT_TASK_ORDER),
@@ -330,9 +326,6 @@ object PipelineRunTasks: DbTable("pipeline_run_tasks"), ApiExposed, Triggers {
         /** Description of the underlining task */
         @SerialName("task_description")
         val taskDescription: String,
-        /** Class name of the underlining task */
-        @SerialName("task_class_name")
-        val taskClassName: String,
         /** Run type of the underling task. Name of the enum value */
         @SerialName("task_run_type")
         val taskRunType: String,
@@ -354,8 +347,6 @@ object PipelineRunTasks: DbTable("pipeline_run_tasks"), ApiExposed, Triggers {
         val taskId: Long,
         /** Run type of the underling task as the enum value */
         val taskRunType: TaskRunType,
-        /** Class name of the underlining task */
-        val taskClassName: String,
     )
 
     /**
@@ -378,7 +369,6 @@ object PipelineRunTasks: DbTable("pipeline_run_tasks"), ApiExposed, Triggers {
                 record.pipelineRunTaskId,
                 record.taskId,
                 TaskRunType.valueOf(record.taskRunType),
-                record.taskClassName
             )
         }
     }

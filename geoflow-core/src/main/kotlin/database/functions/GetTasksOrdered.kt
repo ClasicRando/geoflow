@@ -62,7 +62,6 @@ object GetTasksOrdered : PlPgSqlTableFunction(
             OUT task_stack_trace text,
             OUT task_name text,
             OUT task_description text,
-            OUT task_class_name text,
             OUT task_run_type task_run_type)
             RETURNS SETOF record 
             LANGUAGE 'sql'
@@ -75,7 +74,7 @@ object GetTasksOrdered : PlPgSqlTableFunction(
                 select pr_task_id, row_number() over () task_order
                 from   get_task_children($1,0)
             )
-            select t1.task_order, t2.*, t3.name, t3.description, t3.task_class_name, t3.task_run_type
+            select t1.task_order, t2.*, t3.name, t3.description, t3.task_run_type
             from   run_tasks t1
             join   pipeline_run_tasks t2
             on     t1.pr_task_id = t2.pr_task_id
@@ -83,7 +82,7 @@ object GetTasksOrdered : PlPgSqlTableFunction(
             on     t2.task_id = t3.task_id
 			join   pipeline_runs t4
 			on     t2.run_id = t4.run_id
-			where  t2.workflow_operation = coalesce(${'$'}2,t4.workflow_operation)
+			where  t2.workflow_operation = coalesce($2,t4.workflow_operation)
             order by 1;
         ${'$'}BODY${'$'};
     """.trimIndent()

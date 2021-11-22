@@ -25,7 +25,6 @@ object Tasks : DbTable("tasks"), DefaultData {
             state text COLLATE pg_catalog."default" NOT NULL REFERENCES public.workflow_operations (code) MATCH SIMPLE
                 ON UPDATE CASCADE
                 ON DELETE RESTRICT,
-            task_class_name text COLLATE pg_catalog."default" NOT NULL CHECK (check_not_blank_or_empty(task_class_name)),
             task_run_type task_run_type NOT NULL
         )
         WITH (
@@ -47,8 +46,6 @@ object Tasks : DbTable("tasks"), DefaultData {
         /** intended workflow state that task is attached to */
         val state: String,
         taskRunType: String,
-        /** class name of the task */
-        val taskClassName: String,
     ) {
         /** Enum value of task run type */
         val taskRunType: TaskRunType = TaskRunType.valueOf(taskRunType)
@@ -57,7 +54,7 @@ object Tasks : DbTable("tasks"), DefaultData {
         companion object {
             /** SQL query used to generate the parent class */
             val sql: String = """
-                SELECT task_id, name, description, state, task_run_type, task_class_name
+                SELECT task_id, name, description, state, task_run_type
                 FROM   $tableName
             """.trimIndent()
             private const val TASK_ID = 1
@@ -65,7 +62,6 @@ object Tasks : DbTable("tasks"), DefaultData {
             private const val DESCRIPTION = 3
             private const val STATE = 4
             private const val TASK_RUN_TYPE = 5
-            private const val TASK_CLASS_NAME = 6
             /** Function used to process a [ResultSet] into a result record */
             fun fromResultSet(rs: ResultSet): Task {
                 return Task(
@@ -74,7 +70,6 @@ object Tasks : DbTable("tasks"), DefaultData {
                     description = rs.getString(DESCRIPTION),
                     state = rs.getString(STATE),
                     taskRunType = rs.getString(TASK_RUN_TYPE),
-                    taskClassName = rs.getString(TASK_CLASS_NAME),
                 )
             }
         }
