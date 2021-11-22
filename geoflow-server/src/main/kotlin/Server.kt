@@ -163,7 +163,6 @@ fun Application.module() {
             pipelineStatus()
             pipelineTasks()
             sockets()
-            users()
             adminDashboard()
         }
         /** Require form authentication while posting to '/login' end point */

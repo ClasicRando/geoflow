@@ -29,9 +29,6 @@ fun HTML.applyTemplate(template: Template<HTML>): Unit = with(template) {
 /** Index page with static template. Opening page of web application */
 fun HTML.index(): Unit = applyTemplate(Index.page)
 
-/** Create user page template */
-fun HTML.createUser(): Unit = applyTemplate(CreateEditUser.createUser())
-
 /** PipelineStatus page with template created from [workflowCode] */
 fun HTML.pipelineStatus(workflowCode: String): Unit = applyTemplate(PipelineStatus.withWorkflowCode(workflowCode))
 

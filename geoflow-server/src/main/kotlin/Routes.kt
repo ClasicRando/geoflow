@@ -11,7 +11,6 @@ import database.tables.InternalUsers
 import database.tables.Actions
 import database.tables.WorkflowOperations
 import html.adminDashboard
-import html.createUser
 import html.index
 import html.login
 import html.pipelineStatus
@@ -144,30 +143,6 @@ fun Route.pipelineTasks() {
         get {
             call.respondHtml {
                 pipelineTasks(call.parameters.getOrFail("runId").toLong())
-            }
-        }
-    }
-}
-
-/** Users route for creating and editing users */
-fun Route.users() {
-    route("/users") {
-        route("/create") {
-            get {
-                call.requireUserRole("admin")
-                call.respondHtml {
-                    createUser()
-                }
-            }
-            post {
-                call.requireUserRole("admin")
-                val parameters = call.receiveParameters().toMap()
-                Database.runWithConnection {
-                    InternalUsers.createUser(it, parameters)
-                }?.let { userOid ->
-                    call.application.log.info("Created new user $userOid")
-                }
-                call.respondRedirect("/index")
             }
         }
     }
