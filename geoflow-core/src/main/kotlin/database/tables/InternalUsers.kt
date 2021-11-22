@@ -24,7 +24,7 @@ object InternalUsers : DbTable("internal_users"), ApiExposed {
         "username" to mapOf(),
         "is_admin" to mapOf("name" to "Admin?", "formatter" to "isAdminFormatter"),
         "roles" to mapOf(),
-        "user_actions" to mapOf("name" to "Actions", "formatter" to "userActionsFormatter"),
+        "can_edit" to mapOf("name" to "Edit", "formatter" to "editFormatter"),
     )
 
     override val createStatement: String = """
@@ -151,6 +151,45 @@ object InternalUsers : DbTable("internal_users"), ApiExposed {
         )
     }
 
+    /** API request to */
+    @Serializable
+    data class RequestUser(
+        /** */
+        @SerialName("user_oid")
+        val userOid: Long? = null,
+        /** */
+        @SerialName("fullName")
+        val name: String,
+        /** */
+        @SerialName("username")
+        val username: String,
+        /** */
+        @SerialName("roles")
+        val roles: List<String>,
+        /** */
+        @SerialName("password")
+        val password: String?,
+    )
+
+    /**
+     * Attempts to create a new user from the provided [user], returning the new user_oid if successful
+     *
+     * @throws IllegalArgumentException when the password provided is null
+     * @throws [java.sql.SQLException] when the connection throws an error
+     */
+    fun createUser(connection: Connection, user: RequestUser): Long? {
+        requireNotNull(user.password) { "User to create must have a non-null password" }
+        val sql = """
+            INSERT INTO $tableName(name,username,password,roles)
+            VALUES(?,?,crypt(?,gen_salt('bf')),ARRAY[${"?,".repeat(user.roles.size).trim(',')}])
+            RETURNING user_oid
+        """.trimIndent()
+        return connection.runReturningFirstOrNull<Long>(
+            sql = sql,
+            parameters = listOf(user.name, user.username, user.password) + user.roles,
+        )
+    }
+
     /** API response data class for JSON serialization */
     @Serializable
     data class User(
@@ -163,12 +202,18 @@ object InternalUsers : DbTable("internal_users"), ApiExposed {
         val username: String,
         /** list of roles of the user */
         val roles: String,
+        /** flag denoting if the user can be edited by the requesting user */
+        @SerialName("can_edit")
+        val canEdit: Boolean,
     )
 
     /** API function to get a list of all users for the application */
-    fun getUsers(connection: Connection): List<User> {
-        return connection.submitQuery(
-            sql = "SELECT user_oid, name, username, array_to_string(roles, ', ') FROM $tableName"
-        )
+    fun getUsers(connection: Connection, userOid: Long): List<User> {
+        val sql = """
+            SELECT user_oid, name, username, array_to_string(roles, ', '),
+                   CASE WHEN user_oid != ? AND 'admin' = ANY(roles) THEN false ELSE true END can_edit
+            FROM   $tableName
+        """.trimIndent()
+        return connection.submitQuery(sql = sql, userOid)
     }
 }
