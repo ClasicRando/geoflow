@@ -43,6 +43,17 @@ function post(params) {
     form.submit();
 }
 
+function postJSON(url, data) {
+    const options = {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(data),
+    };
+    return fetch(url, options);
+}
+
 function postValue(url, func = function(value) {console.log(value)}) {
     const options = {
         method: 'POST',
@@ -180,4 +191,53 @@ function actionFormatter(value, row) {
 
 function clickableTd(value, row, index) {
     return {classes: 'clickCell'};
+}
+
+function removeFeedback($control) {
+    $control.parent().remove('.invalid-feedback').remove('.valid-feedback');
+}
+
+function addInvalidFeedback($control, message) {
+    const $parent = $control.parent()
+    $parent.find('.invalid-feedback').remove()
+    $parent.find('.valid-feedback').remove()
+    $parent.append(`<div class="invalid-feedback">${message}</div>`);
+}
+
+function addValidFeedback($control, message) {
+    const $parent = $control.parent()
+    $parent.find('.invalid-feedback').remove()
+    $parent.find('.valid-feedback').remove()
+    $parent.append(`<div class="valid-feedback">${message}</div>`);
+}
+
+function showToast(title, message) {
+    const container = document.createElement('div');
+    const toast = `
+    <div class="position-fixed bottom-0 right-0 p-3" style="z-index: 5; right: 0; bottom: 0;">
+        <div class="toast hide" role="alert" data-delay="10000" aria-live="assertive" aria-atomic="true">
+            <div class="toast-header">
+                <img src="favicon.ico" class="rounded mr-2">
+                <strong class="mr-2">${title}</strong>
+                <small>just now</small>
+                <button type="button" class="ml-2 mb-1 close" data-dismiss="toast" aria-label="Close">
+                    <span aria-hidden="true">&times;</span>
+                </button>
+            </div>
+            <div class="toast-body">
+                ${message}
+            </div>
+        </div>
+    </div>
+    `;
+    container.innerHTML = toast;
+    container.addEventListener('hidden.bs.toast', (e) => {
+        e.target.remove();
+    });
+    document.body.append(container);
+    const $toast = $(container).find('.toast');
+    $toast.toast('show');
+    $toast.on('hidden.bs.toast', (e) => {
+        container.remove();
+    });
 }
