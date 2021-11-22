@@ -130,7 +130,6 @@ object AdminDashboard {
                 }
             }
         }
-        messageBoxModal()
     }.withScript {
         script {
             addParamsAsJsGlobalVariables(
