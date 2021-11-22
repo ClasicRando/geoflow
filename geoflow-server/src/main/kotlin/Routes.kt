@@ -118,7 +118,7 @@ fun Route.pipelineStatus() {
             }
         }
         post {
-            call.requireUserRole("admin")
+            call.requireUserRole(call.parameters.getOrFail("code"))
             val params = call.receiveParameters()
             val runId = params.getOrFail("run_id").toLong()
             @Suppress("TooGenericExceptionCaught")
