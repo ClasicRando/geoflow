@@ -71,7 +71,7 @@ object AdminDashboard {
                             htmlFor = ROLES_SELECT
                             +"Roles"
                         }
-                        select(classes = "custom-select") {
+                        select(classes = "custom-select required") {
                             id = ROLES_SELECT
                             name = ROLES_SELECT
                             multiple = true
