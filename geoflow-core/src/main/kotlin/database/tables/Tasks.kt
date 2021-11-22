@@ -13,7 +13,7 @@ import java.sql.ResultSet
  * Metadata stored describes the task intent, hints as to the workflow state the task is intended to work within, and
  * defines the type of run operation the task entails (as mentioned above).
  */
-object Tasks : DbTable("tasks") {
+object Tasks : DbTable("tasks"), DefaultData {
 
     @Suppress("MaxLineLength")
     override val createStatement: String = """
@@ -32,6 +32,8 @@ object Tasks : DbTable("tasks") {
             OIDS = FALSE
         );
     """.trimIndent()
+
+    override val defaultRecordsFileName: String = "tasks.csv"
 
     /** Table record for [Tasks] */
     @QueryResultRecord
