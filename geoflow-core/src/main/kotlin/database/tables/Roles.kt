@@ -9,7 +9,7 @@ import java.sql.Connection
  */
 object Roles : DbTable("roles") {
 
-    override val createStatement = """
+    override val createStatement: String = """
         CREATE TABLE IF NOT EXISTS public.roles
         (
             name text PRIMARY KEY COLLATE pg_catalog."default" CHECK (check_not_blank_or_empty(name)),
@@ -22,7 +22,12 @@ object Roles : DbTable("roles") {
 
     /** Data class to represent a single database record */
     @Serializable
-    data class Role(val name: String, val description: String)
+    data class Role(
+        /** name of role */
+        val name: String,
+        /** description of role */
+        val description: String,
+    )
 
     /**
      * Returns a list of all roles currently available to users
