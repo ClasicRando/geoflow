@@ -1,3 +1,4 @@
+@file:kotlin.Suppress("KDocMissingDocumentation")
 plugins {
     application
 }

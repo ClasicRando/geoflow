@@ -1,3 +1,4 @@
+@file:kotlin.Suppress("KDocMissingDocumentation")
 plugins {
     kotlin("plugin.serialization") version "1.5.30"
 }
@@ -47,8 +48,6 @@ dependencies {
     // https://mvnrepository.com/artifact/org.apache.poi/poi-ooxml
     implementation("org.apache.poi:poi-ooxml:$poiVersion")
     implementation("com.beust:klaxon:$klaxonVersion")
-    // https://mvnrepository.com/artifact/at.favre.lib/bcrypt
-    implementation("at.favre.lib:bcrypt:$bcryptVersion")
     implementation("io.ktor:ktor-client-core:$ktorVersion")
     implementation("io.ktor:ktor-client-cio:$ktorVersion")
     implementation("io.ktor:ktor-client-serialization:$ktorVersion")

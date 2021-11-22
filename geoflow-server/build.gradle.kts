@@ -1,3 +1,4 @@
+@file:kotlin.Suppress("KDocMissingDocumentation")
 plugins {
     application
     kotlin("plugin.serialization") version "1.5.30"
