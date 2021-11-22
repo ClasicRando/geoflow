@@ -10,10 +10,11 @@ import require
 import requireOrThrow
 
 /** */
-fun ApplicationCall.requireUserRole(role: String) {
+fun ApplicationCall.requireUserRole(role: String): UserSession {
     val user = sessions.get<UserSession>()
     requireOrThrow<NoValidSessionException>(user != null)
     require(user!!.roles.contains("admin") || role in user.roles) {
         UnauthorizedRouteAccessException(request.uri)
     }
+    return user
 }

@@ -154,6 +154,8 @@ fun Application.module() {
     routing {
         /** Static Javascript assets. Does not require authentication */
         js()
+        /** Static Icon assets. Does not require authentication */
+        icons()
         /** Group all other non-login pages to require session authentication */
         authenticate("auth-session") {
             index()

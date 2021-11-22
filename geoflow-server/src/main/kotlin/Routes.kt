@@ -17,11 +17,13 @@ import html.login
 import html.pipelineStatus
 import html.pipelineTasks
 import io.ktor.application.call
+import io.ktor.application.log
 import io.ktor.auth.UserIdPrincipal
 import io.ktor.auth.principal
 import io.ktor.html.respondHtml
 import io.ktor.http.content.static
 import io.ktor.http.content.resources
+import io.ktor.request.receive
 import io.ktor.request.receiveParameters
 import io.ktor.response.respondRedirect
 import io.ktor.response.respond
@@ -75,7 +77,7 @@ fun Route.loginPost() {
             )
             "/index"
         }.getOrElse { t ->
-            call.application.environment.log.info("Error session-auth", t)
+            call.application.log.info("Error session-auth", t)
             "/login?message=lookup"
         }
         call.respondRedirect(redirect)
@@ -128,7 +130,7 @@ fun Route.pipelineStatus() {
                     PipelineRuns.pickupRun(it, runId, call.sessions.get<UserSession>()!!.userId)
                 }
             } catch (t: Throwable) {
-                call.application.environment.log.error("/pipeline-stats: pickup", t)
+                call.application.log.error("/pipeline-stats: pickup", t)
                 throw t
             }
             call.respondRedirect("/tasks/$runId")
@@ -163,7 +165,7 @@ fun Route.users() {
                 Database.runWithConnection {
                     InternalUsers.createUser(it, parameters)
                 }?.let { userOid ->
-                    call.application.environment.log.info("Created new user $userOid")
+                    call.application.log.info("Created new user $userOid")
                 }
                 call.respondRedirect("/index")
             }
@@ -194,7 +196,7 @@ fun Route.api() {
                     WorkflowOperations.userOperations(it, call.sessions.get<UserSession>()?.roles!!)
                 }
             }.getOrElse { t ->
-                call.application.environment.log.error("/api/operations", t)
+                call.application.log.error("/api/operations", t)
                 listOf()
             }
             call.respond(operations)
@@ -206,7 +208,7 @@ fun Route.api() {
                     Actions.userActions(it, call.sessions.get<UserSession>()?.roles!!)
                 }
             }.getOrElse { t ->
-                call.application.environment.log.error("/api/actions", t)
+                call.application.log.error("/api/actions", t)
                 listOf()
             }
             call.respond(actions)
@@ -222,7 +224,7 @@ fun Route.api() {
                     )
                 }
             }.getOrElse { t ->
-                call.application.environment.log.error("/api/pipeline-runs", t)
+                call.application.log.error("/api/pipeline-runs", t)
                 listOf()
             }
             call.respond(runs)
@@ -234,7 +236,7 @@ fun Route.api() {
                     PipelineRunTasks.getOrderedTasks(it, call.parameters.getOrFail("runId").toLong())
                 }
             }.getOrElse { t ->
-                call.application.environment.log.error("/api/pipeline-run-tasks", t)
+                call.application.log.error("/api/pipeline-run-tasks", t)
                 listOf()
             }
             call.respond(tasks)
@@ -265,7 +267,7 @@ fun Route.api() {
                 }
                 mapOf("success" to "Scheduled ${pipelineRunTask.pipelineRunTaskId}")
             }.getOrElse { t ->
-                call.application.environment.log.info("/api/run-task", t)
+                call.application.log.info("/api/run-task", t)
                 mapOf("error" to t.message)
             }
             call.respond(response)
@@ -298,7 +300,7 @@ fun Route.api() {
                 }
                 mapOf("success" to "Scheduled ${pipelineRunTask.pipelineRunTaskId}")
             }.getOrElse { t ->
-                call.application.environment.log.info("/api/run-all", t)
+                call.application.log.info("/api/run-all", t)
                 mapOf("error" to t.message)
             }
             call.respond(response)
@@ -314,7 +316,7 @@ fun Route.api() {
                 }
                 mapOf("success" to "Reset $pipelineRunTaskId")
             }.getOrElse { t ->
-                call.application.environment.log.info("/api/reset-task", t)
+                call.application.log.info("/api/reset-task", t)
                 mapOf("error" to t.message)
             }
             call.respond(response)
@@ -329,7 +331,7 @@ fun Route.api() {
                         SourceTables.getRunSourceTables(it, runId)
                     }
                 }.getOrElse { t ->
-                    call.application.environment.log.info("/api/source-tables", t)
+                    call.application.log.info("/api/source-tables", t)
                     listOf()
                 }
                 call.respond(response)
@@ -344,7 +346,7 @@ fun Route.api() {
                     }
                     mapOf("success" to "updated stOid = $stOid. Records affected, $updateCount")
                 }.getOrElse { t ->
-                    call.application.environment.log.info("/api/source-tables", t)
+                    call.application.log.info("/api/source-tables", t)
                     val message = "Failed to update stOid ${params["stOid"]}"
                     mapOf("error" to "$message. ${t.message}")
                 }
@@ -360,7 +362,7 @@ fun Route.api() {
                     }
                     mapOf("success" to "inserted stOid $stOid")
                 }.getOrElse { t ->
-                    call.application.environment.log.info("/api/source-tables", t)
+                    call.application.log.info("/api/source-tables", t)
                     val message = "Failed to insert new source table"
                     mapOf("error" to "$message. ${t.message}")
                 }
@@ -376,7 +378,7 @@ fun Route.api() {
                     }
                     mapOf("success" to "deleted stOid $stOid")
                 }.getOrElse { t ->
-                    call.application.environment.log.info("/api/source-tables", t)
+                    call.application.log.info("/api/source-tables", t)
                     val message = "Failed to delete stOid ${params["stOid"]}"
                     mapOf("error" to "$message. ${t.message}")
                 }
@@ -386,11 +388,23 @@ fun Route.api() {
         route("/users") {
             get {
                 val response = runCatching {
-                    call.requireUserRole("admin")
-                    Database.runWithConnection { InternalUsers.getUsers(it) }
+                    val user = call.requireUserRole("admin")
+                    Database.runWithConnection { InternalUsers.getUsers(it, user.userId) }
                 }.getOrElse { t ->
-                    call.application.environment.log.info("/api/users", t)
+                    call.application.log.info("GET /api/users", t)
                     mapOf("error" to "Failed to get users. ${t.message}")
+                }
+                call.respond(response)
+            }
+            post {
+                val response = runCatching {
+                    val user = call.receive<InternalUsers.RequestUser>()
+                    val userOid = Database.runWithConnection { InternalUsers.createUser(it, user) }
+                        ?: error("INSERT statement did not return any data")
+                    mapOf("success" to "Created new user, ${user.username} (${userOid})")
+                }.getOrElse { t ->
+                    call.application.log.info("POST /api/users", t)
+                    mapOf("error" to "Failed to create new user. ${t.message}")
                 }
                 call.respond(response)
             }
@@ -409,5 +423,12 @@ fun Route.sockets() {
 fun Route.js() {
     static("assets") {
         resources("javascript")
+    }
+}
+
+/** Route for static Icons */
+fun Route.icons() {
+    static("") {
+        resources("icons")
     }
 }
