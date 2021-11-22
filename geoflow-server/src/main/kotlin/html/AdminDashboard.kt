@@ -17,7 +17,7 @@ import kotlinx.html.select
 import kotlinx.html.textInput
 
 /**
- *
+ * Home for admin related tasks. Shows data for users, runs and the worker application
  */
 object AdminDashboard {
     private const val USER_TABLE_ID = "users"
@@ -36,8 +36,8 @@ object AdminDashboard {
         ),
     )
 
-    /** */
-    val page: Template<HTML> = BasePage.withContent {
+    /** Page template for dashboard. Utilized getter since database result could change during lifespan of server */
+    val page: Template<HTML> get() = BasePage.withContent {
         div(classes = "row") {
             div(classes = "col") {
                 basicTable(
