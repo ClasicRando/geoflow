@@ -21,6 +21,7 @@ val slf4Version: String by project
 val kotlinLoggingVersion: String by project
 val reflectionsVersion: String by project
 val coroutinesJdbc: String by project
+val kMongoVersion: String by project
 
 dependencies {
     testImplementation(kotlin("test"))
@@ -58,6 +59,9 @@ dependencies {
     implementation("io.github.microutils:kotlin-logging-jvm:$kotlinLoggingVersion")
     implementation("org.reflections:reflections:$reflectionsVersion")
     implementation("com.michael-bull.kotlin-coroutines-jdbc:kotlin-coroutines-jdbc:$coroutinesJdbc")
+    implementation("org.litote.kmongo:kmongo-coroutine:$kMongoVersion")
+    implementation("org.litote.kmongo:kmongo-coroutine-serialization:$kMongoVersion")
+    implementation("org.litote.kmongo:kmongo-id-serialization:$kMongoVersion")
 }
 
 tasks.test {
