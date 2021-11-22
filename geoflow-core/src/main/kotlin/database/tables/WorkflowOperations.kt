@@ -53,6 +53,6 @@ object WorkflowOperations : DbTable("workflow_operations"), DefaultData, ApiExpo
             $whereClause
             ORDER BY $tableName.workflow_order
         """.trimIndent()
-        return connection.submitQuery(sql = sql, parameters = roles.minus("admin"))
+        return connection.submitQuery(sql = sql, roles.minus("admin"))
     }
 }

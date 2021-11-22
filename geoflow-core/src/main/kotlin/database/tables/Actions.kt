@@ -63,6 +63,6 @@ object Actions : DbTable("actions"), ApiExposed, DefaultData {
             " WHERE $tableName.role in (${"?,".repeat(roles.size).trim(',')})"
         } else ""
         val sql = "SELECT $tableName.name, $tableName.description, $tableName.href FROM $tableName$whereClause"
-        return connection.submitQuery(sql = sql, parameters = roles.minus("admin"))
+        return connection.submitQuery(sql = sql, roles.minus("admin"))
     }
 }

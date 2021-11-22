@@ -22,34 +22,7 @@ inline fun <reified T> Connection.submitQuery(
     vararg parameters: Any?,
 ): List<T> {
     return prepareStatement(sql).use { statement ->
-        for (parameter in parameters.withIndex()) {
-            statement.setObject(parameter.index + 1, parameter.value)
-        }
-        statement.executeQuery().use { rs ->
-            rs.collectRows()
-        }
-    }
-}
-
-/**
- * Returns a list of type [T] as a result of the [sql] query with statement [parameters] applied. Parameters are
- * provided as a defined [List] of [Any] type including null.
- *
- * Executes the statement built using the [sql] query and [parameters], using the [ResultSet][java.sql.ResultSet] to
- * collection rows using the provided generic type [T]. A list is built using each [ResultSet][java.sql.ResultSet] row
- * using [T] to infer the extraction methods from the row. See [rowToClass] for more details on row extraction.
- *
- * @throws java.sql.SQLException if the statement preparation or execution throw an exception
- * @throws IllegalStateException see [rowToClass]
- * @throws IllegalArgumentException see [rowToClass]
- * @throws TypeCastException see [rowToClass]
- */
-inline fun <reified T> Connection.submitQuery(
-    sql: String,
-    parameters: Iterable<Any?>,
-): List<T> {
-    return prepareStatement(sql).use { statement ->
-        for (parameter in parameters.withIndex()) {
+        for (parameter in flattenParameters(*parameters).withIndex()) {
             statement.setObject(parameter.index + 1, parameter.value)
         }
         statement.executeQuery().use { rs ->
@@ -159,24 +132,7 @@ fun Connection.runUpdate(
     vararg parameters: Any?,
 ): Int {
     return prepareStatement(sql).use { statement ->
-        for (parameter in parameters.withIndex()) {
-            statement.setObject(parameter.index + 1, parameter.value)
-        }
-        statement.executeUpdate()
-    }
-}
-
-/**
- * Shorthand for running an update [sql] command using the provided [parameters]. Returns the update affected count
- *
- * @throws java.sql.SQLException if the statement preparation or execution throw an exception
- */
-fun Connection.runUpdate(
-    sql: String,
-    parameters: Iterable<Any?>,
-): Int {
-    return prepareStatement(sql).use { statement ->
-        for (parameter in parameters.withIndex()) {
+        for (parameter in flattenParameters(*parameters).withIndex()) {
             statement.setObject(parameter.index + 1, parameter.value)
         }
         statement.executeUpdate()
@@ -241,32 +197,7 @@ inline fun <reified T> Connection.runReturningFirstOrNull(
     vararg parameters: Any?,
 ): T? {
     return prepareStatement(sql).use { statement ->
-        for (parameter in parameters.withIndex()) {
-            statement.setObject(parameter.index + 1, parameter.value)
-        }
-        statement.execute()
-        statement.resultSet.useFirstOrNull { rs ->
-            rs.rowToClass()
-        }
-    }
-}
-
-/**
- * Returns an instance of type [T] as the first result of the RETURNING DML [sql] command provided. If the
- * [ResultSet][java.sql.ResultSet] is null or empty, null is returned.
- *
- * @throws java.sql.SQLException if the statement preparation or execution throw an exception
- * @throws IllegalStateException see [rowToClass]
- * @throws IllegalArgumentException see [rowToClass]
- * @throws TypeCastException see [rowToClass]
- */
-@Suppress("UNCHECKED_CAST")
-inline fun <reified T> Connection.runReturningFirstOrNull(
-    sql: String,
-    parameters: Collection<Any?>,
-): T? {
-    return prepareStatement(sql).use { statement ->
-        for (parameter in parameters.withIndex()) {
+        for (parameter in flattenParameters(*parameters).withIndex()) {
             statement.setObject(parameter.index + 1, parameter.value)
         }
         statement.execute()
@@ -306,5 +237,23 @@ fun Connection.runBatchUpdate(
             statement.addBatch()
         }
         statement.executeBatch()
+    }
+}
+
+/** Flattens an iterable by passing each item to the sequence builder */
+suspend fun SequenceScope<Any?>.extractParams(items: Iterable<*>) {
+    for (item in items) {
+        yield(item)
+    }
+}
+
+/** Returns a lazy sequence of params with iterable items flattened to single items */
+fun flattenParameters(vararg params: Any?): Sequence<Any?> = sequence {
+    for (param in params) {
+        if (param is Iterable<*>) {
+            extractParams(param)
+        } else {
+            yield(param)
+        }
     }
 }

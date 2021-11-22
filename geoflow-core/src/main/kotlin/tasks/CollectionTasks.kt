@@ -217,7 +217,9 @@ suspend fun downloadMissingFiles(connection: Connection, prTask: PipelineRunTask
         """.trimIndent()
     val urls = connection.submitQuery<String>(
         sql = sql,
-        parameters = listOf(prTask.runId) + filenames + downloadCollectTypes
+        prTask.runId,
+        filenames,
+        downloadCollectTypes
     )
     for (url in urls) {
         when {

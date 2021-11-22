@@ -6,7 +6,6 @@ import database.extensions.runReturningFirstOrNull
 import database.extensions.submitQuery
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
-import requireNotEmpty
 import java.sql.Connection
 import java.sql.ResultSet
 
@@ -122,35 +121,6 @@ object InternalUsers : DbTable("internal_users"), ApiExposed {
         ) ?: throw IllegalArgumentException("User cannot be found")
     }
 
-    /**
-     * Attempts to create a new user from the provided [params], returning the new user_oid if successful
-     *
-     * @throws IllegalArgumentException when various requirements are not met, such as
-     * - [params] does not contain fullName, username, roles or password
-     * - fullName, username or password lists do not contain exactly 1 element
-     * - roles is empty
-     * @throws [java.sql.SQLException] when the connection throws an error
-     */
-    fun createUser(connection: Connection, params: Map<String, List<String>>): Long? {
-        val fullName = params["fullName"]?.get(0)
-        val username = params["username"]?.get(0)
-        val roles = params["roles"] ?: throw IllegalArgumentException("New user must have roles provided")
-        val password = params["password"]?.get(0)
-        requireNotNull(fullName) { "New user must have a single name provided" }
-        requireNotNull(username) { "New user must have a single username provided" }
-        requireNotEmpty(roles) { "New user must have 1 or more role" }
-        requireNotNull(password) { "New user must have a single password provided" }
-        val sql = """
-            INSERT INTO $tableName(name,username,password,roles)
-            VALUES(?,?,crypt(?,gen_salt('bf')),ARRAY[${"?,".repeat(roles.size).trim(',')}])
-            RETURNING user_oid
-        """.trimIndent()
-        return connection.runReturningFirstOrNull<Long>(
-            sql = sql,
-            parameters = listOf(fullName, username, password) + roles,
-        )
-    }
-
     /** API request to */
     @Serializable
     data class RequestUser(
@@ -186,7 +156,10 @@ object InternalUsers : DbTable("internal_users"), ApiExposed {
         """.trimIndent()
         return connection.runReturningFirstOrNull<Long>(
             sql = sql,
-            parameters = listOf(user.name, user.username, user.password) + user.roles,
+            user.name,
+            user.username,
+            user.password,
+            user.roles,
         )
     }
 

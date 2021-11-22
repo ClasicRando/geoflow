@@ -205,7 +205,8 @@ object SourceTables : DbTable("source_tables"), ApiExposed {
         """.trimIndent()
         val updateCount = connection.runUpdate(
             sql = sql,
-            parameters = sortedMap.values.plus(stOid)
+            sortedMap.values,
+            stOid,
         )
         return stOid to updateCount
     }
@@ -236,7 +237,8 @@ object SourceTables : DbTable("source_tables"), ApiExposed {
         """.trimIndent()
         return connection.runReturningFirstOrNull(
             sql = sql,
-            parameters = listOf(runId) + sortedMap.values
+            runId,
+            sortedMap.values,
         ) ?: throw IllegalArgumentException("Error while trying to insert record. Null returned")
     }
 

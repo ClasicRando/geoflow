@@ -454,7 +454,8 @@ object PipelineRunTasks: DbTable("pipeline_run_tasks"), ApiExposed, Triggers {
         """.trimIndent()
         connection.runUpdate(
             sql = sql,
-            parameters = sortedMap.values.plus(pipelineRunTaskId)
+            sortedMap.values,
+            pipelineRunTaskId,
         )
     }
 }
