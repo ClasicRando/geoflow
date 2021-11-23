@@ -1,6 +1,6 @@
 package auth
 
-import io.ktor.auth.*
+import io.ktor.auth.Principal
 import java.time.Instant
 
 /**
@@ -10,14 +10,20 @@ import java.time.Instant
  * **Future Changes**
  * - Decide more appropriate expiration or change to new auth method
  */
+@Suppress("MagicNumber")
 data class UserSession(
+    /** userOID from the [InternalUsers][database.tables.InternalUsers] table */
     val userId: Long,
+    /** unique username for the current user */
     val username: String,
+    /** full name of user */
     val name: String,
+    /** roles available to the user */
     val roles: List<String>,
+    /** expiration of the session */
     val expiration: Long = Instant.now().plusSeconds(60L * 60).epochSecond,
-): Principal {
+) : Principal {
+    /** getter that checks if the current [Instant] is after the expiration epoch second */
     val isExpired: Boolean
         get() = Instant.now().isAfter(Instant.ofEpochSecond(expiration))
-    fun hasRole(role: String): Boolean = "admin" in roles || role in roles
 }

@@ -1,0 +1,8 @@
+"name","description"
+"admin","All privileges granted"
+"check","Check a data load"
+"collection","Collect for and set up data sources"
+"create_ls","Ability to create a new load instance"
+"ds_create","Ability to create a new data source"
+"load","Process data loads"
+"qa","Perform Quality Assurance on a data load"

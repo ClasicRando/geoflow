@@ -1,7 +1,25 @@
 package html
 
-import io.ktor.html.*
-import kotlinx.html.*
+import io.ktor.html.Template
+import io.ktor.html.Placeholder
+import io.ktor.html.insert
+import kotlinx.html.FlowContent
+import kotlinx.html.script
+import kotlinx.html.HTML
+import kotlinx.html.STYLE
+import kotlinx.html.a
+import kotlinx.html.body
+import kotlinx.html.div
+import kotlinx.html.head
+import kotlinx.html.lang
+import kotlinx.html.li
+import kotlinx.html.link
+import kotlinx.html.meta
+import kotlinx.html.nav
+import kotlinx.html.style
+import kotlinx.html.title
+import kotlinx.html.ul
+import kotlinx.html.unsafe
 
 /**
  * Base template for all standard pages in the application. Contains a links, scripts and placeholders for later
@@ -11,10 +29,13 @@ import kotlinx.html.*
  * itself so more placeholders can be filled after the initial fill.
  */
 class BasePage private constructor (
+    /** placeholder for style component of the page */
     val styles: Placeholder<STYLE> = Placeholder(),
+    /** placeholder for general content of the page */
     val content: Placeholder<FlowContent> = Placeholder(),
+    /** placeholder for script content of the page */
     val script: Placeholder<FlowContent> = Placeholder(),
-): Template<HTML> {
+) : Template<HTML> {
 
     /** Applies [block] to the [styles] Placeholder */
     fun withStyles(block: STYLE.() -> Unit): BasePage {
@@ -35,6 +56,7 @@ class BasePage private constructor (
     }
 
     /** Method from [Template] to create HTML document. Contains most of the layout with some placeholders */
+    @Suppress("LongMethod")
     override fun HTML.apply() {
         lang = "en-US"
         head {
@@ -69,6 +91,9 @@ class BasePage private constructor (
                 src = "https://cdn.jsdelivr.net/npm/jquery/dist/jquery.min.js"
             }
             script {
+                src = "https://cdn.jsdelivr.net/npm/jquery-validation@1.19.3/dist/jquery.validate.min.js"
+            }
+            script {
                 src = "/assets/utils.js"
             }
             style {
@@ -84,6 +109,13 @@ class BasePage private constructor (
                         }
                         .inTableButton:hover {
                             border: 1px solid;
+                        }
+                        .validInput {
+                            border-color: #28a745;
+                        }
+                        .invalidInput {
+                            color: #dc3545;
+                            border-color: #dc3545;
                         }
                     """.trimIndent())
                 }
@@ -133,7 +165,6 @@ class BasePage private constructor (
             }
         }
     }
-    
     companion object {
         /** Creates a [BasePage] instance, applies [block] to the [styles] Placeholder and returns the instance */
         fun withStyles(block: STYLE.() -> Unit): BasePage {

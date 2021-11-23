@@ -8,14 +8,20 @@ import org.postgresql.util.PGobject
  * ('Waiting', 'Scheduled', 'Running', 'Complete', 'Failed');
  */
 enum class TaskStatus {
+    /** State of the task is waiting to be run as part of the pipeline */
     Waiting,
+    /** State of the task is scheduled in the KJob repository so a worker can pick it up for running */
     Scheduled,
+    /** State of the task is currently running in a worker */
     Running,
+    /** State of the task is completed by a worker */
     Complete,
+    /** State of the task is failed due to an exception during task execution */
     Failed,
     ;
 
-    val pgObject = PGobject().apply {
+    /** [PGobject] representation of the enum value */
+    val pgObject: PGobject = PGobject().apply {
         type = "task_status"
         value = name
     }

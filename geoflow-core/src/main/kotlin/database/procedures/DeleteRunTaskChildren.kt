@@ -7,7 +7,7 @@ import kotlin.reflect.typeOf
  * Stored Procedure that deletes all child tasks of a given pr_task_id. Uses recursive CTE to obtain all levels of child
  * tasks for deletion
  */
-object DeleteRunTaskChildren: SqlProcedure(
+object DeleteRunTaskChildren : SqlProcedure(
     "delete_run_task_children",
     parameterTypes = listOf(
         typeOf<Long>(),
@@ -19,7 +19,7 @@ object DeleteRunTaskChildren: SqlProcedure(
         super.call(connection, pipelineRunTaskId)
     }
 
-    override val code = """
+    override val code: String = """
         CREATE OR REPLACE PROCEDURE public.delete_run_task_children(
         	pr_task_id bigint)
         LANGUAGE 'sql'

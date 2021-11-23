@@ -11,9 +11,9 @@ package database.tables
  * --------------
  * - implement API requirements for users to perform CRUD operations on this table
  */
-object DataSources: DbTable("data_sources") {
+object DataSources : DbTable("data_sources") {
 
-    override val createStatement = """
+    override val createStatement: String = """
         CREATE TABLE IF NOT EXISTS public.data_sources
         (
             ds_id bigint PRIMARY KEY GENERATED ALWAYS AS IDENTITY,

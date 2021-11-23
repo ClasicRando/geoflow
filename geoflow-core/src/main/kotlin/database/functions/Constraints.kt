@@ -1,8 +1,14 @@
 package database.functions
 
+/**
+ * Storage for global check constraint functions. Should only be used by the BuildScript
+ */
 object Constraints {
 
-    val functions = listOf(
+    /**
+     * List of create statements for functions used in global constraint checks
+     */
+    val functions: List<String> = listOf(
         /**
          * Returns true if the value passed is null or text containing characters other than whitespace
          */

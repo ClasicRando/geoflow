@@ -1,0 +1,184 @@
+const createValidationRules = {
+    fullName: 'required',
+    username: 'required',
+    password: {
+        required: true,
+        minlength: 6,
+    },
+    repeatPassword: {
+        required: true,
+        equalTo: '#password',
+    },
+    roles: {
+        required: {
+            depends: (element) => !($('#isAdmin').prop('checked')),
+        },
+    },
+};
+const createValidationMessages = {
+    fullName: 'Please specify a name',
+    username: 'Please specify a username',
+    password: {
+        required: 'Please specify a password',
+        minlength: jQuery.validator.format('Password must be atleast {0} characters'),
+    },
+    repeatPassword: {
+        required: 'Passwords must match',
+        equalTo: 'Passwords must match',
+    },
+    roles: {
+        required: 'Atleast 1 roles must be selected',
+    },
+};
+let createValidator = null;
+
+const editValidationRules = {
+    fullName: 'required',
+    username: 'required',
+    roles: {
+        required: {
+            depends: (element) => !($('#isAdmin').prop('checked')),
+        },
+    },
+};
+const editValidationMessages = {
+    fullName: 'Please specify a name',
+    username: 'Please specify a username',
+    roles: {
+        required: 'Atleast 1 roles must be selected',
+    },
+};
+let editValidator = null;
+let updateUserOid = -1;
+
+$(document).ready(() => {
+    $('#isAdmin').change((e) => {
+        const $form = $(e.target).parent().parent();
+        const $select = $('.custom-select');
+        if (this.checked) {
+            $select.prop("disabled", true).removeClass('invalidInput').addClass('validInput');
+            $select.find('option').prop('selected', false);
+            const $error = $form.find('#roles-error');
+            if ($error.length !== 0) {
+                $error.remove();
+            }
+        } else {
+            $select.prop("disabled", false).removeClass('validInput');
+        }
+    });
+    createValidator = $(`#${userCreateForm}`).validate({
+        rules: createValidationRules,
+        messages: createValidationMessages,
+        errorClass: 'invalidInput',
+        validClass: 'validInput',
+        submitHandler: () => {},
+    });
+    editValidator = $(`#${userEditForm}`).validate({
+        rules: editValidationRules,
+        messages: editValidationMessages,
+        errorClass: 'invalidInput',
+        validClass: 'validInput',
+        submitHandler: () => {},
+    });
+    $(`#${userCreateModal}`).on('hidden.bs.modal', (e) => {
+        $(e.target).find('option').prop('selected',false);
+        createValidator.resetForm();
+        $(`#${userTable}`).bootstrapTable('refresh');
+    });
+    $(`#${userEditModal}`).on('hidden.bs.modal', (e) => {
+        $(e.target).find('option').prop('selected',false);
+        editValidator.resetForm();
+        $(`#${userTable}`).bootstrapTable('refresh');
+    });
+});
+
+function isAdminFormatter(value, row) {
+    return row.roles.includes('admin') ? '<i class="fas fa-check"></i>' : '';
+}
+
+function editFormatter(value, row) {
+    return value ? `<span style="display: inline;"><i class="fas fa-edit p-1 inTableButton" onClick="openEditUserModal(${row.user_oid})"></i></span>` : '';
+}
+
+function openNewUserModal() {
+    $(`#${userCreateModal}`).modal('show');
+}
+
+async function submitNewUser($form) {
+    const $fullName = $form.find('#fullName');
+    const $username = $form.find('#username');
+    const $password = $form.find('#password');
+    const $roles = $form.find('#roles');
+    const $isAdmin = $form.find('#isAdmin');
+    const user = {
+        fullName: $fullName.val(),
+        username: $username.val(),
+        user_oid: null,
+        password: $password.val(),
+        roles: $isAdmin.prop('checked') ? ['admin'] : $roles.val(),
+    };
+    const response = await postJSON('/api/users', user);
+    const json = await response.json();
+    console.log(json);
+    if ('success' in json) {
+        $(`#${userCreateModal}`).modal('hide');
+        showToast('Created User', json.success);
+    } else {
+        $(`#${userCreateModal}ResponseErrorMessage`).text(json.error);
+    }
+}
+
+async function createUser() {
+    const $form = $(`#${userCreateForm}`);
+    if ($form.valid()) {
+        submitNewUser($form);
+    }
+}
+
+function openEditUserModal(userOid) {
+    updateUserOid = userOid;
+    const $modal = $(`#${userEditModal}`);
+    const row = $(`#${userTable}`).bootstrapTable('getData').find(row => row.user_oid === userOid);
+    const $form = $modal.find('form');
+    $form.find('#fullName').val(row.name).change();
+    $form.find('#username').val(row.username).change();
+    $form.find('#roles option').each((i, element) => {
+        const $element = $(element);
+        if (row.roles.includes($element.val())) {
+            $element.prop('selected', 'selected');
+        }
+    });
+    $form.find('#isAdmin').prop('checked', row.roles.includes('admin'));
+    $modal.modal('show');
+}
+
+async function submitEditUser($form) {
+    const $fullName = $form.find('#fullName');
+    const $username = $form.find('#username');
+    const $roles = $form.find('#roles');
+    const $isAdmin = $form.find('#isAdmin');
+    const user = {
+        fullName: $fullName.val(),
+        username: $username.val(),
+        user_oid: updateUserOid,
+        roles: $isAdmin.prop('checked') ? ['admin'] : $roles.val(),
+        password: null,
+    };
+    const response = await patchJSON('/api/users', user);
+    const json = await response.json();
+    console.log(json);
+    if ('success' in json) {
+        $(`#${userEditModal}`).modal('hide');
+        showToast('Updated User', json.success);
+    } else {
+        $(`#${userEditModal}ResponseErrorMessage`).text(json.error);
+    }
+    updateUserOid = -1;
+}
+
+async function editUser() {
+    const $form = $(`#${userEditForm}`);
+    if ($form.valid()) {
+        submitEditUser($form);
+    }
+}

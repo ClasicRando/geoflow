@@ -1,6 +1,11 @@
 package tasks
 
-import data_loader.*
+import loading.AnalyzeResult
+import loading.LoadingInfo
+import loading.analyzeFile
+import loading.checkTableExists
+import loading.loadFile
+import database.extensions.runBatchUpdate
 import database.tables.PipelineRunTasks
 import database.tables.PipelineRuns
 import database.tables.SourceTableColumns
@@ -20,7 +25,7 @@ import java.sql.Connection
  * have been analyzed, the column stats are inserted (or updated if they already exist) into the [SourceTableColumns]
  * table and the [SourceTables] record is updated to show it has been analyzed.
  */
-@SystemTask(taskId = 12)
+@SystemTask(taskId = 12, taskName = "Analyze Files")
 suspend fun analyzeFiles(connection: Connection, prTask: PipelineRunTasks.PipelineRunTask) {
     val pipelineRun = PipelineRuns.getRun(connection, prTask.runId)
         ?: throw IllegalArgumentException("Run ID must not be null")
@@ -45,35 +50,35 @@ suspend fun analyzeFiles(connection: Connection, prTask: PipelineRunTasks.Pipeli
  * file might have multiple sub tables so each source table record is grouped by filename. After the files have been
  * loaded, the [SourceTables] record is updated to show it has been loaded.
  */
-@SystemTask(taskId = 13)
+@SystemTask(taskId = 13, taskName = "Load Files")
 suspend fun loadFiles(connection: Connection, prTask: PipelineRunTasks.PipelineRunTask) {
     val pipelineRun = PipelineRuns.getRun(connection, prTask.runId)
         ?: throw IllegalArgumentException("Run ID must not be null")
-    val filesToLoad = SourceTables.filesToLoad(connection, prTask.runId)
-    for (file in filesToLoad) {
+    val updateSql = "UPDATE ${SourceTables.tableName} SET load = false WHERE st_oid = ?"
+    for (file in SourceTables.filesToLoad(connection, prTask.runId)) {
         for (loadingInfo in file.loaders) {
-            if (connection.checkTableExists(loadingInfo.tableName)) {
-                taskLogger.info("Dropping ${loadingInfo.tableName} to load")
-                connection.prepareStatement("drop table ${loadingInfo.tableName}").use { statement ->
-                    statement.execute()
-                }
-            }
-            connection.prepareStatement(loadingInfo.createStatement).use { statement ->
-                statement.execute()
-            }
+            createSourceTable(connection, loadingInfo)
         }
         connection.loadFile(
             file = File(pipelineRun.runFilesLocation, file.fileName),
             loaders = file.loaders,
         )
-        connection.prepareStatement(
-            "UPDATE ${SourceTables.tableName} SET load = false WHERE st_oid = ?"
-        ).use { statement ->
-            for (loadingInfo in file.loaders) {
-                statement.setLong(1, loadingInfo.stOid)
-                statement.addBatch()
-            }
-            statement.executeBatch()
+        connection.runBatchUpdate(
+            sql = updateSql,
+            parameters = file.loaders.map { it.stOid }
+        )
+    }
+}
+
+/** Utility function to create source table using the provided [loadingInfo]. Drops table if it already exists */
+private fun createSourceTable(connection: Connection, loadingInfo: LoadingInfo) {
+    if (connection.checkTableExists(loadingInfo.tableName)) {
+        taskLogger.info("Dropping ${loadingInfo.tableName} to load")
+        connection.prepareStatement("drop table ${loadingInfo.tableName}").use { statement ->
+            statement.execute()
         }
+    }
+    connection.prepareStatement(loadingInfo.createStatement).use { statement ->
+        statement.execute()
     }
 }

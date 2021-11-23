@@ -1,6 +1,16 @@
 package html
 
-import kotlinx.html.*
+import kotlinx.html.FlowContent
+import kotlinx.html.THEAD
+import kotlinx.html.UL
+import kotlinx.html.id
+import kotlinx.html.script
+import kotlinx.html.table
+import kotlinx.html.th
+import kotlinx.html.thead
+import kotlinx.html.tr
+import kotlinx.html.ul
+import kotlinx.html.unsafe
 
 /** Utility function to convert a JSON key to a display field name */
 fun getFieldTable(field: String): String = field
@@ -15,8 +25,20 @@ fun getFieldTable(field: String): String = field
  *
  * See [buttons](https://bootstrap-table.com/docs/api/table-options/#buttons) option for more details.
  */
-data class TableButton(val name: String, val text: String, val icon: String, val event: String, val title: String) {
-    val button = """
+data class TableButton(
+    /** name of the button, used as the key in the resulting json key value pair */
+    val name: String,
+    /** text shown in the button */
+    val text: String,
+    /** icon within the button */
+    val icon: String,
+    /** javascript function called on button click */
+    val event: String,
+    /** title of the button, shown on hover */
+    val title: String,
+) {
+    /** json key value pair as text */
+    val button: String = """
         $name: {
             text: '$text',
             icon: '$icon',
@@ -29,7 +51,32 @@ data class TableButton(val name: String, val text: String, val icon: String, val
 }
 
 /** Container for table header buttons. Provides a [name] and [html code][html] for the html list entry */
-data class HeaderButton(val name: String, val html: UL.() -> Unit)
+data class HeaderButton(
+    /** name of button */
+    val name: String,
+    /** code used to add the button to the ul tag */
+    val html: UL.() -> Unit,
+)
+
+/** adds a row to the `thead` tag and populates that row with the fields provided */
+private fun THEAD.addFields(fields: Map<String, Map<String, String>>, clickableRows: Boolean) {
+    tr {
+        for ((field, options) in fields) {
+            th {
+                attributes["data-field"] = field
+                if (clickableRows) {
+                    attributes["data-cell-style"] = "clickableTd"
+                }
+                for ((key, value) in options) {
+                    if (key != "name") {
+                        attributes["data-$key"] = value
+                    }
+                }
+                text(options["name"] ?: getFieldTable(field))
+            }
+        }
+    }
+}
 
 /**
  * Constructs a basic [BootstrapTable](https://bootstrap-table.com) that fetches data from the desired [url][dataUrl],
@@ -39,6 +86,7 @@ data class HeaderButton(val name: String, val html: UL.() -> Unit)
  * [header buttons](https://bootstrap-table.com/docs/api/table-options/#toolbar), sort function (name of javascript
  * function to call), a flag denoting is the rows are [clickable][clickableRows], and a [subscriber] url.
  */
+@Suppress("LongParameterList")
 fun FlowContent.basicTable(
     tableId: String,
     dataUrl: String,
@@ -80,20 +128,7 @@ fun FlowContent.basicTable(
             attributes["data-buttons"] = "${tableId}buttons"
         }
         thead {
-            tr {
-                fields.forEach { (field, options) ->
-                    th {
-                        attributes["data-field"] = field
-                        if (clickableRows) {
-                            attributes["data-cell-style"] = "clickableTd"
-                        }
-                        options.filter { it.key != "name" }.forEach { (key, value) ->
-                            attributes["data-$key"] = value
-                        }
-                        text(options["name"] ?: getFieldTable(field))
-                    }
-                }
-            }
+            addFields(fields, clickableRows)
         }
         if (tableButtons.isNotEmpty()) {
             script {

@@ -2,6 +2,8 @@ package html
 
 import database.tables.Actions
 import database.tables.WorkflowOperations
+import io.ktor.html.Template
+import kotlinx.html.HTML
 import kotlinx.html.div
 import kotlinx.html.script
 
@@ -17,7 +19,7 @@ object Index {
      * - mapping object properties to javascript global variables named after the property name
      * - link to static asset for registering table row click events to navigate to the desired href
      */
-    val page = BasePage.withContent {
+    val page: Template<HTML> = BasePage.withContent {
         div(classes = "row") {
             div(classes = "col") {
                 basicTable(

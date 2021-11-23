@@ -1,11 +1,18 @@
 package database.procedures
 
-import database.call
+import database.extensions.call
 import java.sql.Connection
 import kotlin.reflect.KType
 import kotlin.reflect.full.createType
 import kotlin.reflect.full.isSubtypeOf
 
+/**
+ * Base implementation of a stored SQL procedure. Provides the ability to call a procedure and validate the provided
+ * parameters
+ *
+ * @param name name of the stored procedure
+ * @param parameterTypes types of the parameters provided to the stored procedure
+ */
 abstract class SqlProcedure(
     val name: String,
     private val parameterTypes: List<KType>

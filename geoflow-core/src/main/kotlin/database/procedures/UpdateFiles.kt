@@ -12,7 +12,7 @@ import kotlin.reflect.typeOf
  * - sets all non-FLAT file records to have a false qualified field
  * - sets sub_table field to null when loader_type is not excel or mdb
  */
-object UpdateFiles: SqlProcedure(
+object UpdateFiles : SqlProcedure(
     name = "update_files",
     parameterTypes = listOf(
         typeOf<Long>(),
@@ -24,7 +24,7 @@ object UpdateFiles: SqlProcedure(
         super.call(connection, pipelineRunTaskId)
     }
 
-    override val code = """
+    override val code: String = """
         CREATE OR REPLACE PROCEDURE public.update_files(
         	run_id bigint)
         LANGUAGE 'sql'

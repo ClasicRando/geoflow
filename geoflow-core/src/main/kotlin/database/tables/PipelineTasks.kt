@@ -3,9 +3,9 @@ package database.tables
 /**
  * Table used to store the tasks associated with a generic pipeline from the [Pipelines] table
  */
-object PipelineTasks: DbTable("pipeline_tasks") {
+object PipelineTasks : DbTable("pipeline_tasks") {
 
-    override val createStatement = """
+    override val createStatement: String = """
         CREATE TABLE IF NOT EXISTS public.pipeline_tasks
         (
 			pipeline_task_id bigint PRIMARY KEY GENERATED ALWAYS AS IDENTITY,

@@ -1,13 +1,13 @@
-import java.time.*
+import java.time.LocalDate
+import java.time.Instant
+import java.time.ZoneId
 import java.time.format.DateTimeFormatter
 
+/** Formats [date] to the [ISO_LOCAL_DATE][DateTimeFormatter.ISO_LOCAL_DATE] */
 fun formatLocalDateDefault(date: LocalDate): String = date.format(DateTimeFormatter.ISO_LOCAL_DATE)
 
-fun formatInstantDefault(timestamp: Instant?) = timestamp
-    ?.atZone(ZoneId.systemDefault())
-    ?.format(DateTimeFormatter.ISO_LOCAL_DATE) ?: ""
-
-fun formatInstantDateTime(timestamp: Instant?) = timestamp
+/** Formats [timestamp] to the [ISO_LOCAL_DATE][DateTimeFormatter.ISO_LOCAL_DATE_TIME] for the system default zone */
+fun formatInstantDateTime(timestamp: Instant?): String = timestamp
     ?.atZone(ZoneId.systemDefault())
     ?.format(DateTimeFormatter.ISO_LOCAL_DATE_TIME) ?: ""
 
@@ -20,6 +20,7 @@ inline fun <T> requireNotEmpty(collection: Collection<T>, lazyMessage: () -> Any
         throw IllegalStateException(message.toString())
     }
 }
+
 /**
  * Checks if the provided [collection] is not empty and if so, throws an [IllegalStateException] with the lazy message
  */

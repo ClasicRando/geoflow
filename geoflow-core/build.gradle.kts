@@ -1,3 +1,4 @@
+@file:kotlin.Suppress("KDocMissingDocumentation")
 plugins {
     kotlin("plugin.serialization") version "1.5.30"
 }
@@ -20,6 +21,7 @@ val slf4Version: String by project
 val kotlinLoggingVersion: String by project
 val reflectionsVersion: String by project
 val coroutinesJdbc: String by project
+val kMongoVersion: String by project
 
 dependencies {
     testImplementation(kotlin("test"))
@@ -47,8 +49,6 @@ dependencies {
     // https://mvnrepository.com/artifact/org.apache.poi/poi-ooxml
     implementation("org.apache.poi:poi-ooxml:$poiVersion")
     implementation("com.beust:klaxon:$klaxonVersion")
-    // https://mvnrepository.com/artifact/at.favre.lib/bcrypt
-    implementation("at.favre.lib:bcrypt:$bcryptVersion")
     implementation("io.ktor:ktor-client-core:$ktorVersion")
     implementation("io.ktor:ktor-client-cio:$ktorVersion")
     implementation("io.ktor:ktor-client-serialization:$ktorVersion")
@@ -59,6 +59,9 @@ dependencies {
     implementation("io.github.microutils:kotlin-logging-jvm:$kotlinLoggingVersion")
     implementation("org.reflections:reflections:$reflectionsVersion")
     implementation("com.michael-bull.kotlin-coroutines-jdbc:kotlin-coroutines-jdbc:$coroutinesJdbc")
+    implementation("org.litote.kmongo:kmongo-coroutine:$kMongoVersion")
+    implementation("org.litote.kmongo:kmongo-coroutine-serialization:$kMongoVersion")
+    implementation("org.litote.kmongo:kmongo-id-serialization:$kMongoVersion")
 }
 
 tasks.test {

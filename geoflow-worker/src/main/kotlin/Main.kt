@@ -19,6 +19,7 @@ import java.time.Instant
 private val logger = KotlinLogging.logger {}
 
 /** Utility to start Kjob using a MongoDB or stored in memory (for testing). */
+@Suppress("MagicNumber")
 fun startKjob(isMongo: Boolean): KJob {
     return if (isMongo) {
         kjob(Mongo) {
@@ -65,11 +66,12 @@ fun startKjob(isMongo: Boolean): KJob {
  * updated and if the 'runNext' property is true then the next task for the pipeline run is scheduled to run. If the
  * task result is an [error][TaskResult.Error], the database record is updated with the message and stacktrace.
  */
+@Suppress("LongMethod")
 suspend fun JobContextWithProps<SystemJob>.executeSystemJob(kJob: KJob) {
-    try {
+    runCatching {
         val pipelineRunTaskId = props[SystemJob.pipelineRunTaskId]
         val runId = props[SystemJob.runId]
-        when(val result = runTask(pipelineRunTaskId)) {
+        when (val result = runTask(pipelineRunTaskId)) {
             is TaskResult.Success -> {
                 Database.runWithConnection {
                     PipelineRunTasks.update(
@@ -88,7 +90,6 @@ suspend fun JobContextWithProps<SystemJob>.executeSystemJob(kJob: KJob) {
                                 kJob.schedule(SystemJob) {
                                     props[it.runId] = runId
                                     props[it.pipelineRunTaskId] = nextTask.taskId
-                                    props[it.taskClassName] = nextTask.taskClassName
                                     props[it.runNext] = true
                                 }
                             }
@@ -109,7 +110,7 @@ suspend fun JobContextWithProps<SystemJob>.executeSystemJob(kJob: KJob) {
                 }
             }
         }
-    } catch (t: Throwable) {
+    }.getOrElse { t ->
         withContext(NonCancellable) {
             val pipelineRunTaskId = props[SystemJob.pipelineRunTaskId]
             Database.runWithConnection {

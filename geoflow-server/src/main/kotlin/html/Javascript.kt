@@ -5,7 +5,7 @@ import kotlinx.html.unsafe
 
 /** Converts a Kotlin object to it's javascript value that is assigned to a global variable. */
 private fun convertToJsValue(value: Any): String {
-    return when(value) {
+    return when (value) {
         is String -> "'${value.replace("'", "\\'")}'"
         is Number -> value.toString()
         is Map<*, *> -> value.entries.joinToString(prefix = "{", postfix = "}") {
@@ -28,7 +28,7 @@ private fun convertToJsValue(value: Any): String {
 fun SCRIPT.addParamsAsJsGlobalVariables(params: Map<String, Any>) {
     val jsVariables = params
         .mapValues { (_, value) -> convertToJsValue(value) }
-        .map{ (name, value) -> "var $name = $value" }
+        .map { (name, value) -> "var $name = $value" }
         .joinToString(separator = ";", postfix = ";")
     unsafe {
         raw(jsVariables)

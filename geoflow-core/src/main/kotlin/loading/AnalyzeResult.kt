@@ -1,11 +1,14 @@
-package data_loader
+package loading
 
 import kotlin.math.max
 
 /** Result container for file analysis. Holds table stats and metadata required for schema */
 data class AnalyzeResult(
+    /** table name for the file/sub table */
     val tableName: String,
+    /** record count for the source table */
     val recordCount: Int,
+    /** column information for the source table */
     val columns: List<ColumnStats>,
 ) {
     /**

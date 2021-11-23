@@ -5,7 +5,7 @@ package database.tables
  *
  * Each record dictates how matching to and merging staging data into production data should be treated
  */
-object RecordWarehouseTypes: DbTable("record_warehouse_types") {
+object RecordWarehouseTypes : DbTable("record_warehouse_types") {
 
     override val createStatement = """
         CREATE TABLE IF NOT EXISTS public.record_warehouse_types

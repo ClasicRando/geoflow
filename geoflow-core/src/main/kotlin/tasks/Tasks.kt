@@ -4,6 +4,8 @@ import database.Database
 import database.enums.TaskRunType
 import database.enums.TaskStatus
 import database.tables.PipelineRunTasks
+import database.tables.Tasks
+import mu.KLogger
 import mu.KotlinLogging
 import org.reflections.Reflections
 import org.reflections.scanners.Scanners
@@ -16,17 +18,31 @@ import kotlin.reflect.full.callSuspend
 import kotlin.reflect.full.isSubtypeOf
 import kotlin.reflect.full.withNullability
 import kotlin.reflect.jvm.kotlinFunction
-import kotlin.reflect.jvm.kotlinProperty
 import kotlin.reflect.typeOf
 
-val taskLogger = KotlinLogging.logger {}
+/** logger for tasks */
+val taskLogger: KLogger = KotlinLogging.logger {}
 
+/** Sealed interface to constrain Task info type */
 sealed interface TaskInfo {
+    /**
+     * System task type with a single property of the function to be called
+     *
+     * @param function reflection view of a function to be used for the a system task
+     */
     data class SystemTaskInfo(val function: KFunction<*>) : TaskInfo
-    object UserTaskInfo: TaskInfo
+    /** Single class for user task type */
+    object UserTaskInfo : TaskInfo
 }
 
-val tasks by lazy {
+/**
+ * lazy property that collects all annotated [SystemTask]s using reflection and queries the database for all user tasks
+ * to properly register all runnable tasks.
+ *
+ * Checks to make sure none of the annotated functions repeat task IDs and the underlining function have the correct
+ * return types.
+ */
+val tasks: Map<Long, TaskInfo> by lazy {
     val nullableStringType = typeOf<String>().withNullability(true)
     val unitType = typeOf<Unit>()
     val config = ConfigurationBuilder()
@@ -51,23 +67,9 @@ val tasks by lazy {
         }
     }
 
-    val longType = typeOf<Long>()
-    val config2 = ConfigurationBuilder()
-        .forPackage("tasks")
-        .setScanners(Scanners.FieldsAnnotated)
-    val userTasksList = Reflections(config2)
-        .getFieldsAnnotatedWith(UserTask::class.java)
-        .asSequence()
-        .mapNotNull { it.kotlinProperty }
-    val userTasks = buildMap {
-        for (userTask in userTasksList) {
-            requireState(userTask.isConst) { "User task property must be a const" }
-            requireState(userTask.returnType.isSubtypeOf(longType)) { "User task property must be of type `Long`" }
-            val taskId = userTask.getter.call() as Long
-            requireState(taskId !in this) { "TaskIds must not repeat: $taskId" }
-            set(taskId, TaskInfo.UserTaskInfo)
-        }
-    }
+    val userTasks = Database.runWithConnectionBlocking {
+        Tasks.getUserTasks(it)
+    }.associate { it.taskId to TaskInfo.UserTaskInfo }
 
     val intersectIds = userTasks.keys.intersect(systemTasks.keys)
     requireEmpty(intersectIds) { "TaskIds must not repeat: ${intersectIds.joinToString()}" }
@@ -75,6 +77,9 @@ val tasks by lazy {
     systemTasks + userTasks
 }
 
+/**
+ * Returns a taskId for the provided function reference. Provided function must be annotated with [SystemTask]
+ */
 fun getTaskIdFromFunction(function: KFunction<*>): Long {
     require(function.annotations.any { it.annotationClass.java == SystemTask::class.java }) {
         "Function passed must annotated with @Task"
@@ -82,6 +87,17 @@ fun getTaskIdFromFunction(function: KFunction<*>): Long {
     return tasks.entries.first { (_, info) -> info is TaskInfo.SystemTaskInfo && info.function == function }.key
 }
 
+/**
+ * Task run function that executes the task associated with the [pipelineRunTaskId] provided. If the task is a
+ * [SystemTask] then the linked function is run and does nothing if it's a [UserTask]. Runs the entire function in a
+ * [runCatching] block, returning the appropriate [TaskResult].
+ *
+ * Starts by updating the [PipelineRunTasks]'s record to the running status with a start time of the current [Instant]
+ * then proceeds to run the required logic in a transaction with the [PipelineRunTasks] record locked. Once the
+ * task function has been completed (or nothing happens in the case of a [UserTask]), the transaction is completed
+ * returning a [Success][TaskResult.Success] result. If an exception is thrown during any of these steps, the exception
+ * is logged, and an [Error][TaskResult.Error] is returned with the provided [Throwable]
+ */
 suspend fun runTask(pipelineRunTaskId: Long): TaskResult {
     return runCatching {
         Database.runWithConnection {
@@ -105,11 +121,7 @@ suspend fun runTask(pipelineRunTaskId: Long): TaskResult {
                     } else {
                         taskInfo.function.call(connection, prTask)
                     }
-                    if (result is String?) {
-                        result
-                    } else {
-                        null
-                    }
+                    result as? String?
                 }
                 TaskRunType.User -> { null }
             }

@@ -1,6 +1,6 @@
 package database.tables
 
-import database.submitQuery
+import database.extensions.submitQuery
 import kotlinx.serialization.Serializable
 import java.sql.Connection
 
@@ -17,21 +17,14 @@ import java.sql.Connection
  * form interface for the current user to create another user. These endpoints should include role validation so that a
  * user without the required role is given an error status page.
  */
-object Actions: DbTable("actions"), ApiExposed, DefaultData {
+object Actions : DbTable("actions"), ApiExposed, DefaultData {
 
-    /**
-     * Fields provided when this table is used in the server API to display in a bootstrap table.
-     *
-     * Each key to the outer map is the field name (or JSON key from the API response), and the inner map is properties
-     * of the field (as described here [column-options](https://bootstrap-table.com/docs/api/column-options/)) with the
-     * 'data-' prefix automatically added during table HTML creation
-     */
-    override val tableDisplayFields = mapOf(
+    override val tableDisplayFields: Map<String, Map<String, String>> = mapOf(
         "name" to mapOf("name" to "Action"),
         "description" to mapOf(),
     )
 
-    override val createStatement = """
+    override val createStatement: String = """
 		CREATE TABLE IF NOT EXISTS public.actions
         (
 			action_id bigint PRIMARY KEY NOT NULL GENERATED ALWAYS AS IDENTITY,
@@ -53,18 +46,23 @@ object Actions: DbTable("actions"), ApiExposed, DefaultData {
 
     /** API response data class for JSON serialization */
     @Serializable
-    data class Record(val name: String, val description: String, val href: String)
+    data class Action(
+        /** action name */
+        val name: String,
+        /** action description */
+        val description: String,
+        /** endpoint that allows for an action to be performed */
+        val href: String,
+    )
 
     /**
      * API function to get a list of all user actions based upon the [roles] of the current user
-     *
-     * @throws IllegalStateException When any row item is null
      */
-    fun userActions(connection: Connection, roles: List<String>): List<Record> {
+    fun userActions(connection: Connection, roles: List<String>): List<Action> {
         val whereClause = if ("admin" !in roles) {
             " WHERE $tableName.role in (${"?,".repeat(roles.size).trim(',')})"
         } else ""
         val sql = "SELECT $tableName.name, $tableName.description, $tableName.href FROM $tableName$whereClause"
-        return connection.submitQuery(sql = sql, *roles.minus("admin").toTypedArray())
+        return connection.submitQuery(sql = sql, roles.minus("admin"))
     }
 }

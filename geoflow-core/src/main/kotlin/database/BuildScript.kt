@@ -1,20 +1,32 @@
+@file:Suppress("MatchingDeclarationName")
 package database
 
-import data_loader.checkTableExists
-import data_loader.loadDefaultData
+import loading.checkTableExists
+import loading.loadDefaultData
 import database.functions.Constraints
 import database.functions.PlPgSqlTableFunction
 import database.procedures.SqlProcedure
-import database.tables.*
+import database.tables.TableBuildRequirement
+import database.tables.DbTable
+import database.tables.Triggers
+import database.tables.DefaultData
+import database.tables.defaultRecordsFile
 import mu.KotlinLogging
 import org.reflections.Reflections
 import org.reflections.scanners.Scanners.SubTypes
 import java.sql.Connection
 
 /** Container for an enum translation to a PostgreSQL enum creation */
-data class PostgresEnumType(val name: String, val constantValues: List<String>) {
-    val postgresName = name.replace("[A-Z]".toRegex()) { "_" + it.value.lowercase() }.trimStart('_')
-    val create = """
+data class PostgresEnumType(
+    /** name of enum type */
+    val name: String,
+    /** list of values the enum should contain */
+    val constantValues: List<String>,
+) {
+    /** converts the Kotlin enum type name to the desired postgresql enum name */
+    val postgresName: String = name.replace("[A-Z]".toRegex()) { "_" + it.value.lowercase() }.trimStart('_')
+    /** create statement of the enum */
+    val create: String = """
         CREATE TYPE public.$postgresName AS ENUM(${
             this.constantValues.joinToString(
                 separator = "','",
@@ -89,8 +101,8 @@ private val logger = KotlinLogging.logger {}
  * Extension function to create a given [table] instance within the current Connection. Multiple steps might be required
  * depending upon the complexity of the table definition. Steps may include:
  * 1. Execute the CREATE TABLE statement stored in [createStatement][DbTable.createStatement] property.
- * 2. If the table has triggers (ie table extends interface [Triggers]), loop through list of [Trigger] data classes
- * to create the trigger function then run the CREATE TRIGGER statement.
+ * 2. If the table has triggers (ie table extends interface [Triggers]), loop through list of [database.tables.Trigger]
+ * data classes to create the trigger function then run the CREATE TRIGGER statement.
  * 3. If the table had initial data to load (ie table extends interface [DefaultData]), get the resource's
  * [InputStream][java.io.InputStream] to COPY the file to the current table. When the load is done, set the sequence
  * value to the current max value in the table if the table has a sequential primary key.
@@ -155,50 +167,75 @@ private fun Connection.createTables(
     for (table in tablesToCreate) {
         createTable(table)
     }
-    createTables(tables.minus(tablesToCreate), createdTables.union(tablesToCreate.map { it.tableName }))
+    createTables(
+        tables.minus(tablesToCreate.toSet()),
+        createdTables.union(tablesToCreate.map { it.tableName }),
+    )
+}
+
+/** Create all enums  */
+private fun Connection.createEnums() {
+    for (enum in enums) {
+        logger.info("Creating ${enum.postgresName}")
+        prepareStatement(enum.create).use {
+            it.execute()
+        }
+    }
+}
+
+/** Create all constraint functions */
+private fun Connection.createConstraintFunctions() {
+    for (constraint in Constraints.functions) {
+        val functionName = "FUNCTION (public\\.)?(.+) ".toRegex()
+            .find(constraint)
+            ?.groupValues
+            ?.get(2)
+        logger.info("Creating constraint function ${functionName ?: "!! NAME UNKNOWN !!\n$constraint"}")
+        prepareStatement(constraint).use {
+            it.execute()
+        }
+    }
+}
+
+/** Create all procedures */
+private fun Connection.createProcedures() {
+    for (procedure in procedures) {
+        logger.info("Creating ${procedure.name}")
+        prepareStatement(procedure.code).use {
+            it.execute()
+        }
+    }
+}
+
+/** Create all table functions */
+private fun Connection.createTableFunctions() {
+    for (tableFunction in tableFunctions) {
+        logger.info("Creating ${tableFunction.name}")
+        for (innerFunction in tableFunction.innerFunctions) {
+            prepareStatement(innerFunction).use {
+                it.execute()
+            }
+        }
+        prepareStatement(tableFunction.functionCode).use {
+            it.execute()
+        }
+    }
 }
 
 /**
  * Uses the database connection to create all required objects, tables, procedures, and table functions for application.
  */
-fun buildDatabase(connection: Connection) {
+@Suppress("UNUSED")
+fun Connection.buildDatabase() {
+    @Suppress("TooGenericExceptionCaught")
     try {
-        for (enum in enums) {
-            logger.info("Creating ${enum.postgresName}")
-            connection.prepareStatement(enum.create).use {
-                it.execute()
-            }
-        }
-        for (function in Constraints.functions) {
-            val functionName = "FUNCTION (public\\.)?(.+) ".toRegex()
-                .find(function)
-                ?.groupValues
-                ?.get(2)
-            logger.info("Creating constraint function ${functionName ?: "!! NAME UNKNOWN !!\n$function"}")
-            connection.prepareStatement(function).use {
-                it.execute()
-            }
-        }
-        connection.createTables(tables)
-        for (procedure in procedures) {
-            logger.info("Creating ${procedure.name}")
-            connection.prepareStatement(procedure.code).use {
-                it.execute()
-            }
-        }
-        for (tableFunction in tableFunctions) {
-            logger.info("Creating ${tableFunction.name}")
-            for (innerFunction in tableFunction.innerFunctions) {
-                connection.prepareStatement(innerFunction).use {
-                    it.execute()
-                }
-            }
-            connection.prepareStatement(tableFunction.functionCode).use {
-                it.execute()
-            }
-        }
-    } catch (ex: Exception) {
-        logger.error("Error trying to construct database schema", ex)
+        createEnums()
+        createConstraintFunctions()
+        createTables(tables)
+        createProcedures()
+        createTableFunctions()
+    } catch (t: Throwable) {
+        logger.error("Error trying to construct database schema", t)
     } finally {
         logger.info("Exiting DB build")
     }

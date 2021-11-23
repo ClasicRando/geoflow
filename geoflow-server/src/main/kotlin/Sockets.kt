@@ -1,8 +1,14 @@
+@file:Suppress("MatchingDeclarationName")
+
 import database.startListener
-import io.ktor.http.cio.websocket.*
-import io.ktor.routing.*
-import io.ktor.util.*
-import io.ktor.websocket.*
+import io.ktor.http.cio.websocket.DefaultWebSocketSession
+import io.ktor.http.cio.websocket.send
+import io.ktor.http.cio.websocket.Frame
+import io.ktor.http.cio.websocket.readText
+import io.ktor.routing.route
+import io.ktor.routing.Route
+import io.ktor.util.getOrFail
+import io.ktor.websocket.webSocket
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.cancelAndJoin
@@ -10,7 +16,13 @@ import kotlinx.coroutines.channels.ClosedReceiveChannelException
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 
-data class Connection(val session: DefaultWebSocketSession, val listenId: String)
+/** Generic connection to a web socket endpoint */
+data class Connection(
+    /** web socket session for the connection */
+    val session: DefaultWebSocketSession,
+    /** message payload to listen for on the given postgresql notification socket */
+    val listenId: String,
+)
 
 /**
  * Base publisher for a given [path] and LISTEN [channel name][channelName] for the database.
@@ -51,6 +63,7 @@ fun Route.publisher(path: String, channelName: String) {
             }
             val listenerRunning = if (listener != null) "Listener is running" else "Listener is not running"
             send("Connected to pipelineRunTasks socket. $listenerRunning")
+            @Suppress("TooGenericExceptionCaught")
             try {
                 for (frame in incoming) {
                     when (frame) {
@@ -68,7 +81,7 @@ fun Route.publisher(path: String, channelName: String) {
                     e
                 )
             } catch (c: CancellationException) {
-                call.application.environment.log.info("pipelineRunTasks WebSocket job was cancelled")
+                call.application.environment.log.info("pipelineRunTasks WebSocket job was cancelled", c)
             }  catch (t: Throwable) {
                 call.application.environment.log.info("Exception during pipelineRunTasks WebSocket session", t)
             } finally {

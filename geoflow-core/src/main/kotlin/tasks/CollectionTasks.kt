@@ -2,11 +2,11 @@ package tasks
 
 import database.enums.FileCollectType
 import database.enums.LoaderType
-import database.executeNoReturn
+import database.extensions.executeNoReturn
 import database.procedures.UpdateFiles
-import database.queryFirstOrNull
-import database.queryHasResult
-import database.submitQuery
+import database.extensions.queryFirstOrNull
+import database.extensions.queryHasResult
+import database.extensions.submitQuery
 import database.tables.PipelineRunTasks
 import database.tables.PipelineRuns
 import database.tables.SourceTables
@@ -24,32 +24,32 @@ private val downloadCollectNames = listOf(FileCollectType.Download.name, FileCol
 /**
  * User task to validate that the user has confirmed details of run instance
  */
-@UserTask
-const val confirmRunInstance = 1L
+@UserTask(taskName = "Confirm Run Instance")
+const val CONFIRM_RUN_INSTANCE: Long = 1L
 
 /**
  * User task to remind the user to collect all files noted in the task message
  */
-@UserTask
-const val collectMissingFiles = 5L
+@UserTask(taskName = "Collect Missing Files")
+const val COLLECT_MISSING_FILES: Long = 5L
 
 /**
  * User task to validate that the user has confirmed the record date of the pipeline run is correct
  */
-@UserTask
-const val confirmRecordDate = 6L
+@UserTask(taskName = "Confirm Record Date")
+const val CONFIRM_RECORD_DATE: Long = 6L
 
 /**
  * User task to notify the user the source table options are invalid
  */
-@UserTask
-const val fixSourceTableOptions = 9L
+@UserTask(taskName = "Fix Source Table Options")
+const val FIX_SOURCE_TABLE_OPTIONS: Long = 9L
 
 /**
  * User task to notify the user that this data source has never been loaded before
  */
-@UserTask
-const val firstPipelineDetected = 10L
+@UserTask(taskName = "First Pipeline Detected")
+const val FIRST_PIPELINE_DETECTED: Long = 10L
 
 /**
  * System task that backs up the source files to a zip file.
@@ -57,7 +57,7 @@ const val firstPipelineDetected = 10L
  * Uses the link to the folder containing the source files for the current pipeline run and copies all files to a
  * single zip file for backup.
  */
-@SystemTask(taskId = 2)
+@SystemTask(taskId = 2, taskName = "Build Pipeline Run")
 fun buildPipelineRun(connection: Connection, prTask: PipelineRunTasks.PipelineRunTask) {
     val lastRun = PipelineRuns.lastRun(connection, prTask.pipelineRunTaskId)
     if (lastRun == null) {
@@ -96,7 +96,7 @@ private fun checkSourceFolder(
     runId: Long,
     folder: File,
 ): Pair<List<File>, Map<String, String>> {
-    val fileNames = buildMap<String, Pair<String?,File?>> {
+    val fileNames = buildMap<String, Pair<String?, File?>> {
         for (sourceFile in SourceTables.getRunSourceTables(connection, runId)) {
             this[sourceFile.fileName] = Pair(sourceFile.collectType, null)
         }
@@ -123,12 +123,14 @@ private fun checkSourceFolder(
  * Collects all source tables associated with the run and walks the 'files' folder to find existing and required files.
  * Finding all missing files that are required and separates those files as downloadable (Download or REST collect type)
  * or collectable (all other file types that require manual intervention to collect). Once the missing file requirements
- * are found, the appropriate tasks ([downloadMissingFiles] and [collectMissingFiles]) are added as children tasks with
- * a second [scanSourceFolder] task to valid after the missing files are resolved.
+ * are found, the appropriate tasks ([downloadMissingFiles] and [COLLECT_MISSING_FILES]) are added as children tasks
+ * with a second [scanSourceFolder] task to valid after the missing files are resolved.
  */
-@SystemTask(taskId = 3)
+@Suppress("LongMethod")
+@SystemTask(taskId = 3, taskName = "Scan Source Folder")
 fun scanSourceFolder(connection: Connection, prTask: PipelineRunTasks.PipelineRunTask): String? {
-    val pipelineRun = PipelineRuns.getRun(connection, prTask.runId) ?: throw Exception("Run cannot be null")
+    val pipelineRun = PipelineRuns.getRun(connection, prTask.runId)
+        ?: throw IllegalArgumentException("Run cannot be null")
     val folder = File(pipelineRun.runFilesLocation)
     require(folder.exists()) {
         "Files location specified by data source does not exist or the system does not have access"
@@ -150,8 +152,9 @@ fun scanSourceFolder(connection: Connection, prTask: PipelineRunTasks.PipelineRu
     )
     val (extraFiles, missingFiles) = checkSourceFolder(connection, prTask.runId, folder)
     if (missingFiles.isNotEmpty()) {
-        if (hasScanned)
+        if (hasScanned) {
             error("Attempted to rescan after download but still missing files")
+        }
         val downloadFiles = missingFiles
             .filter { it.value in downloadCollectNames }
             .keys
@@ -171,7 +174,7 @@ fun scanSourceFolder(connection: Connection, prTask: PipelineRunTasks.PipelineRu
             PipelineRunTasks.addTask(
                 connection,
                 prTask.pipelineRunTaskId,
-                collectMissingFiles
+                COLLECT_MISSING_FILES
             )
         } else {
             null
@@ -193,9 +196,10 @@ fun scanSourceFolder(connection: Connection, prTask: PipelineRunTasks.PipelineRu
  *
  * Finds all file names that were passed as a message to the task and attempts to download all the returned URLs
  */
-@SystemTask(taskId = 4)
+@SystemTask(taskId = 4, taskName = "Download Missing Files")
 suspend fun downloadMissingFiles(connection: Connection, prTask: PipelineRunTasks.PipelineRunTask) {
-    val pipelineRun = PipelineRuns.getRun(connection, prTask.runId) ?: throw Exception("Run cannot be null")
+    val pipelineRun = PipelineRuns.getRun(connection, prTask.runId)
+        ?: throw IllegalArgumentException("Run cannot be null")
     val outputFolder = File(pipelineRun.runFilesLocation)
     require(outputFolder.exists()) {
         "Files location specified by data source does not exist or the system does not have access"
@@ -211,7 +215,13 @@ suspend fun downloadMissingFiles(connection: Connection, prTask: PipelineRunTask
             AND    collect_type in (?,?)
             AND    url IS NOT NULL
         """.trimIndent()
-    for (url in connection.submitQuery<String>(sql, prTask.runId, *filenames, *downloadCollectTypes)) {
+    val urls = connection.submitQuery<String>(
+        sql = sql,
+        prTask.runId,
+        filenames,
+        downloadCollectTypes
+    )
+    for (url in urls) {
         when {
             url.contains("/arcgis/rest/", ignoreCase = true) -> {
                 scrapeArcGisService(
@@ -241,9 +251,10 @@ suspend fun downloadMissingFiles(connection: Connection, prTask: PipelineRunTask
  * Uses the link to the folder containing the source files for the current pipeline run and copies all files to a
  * single zip file for backup.
  */
-@SystemTask(taskId = 7)
+@SystemTask(taskId = 7, taskName = "Backup Files to Zip Folder")
 fun backupFilesToZip(connection: Connection, prTask: PipelineRunTasks.PipelineRunTask) {
-    val pipelineRun = PipelineRuns.getRun(connection, prTask.runId) ?: throw Exception("Run cannot be null")
+    val pipelineRun = PipelineRuns.getRun(connection, prTask.runId)
+        ?: throw IllegalArgumentException("Run cannot be null")
     val backupDirectory = File(pipelineRun.runZipLocation)
     if (!backupDirectory.exists()) {
         backupDirectory.mkdir()
@@ -276,7 +287,8 @@ fun backupFilesToZip(connection: Connection, prTask: PipelineRunTasks.PipelineRu
  * --------------
  * - add more file validation steps
  */
-@SystemTask(taskId = 8)
+@Suppress("MagicNumber")
+@SystemTask(taskId = 8, taskName = "Validate Source Tables")
 fun validateSourceTables(connection: Connection, prTask: PipelineRunTasks.PipelineRunTask) {
     UpdateFiles.call(connection, prTask.runId)
     val sql = """
@@ -306,7 +318,7 @@ fun validateSourceTables(connection: Connection, prTask: PipelineRunTasks.Pipeli
 /**
  * System task to validate the pipeline run has at least 1 [SourceTables] record entry
  */
-@SystemTask(taskId = 11)
+@SystemTask(taskId = 11, taskName = "Validate First Pipeline")
 fun validateFirstPipeline(connection: Connection, prTask: PipelineRunTasks.PipelineRunTask) {
     val sourceTableCount = connection.queryFirstOrNull<Long>(
         sql = "SELECT COUNT(0) FROM ${SourceTables.tableName} WHERE run_id = ?",

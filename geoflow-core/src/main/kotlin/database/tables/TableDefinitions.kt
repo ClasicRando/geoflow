@@ -8,7 +8,7 @@ interface TableBuildRequirement
 /**
  * Table should be created with default data during build script operation
  */
-interface DefaultData: TableBuildRequirement {
+interface DefaultData : TableBuildRequirement {
     /** Name of the file in the resources folder that contains the default data needed to be loaded */
     val defaultRecordsFileName: String
 }
@@ -33,13 +33,15 @@ interface ApiExposed {
 
 /**
  * Data Class to hold the trigger create statement and trigger function create statement
+ * @param trigger create statement of trigger
+ * @param triggerFunction function create statement that is called by the trigger
  */
 data class Trigger(val trigger: String, val triggerFunction: String)
 
 /**
  * Table contains triggers. Defined as a list of Trigger data classes
  */
-interface Triggers: TableBuildRequirement {
+interface Triggers : TableBuildRequirement {
     /**
      * List of triggers on a Table.
      */

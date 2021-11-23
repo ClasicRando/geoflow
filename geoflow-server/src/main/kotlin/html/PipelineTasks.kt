@@ -2,8 +2,13 @@ package html
 
 import database.enums.FileCollectType
 import database.tables.PipelineRunTasks
-import io.ktor.html.*
-import kotlinx.html.*
+import io.ktor.html.Template
+import kotlinx.html.script
+import kotlinx.html.li
+import kotlinx.html.button
+import kotlinx.html.onClick
+import kotlinx.html.HTML
+import kotlinx.html.unsafe
 
 /** Page for pipeline task operations */
 object PipelineTasks {
@@ -66,12 +71,12 @@ object PipelineTasks {
         }.withContent {
             basicTable(
                 taskTableId,
-                "/api/pipeline-run-tasks/${runId}",
+                "/api/pipeline-run-tasks/$runId",
                 PipelineRunTasks.tableDisplayFields,
                 tableButtons = tableButtons,
                 headerButtons = headerButtons,
                 clickableRows = false,
-                subscriber = "ws://localhost:8080/sockets/pipeline-run-tasks/${runId}",
+                subscriber = "ws://localhost:8080/sockets/pipeline-run-tasks/$runId",
             )
             dataDisplayModal(
                 taskDataModalId,
