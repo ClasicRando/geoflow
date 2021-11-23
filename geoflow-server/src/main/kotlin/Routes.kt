@@ -1,5 +1,7 @@
 @file:Suppress("TooManyFunctions")
 
+import api.ApiResponse
+import api.throwableToResponseErrors
 import auth.UserSession
 import auth.requireUserRole
 import database.Database
@@ -38,6 +40,8 @@ import io.ktor.sessions.sessions
 import io.ktor.sessions.set
 import io.ktor.util.getOrFail
 import jobs.SystemJob
+import kotlinx.coroutines.flow.toList
+import mongo.MongoDb
 
 /** Open login to anyone and respond with login page. */
 fun Route.loginGet() {
@@ -394,6 +398,27 @@ fun Route.api() {
                     mapOf("error" to "Failed to create new user. ${t.message}")
                 }
                 call.respond(response)
+            }
+        }
+        route("/jobs") {
+            route("/tasks") {
+                get {
+                    val response = runCatching {
+                        val request = call.receive<MongoDb.ApiRequest>()
+                        ApiResponse.SuccessMulti(
+                            responseObject = "scheduled_job",
+                            payload = MongoDb.getTasks(request).toList(),
+                        )
+                    }.getOrElse { t ->
+                        call.application.log.info("GET /api/jobs/tasks", t)
+                        ApiResponse.Error(
+                            code = 404,
+                            message = "Failed to get kjob tasks",
+                            errors = throwableToResponseErrors(t)
+                        )
+                    }
+                    call.respond(response)
+                }
             }
         }
     }
