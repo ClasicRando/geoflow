@@ -15,6 +15,9 @@ import kotlinx.coroutines.cancelAndJoin
 import kotlinx.coroutines.channels.ClosedReceiveChannelException
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
+import kotlinx.serialization.ExperimentalSerializationApi
+import kotlinx.serialization.encodeToString
+import kotlinx.serialization.json.Json
 
 /** Generic connection to a web socket endpoint */
 data class Connection(
@@ -91,6 +94,70 @@ fun Route.publisher(path: String, channelName: String) {
                         listener?.cancelAndJoin()
                         listener = null
                     }
+                }
+            }
+        }
+    }
+}
+
+/**
+ *
+ */
+@OptIn(ExperimentalSerializationApi::class)
+inline fun <reified T> Route.publisher2(
+    channelName: String,
+    listenId: String,
+    path: String = "",
+    crossinline func: suspend (String) -> T,
+) {
+    val connections = LinkedHashSet<Connection>()
+    var listener: Job? = null
+    val publisherLock = Mutex()
+    webSocket("$path/{${listenId}}") {
+        val connection = Connection(this, call.parameters.getOrFail(listenId))
+        publisherLock.withLock {
+            connections += connection
+        }
+        if (listener == null) {
+            listener = startListener(channelName) { message ->
+                publisherLock.withLock {
+                    for (c in connections) {
+                        if (c.listenId == message) {
+                            c.session.send(Json.encodeToString(func(message)))
+                        }
+                    }
+                }
+            }
+        }
+        val listenerRunning = if (listener != null) "Listener is running" else "Listener is not running"
+        send("Connected to pipelineRunTasks socket. $listenerRunning")
+        @Suppress("TooGenericExceptionCaught")
+        try {
+            for (frame in incoming) {
+                when (frame) {
+                    is Frame.Text -> {
+                        call.application.environment.log.info(frame.readText())
+                    }
+                    else -> {
+                        call.application.environment.log.info("Other frame type")
+                    }
+                }
+            }
+        } catch (e: ClosedReceiveChannelException) {
+            call.application.environment.log.info(
+                "pipelineRunTasks WebSocket session closed. ${closeReason.await()}",
+                e
+            )
+        } catch (c: CancellationException) {
+            call.application.environment.log.info("pipelineRunTasks WebSocket job was cancelled", c)
+        }  catch (t: Throwable) {
+            call.application.environment.log.info("Exception during pipelineRunTasks WebSocket session", t)
+        } finally {
+            publisherLock.withLock {
+                connections.remove(connection)
+                if (connections.isEmpty()) {
+                    listener?.cancelAndJoin()
+                    listener = null
                 }
             }
         }
