@@ -1,5 +1,7 @@
 package database.tables
 
+import database.NoRecordAffected
+import database.NoRecordFound
 import database.enums.TaskRunType
 import database.enums.TaskStatus
 import database.functions.GetTasksOrdered
@@ -213,16 +215,16 @@ object PipelineRunTasks: DbTable("pipeline_run_tasks"), ApiExposed, Triggers {
         require(PipelineRuns.checkUserRun(connection, runId, username)) {
             "User provided cannot run tasks for this pipeline run"
         }
-        return getNextTask(connection, runId) ?: throw IllegalArgumentException("Cannot find next task")
+        return getNextTask(connection, runId) ?: throw NoRecordFound(tableName, message = "Cannot find next task")
     }
 
     /**
      * Reset task to waiting state and deletes all children tasks using a stored procedure
      *
-     * @throws IllegalArgumentException various cases can throw this exception (with a specific message). These include
-     * - the user is not able to run tasks for the run
-     * - the record count not be found
-     * - the record obtained has a different runId
+     * @throws IllegalArgumentException when the user is not able to run tasks for the run
+     * @throws NoRecordAffected various cases can throw this exception. These include:
+     * - there is no record with the [pipelineRunTaskId] specified
+     * - the record associated with the [pipelineRunTaskId] has a different runId
      * - the record obtained is waiting to be scheduled
      */
     fun resetRecord(connection: Connection, username: String, runId: Long, pipelineRunTaskId: Long) {
@@ -250,7 +252,8 @@ object PipelineRunTasks: DbTable("pipeline_run_tasks"), ApiExposed, Triggers {
         if (updateCount == 1) {
             DeleteRunTaskChildren.call(connection, pipelineRunTaskId)
         } else {
-            throw IllegalArgumentException(
+            throw NoRecordAffected(
+                tableName,
                 "No records were reset. Make sure the provided run_id matches the task and the task is Waiting"
             )
         }
@@ -339,12 +342,16 @@ object PipelineRunTasks: DbTable("pipeline_run_tasks"), ApiExposed, Triggers {
         return GetTasksOrdered.getTasks(connection, runId)
     }
 
+    @Serializable
     /** Holds minimal details of the next available task to run */
     data class NextTask(
+        @SerialName("pipeline_run_task_id")
         /** unique ID of the pipeline run task */
         val pipelineRunTaskId: Long,
+        @SerialName("task_id")
         /** unique ID of the generic underlining task run */
         val taskId: Long,
+        @SerialName("task_run_type")
         /** Run type of the underling task as the enum value */
         val taskRunType: TaskRunType,
     )
