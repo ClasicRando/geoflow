@@ -1,5 +1,6 @@
 package database.tables
 
+import database.NoRecordFound
 import database.enums.MergeType
 import database.enums.OperationState
 import database.extensions.queryFirstOrNull
@@ -364,14 +365,23 @@ object PipelineRuns : DbTable("pipeline_runs"), ApiExposed, Triggers {
     /**
      * Sets a run to a specific user for the current workflow operation.
      *
-     * @throws IllegalArgumentException when the runId provided does not link to a record
+     * @throws NoRecordFound when the runId provided does not link to a record
      */
     fun pickupRun(connection: Connection, runId: Long, userId: Long) {
-        val workflowSql = "SELECT workflow_operation FROM $tableName WHERE run_id = ? FOR UPDATE"
+        val workflowSql = """
+            SELECT workflow_operation
+            FROM   $tableName
+            WHERE  run_id = ?
+            AND    operation_state = 'Ready'::operation_state
+            FOR UPDATE
+        """.trimIndent()
         val workflowOperation = connection.queryFirstOrNull<String>(
             sql = workflowSql,
             runId
-        ) ?: throw IllegalArgumentException("RunId provided could does not link to a record")
+        ) ?: throw NoRecordFound(
+            tableName = tableName,
+            message = "RunId provided could does not link to a record or run is not 'Ready'",
+        )
         val updateSql = """
             UPDATE $tableName
             SET    operation_state = ?,
