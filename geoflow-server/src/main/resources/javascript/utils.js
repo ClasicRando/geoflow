@@ -1,11 +1,11 @@
-class TableRefreshSubscriber {
+class TableSubscriber {
 
     constructor(url, $table) {
-        this.$table = $table
+        this.$table = $table;
         this.socket = new WebSocket(url);
-        this.socket.addEventListener('message', function(event) {
-            console.log(event);
-            $table.bootstrapTable('refresh',{silent: true});
+        this.socket.addEventListener('message', (event) => {
+            const data = JSON.parse(event.data);
+            $table.bootstrapTable('load', data);
         });
     }
 
