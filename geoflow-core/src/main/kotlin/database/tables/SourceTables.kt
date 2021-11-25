@@ -1,5 +1,9 @@
+@file:Suppress("TooManyFunctions")
+
 package database.tables
 
+import database.NoRecordAffected
+import database.NoRecordFound
 import loading.AnalyzeInfo
 import loading.AnalyzeResult
 import loading.LoadingInfo
@@ -11,6 +15,7 @@ import database.extensions.runReturningFirstOrNull
 import database.extensions.runUpdate
 import database.extensions.getListWithNulls
 import database.extensions.getList
+import database.extensions.queryFirstOrNull
 import database.extensions.useMultipleStatements
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
@@ -93,7 +98,7 @@ object SourceTables : DbTable("source_tables"), ApiExposed {
         val subTable: String?,
         /** classification of the loader type for the file. Name of the enum value */
         @SerialName("loader_type")
-        val loaderType: String,
+        val loaderType: LoaderType,
         /** delimiter of the data, if required */
         @SerialName("delimiter")
         val delimiter: String?,
@@ -114,7 +119,7 @@ object SourceTables : DbTable("source_tables"), ApiExposed {
         val recordCount: Int,
         /** collection method to obtain the file. Name of the enum value */
         @SerialName("collect_type")
-        val collectType: String,
+        val collectType: FileCollectType,
         /** flag denoting if the source table has been analyzed */
         @SerialName("analyze")
         val analyze: Boolean,
@@ -135,6 +140,121 @@ object SourceTables : DbTable("source_tables"), ApiExposed {
             WHERE  run_id = ?
         """.trimIndent()
         return connection.submitQuery(sql = sql, runId)
+    }
+
+    /**
+     * Updates a source table record with the details from the [requestBody] object. Must be run in transaction to lock
+     * selected record for update.
+     *
+     * @throws java.sql.SQLException when the connection throws an exception
+     * @throws NoRecordFound when st_oid provided in the request body does not exist in source_tables
+     * @throws IllegalArgumentException when the username provided does not have the ability to update this run
+     * @throws NoRecordAffected when the update does not affect any records
+     */
+    fun updateSourceTableV2(
+        connection: Connection,
+        username: String,
+        requestBody: Record,
+    ): Record {
+        val lockingSql = """
+            SELECT run_id
+            FROM   $tableName
+            WHERE  st_oid = ?
+            FOR UPDATE
+        """.trimIndent()
+        val runId = connection.queryFirstOrNull<Long>(sql = lockingSql, requestBody.stOid)
+            ?: throw NoRecordFound(tableName, "Could not get run_id since st_oid provided returns nothing")
+        require(PipelineRuns.checkUserRun(connection, runId, username)) { "Username does not own the runId" }
+        val sql = """
+            UPDATE $tableName
+            SET    table_name = ?,
+                   file_id = ?,
+                   file_name = ?,
+                   sub_table = ?,
+                   loader_type = ?,
+                   delimiter = ?,
+                   qualified = ?,
+                   encoding = ?,
+                   url = ?,
+                   comments = ?,
+                   collect_type = ?,
+                   $tableName."analyze" = ?,
+                   load = ?
+            WHERE  st_oid = ?
+            RETURNING st_oid,table_name,file_id,file_name,sub_table,loader_type,delimiter,qualified,encoding,url,
+            comments,record_count,collect_type,$tableName."analyze",load
+        """.trimIndent()
+        return connection.runReturningFirstOrNull(
+            sql = sql,
+            requestBody.tableName,
+            requestBody.fileId,
+            requestBody.fileName,
+            requestBody.subTable,
+            requestBody.loaderType,
+            requestBody.delimiter,
+            requestBody.qualified,
+            requestBody.encoding,
+            requestBody.url,
+            requestBody.comments,
+            requestBody.collectType,
+            requestBody.analyze,
+            requestBody.load,
+        ) ?: throw NoRecordAffected(tableName, "Update did not return any records")
+    }
+
+    /**
+     * Creates a new source table record with the details from the [requestBody] object.
+     *
+     * @throws java.sql.SQLException when the connection throws an exception
+     * @throws IllegalArgumentException when the username provided does not have the ability to update this run
+     * @throws NoRecordAffected when the insert does not create/affect any records
+     */
+    fun insertSourceTableV2(
+        connection: Connection,
+        runId: Long,
+        username: String,
+        requestBody: Record,
+    ): Long {
+        require(PipelineRuns.checkUserRun(connection, runId, username)) { "Username does not own the runId" }
+        val sql = """
+            INSERT INTO $tableName (run_id,table_name,file_id,file_name,sub_table,loader_type,delimiter,qualified,
+                                    encoding,url,comments,collect_type,$tableName."analyze",load)
+            VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?)
+            RETURNING st_oid,table_name,file_id,file_name,sub_table,loader_type,delimiter,qualified,encoding,url,
+            comments,record_count,collect_type,$tableName."analyze",load
+        """.trimIndent()
+        return connection.runReturningFirstOrNull(
+            sql = sql,
+            runId,
+            requestBody.tableName,
+            requestBody.fileId,
+            requestBody.fileName,
+            requestBody.subTable,
+            requestBody.loaderType,
+            requestBody.delimiter,
+            requestBody.qualified,
+            requestBody.encoding,
+            requestBody.url,
+            requestBody.comments,
+            requestBody.collectType,
+            requestBody.analyze,
+            requestBody.load,
+        ) ?: throw NoRecordAffected(tableName, message = "Error while trying to insert record. Nothing returned")
+    }
+
+    /**
+     * Uses [stOid] to delete a record from [SourceTables]
+     *
+     * @throws java.sql.SQLException when the connection throws an exception
+     * @throws IllegalArgumentException when the username provided does not have the ability to update this run
+     * @throws NoRecordAffected when delete command does not affect any records
+     */
+    fun deleteSourceTableV2(connection: Connection, stOid: Long, runId: Long, username: String) {
+        require(PipelineRuns.checkUserRun(connection, runId, username)) { "Username does not own the runId" }
+        connection.runReturningFirstOrNull<Long>(
+            sql = "DELETE FROM $tableName WHERE st_oid = ?",
+            stOid
+        ) ?: throw NoRecordAffected(tableName, "No record deleted for st_oid = $stOid")
     }
 
     /**
