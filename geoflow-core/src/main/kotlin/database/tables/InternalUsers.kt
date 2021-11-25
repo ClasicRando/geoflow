@@ -1,5 +1,6 @@
 package database.tables
 
+import database.NoRecordAffected
 import database.extensions.getList
 import database.extensions.queryFirstOrNull
 import database.extensions.runReturningFirstOrNull
@@ -186,6 +187,31 @@ object InternalUsers : DbTable("internal_users"), ApiExposed {
             user.roles,
             user.userOid,
         )
+    }
+
+    /**
+     * Attempts to create a new user from the provided [user], returning the new user_oid if successful
+     *
+     * @throws IllegalArgumentException when the password provided is null
+     * @throws [java.sql.SQLException] when the connection throws an error
+     */
+    fun updateUserV2(connection: Connection, user: RequestUser): RequestUser {
+        requireNotNull(user.userOid) { "user_oid must not be null" }
+        val sql = """
+            UPDATE $tableName
+            SET    name = ?,
+                   username = ?,
+                   roles = ARRAY[${"?,".repeat(user.roles.size).trim(',')}]
+            WHERE  user_oid = ?
+            RETURNING name, username, roles, user_oid
+        """.trimIndent()
+        return connection.runReturningFirstOrNull(
+            sql = sql,
+            user.name,
+            user.username,
+            user.roles,
+            user.userOid,
+        ) ?: throw NoRecordAffected(tableName, "No record updated for user_oid = ${user.userOid}")
     }
 
     /** API response data class for JSON serialization */
