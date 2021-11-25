@@ -8,6 +8,9 @@ import io.ktor.application.call
 import io.ktor.application.log
 import io.ktor.request.path
 import io.ktor.response.respond
+import io.ktor.routing.Route
+import io.ktor.routing.get
+import io.ktor.routing.post
 import io.ktor.util.pipeline.PipelineContext
 import kotlinx.serialization.SerializationException
 import java.sql.SQLException
@@ -64,31 +67,46 @@ suspend inline fun <reified T> PipelineContext<Unit, ApplicationCall>.apiRespons
         call.application.log.error(call.request.path(), t)
         ApiResponse.Error(
             code = errorCodeFromThrowable(t),
-            message = errorMessage,
             errors = throwableToResponseErrors(t)
         )
     }
     call.respond(response)
 }
 
-/** Utility function that summarizes api response for multiple objects into some parameters and a getter lambda */
-suspend inline fun <reified T> PipelineContext<Unit, ApplicationCall>.apiResponseMulti(
-    responseObject: String,
-    errorMessage: String,
-    func: PipelineContext<Unit, ApplicationCall>.() -> List<T>
+/** Utility function that summarizes api get response objects using a getter lambda */
+inline fun <reified R, reified T: ApiResponse.Success<R>> Route.apiGet(
+    path: String = "",
+    crossinline func: suspend PipelineContext<Unit, ApplicationCall>.() -> T
 ) {
-    val response = runCatching {
-        ApiResponse.SuccessMulti(
-            responseObject = responseObject,
-            payload = func()
-        )
-    }.getOrElse { t ->
-        call.application.log.error(call.request.path(), t)
-        ApiResponse.Error(
-            code = errorCodeFromThrowable(t),
-            message = errorMessage,
-            errors = throwableToResponseErrors(t)
-        )
+    get(path) {
+        val response = runCatching {
+            func()
+        }.getOrElse { t ->
+            call.application.log.error(call.request.path(), t)
+            ApiResponse.Error(
+                code = errorCodeFromThrowable(t),
+                errors = throwableToResponseErrors(t)
+            )
+        }
+        call.respond(response)
     }
-    call.respond(response)
+}
+
+/** Utility function that summarizes api get response objects using a getter lambda */
+inline fun <reified R, reified T: ApiResponse.Success<R>> Route.apiPost(
+    path: String = "",
+    crossinline func: suspend PipelineContext<Unit, ApplicationCall>.() -> T
+) {
+    post(path) {
+        val response = runCatching {
+            func()
+        }.getOrElse { t ->
+            call.application.log.error(call.request.path(), t)
+            ApiResponse.Error(
+                code = errorCodeFromThrowable(t),
+                errors = throwableToResponseErrors(t)
+            )
+        }
+        call.respond(response)
+    }
 }

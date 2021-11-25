@@ -67,7 +67,7 @@ object MongoDb {
     )
 
     @Serializable
-    data class ApiRequest(
+    data class TaskApiRequest(
         val status: JobStatus,
     )
 
@@ -77,7 +77,7 @@ object MongoDb {
 //    private val lockCollection = jobDatabase.getCollection<Lock>("kjob-locks")
 
     /** Returns a [Flow] of all task jobs found in the 'kjob' collection that match the provided request [JobStatus] */
-    fun getTasks(request: ApiRequest): Flow<ScheduledJob> {
+    fun getTasks(request: TaskApiRequest): Flow<ScheduledJob> {
         return jobCollection.find("{ status: '${request.status}' }").toFlow()
     }
 
