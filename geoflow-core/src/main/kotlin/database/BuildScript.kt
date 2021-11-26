@@ -4,6 +4,7 @@ package database
 import loading.checkTableExists
 import loading.loadDefaultData
 import database.functions.Constraints
+import database.functions.PlPgSqlFunction
 import database.functions.PlPgSqlTableFunction
 import database.procedures.SqlProcedure
 import database.tables.TableBuildRequirement
@@ -93,6 +94,19 @@ private val tableFunctions by lazy {
         .map { procedure -> procedure.getDeclaredField("INSTANCE").get(null)::class }
         .filter { !it.isAbstract }
         .map { kClass -> kClass.objectInstance!! as PlPgSqlTableFunction }
+}
+
+/**
+ * Lazy sequence of table functions declared in the 'database.functions' package. List items are the Object instances
+ * themselves.
+ */
+private val functions by lazy {
+    Reflections("database.functions")
+        .get(SubTypes.of(PlPgSqlFunction::class.java).asClass<PlPgSqlFunction>())
+        .asSequence()
+        .map { procedure -> procedure.getDeclaredField("INSTANCE").get(null)::class }
+        .filter { !it.isAbstract }
+        .map { kClass -> kClass.objectInstance!! as PlPgSqlFunction }
 }
 
 private val logger = KotlinLogging.logger {}
@@ -207,6 +221,21 @@ private fun Connection.createProcedures() {
     }
 }
 
+/** Create all functions */
+private fun Connection.createFunctions() {
+    for (tableFunction in functions) {
+        logger.info("Creating ${tableFunction.name}")
+        for (innerFunction in tableFunction.innerFunctions) {
+            prepareStatement(innerFunction).use {
+                it.execute()
+            }
+        }
+        prepareStatement(tableFunction.functionCode).use {
+            it.execute()
+        }
+    }
+}
+
 /** Create all table functions */
 private fun Connection.createTableFunctions() {
     for (tableFunction in tableFunctions) {
@@ -233,6 +262,7 @@ fun Connection.buildDatabase() {
         createConstraintFunctions()
         createTables(tables)
         createProcedures()
+        createFunctions()
         createTableFunctions()
     } catch (t: Throwable) {
         logger.error("Error trying to construct database schema", t)
