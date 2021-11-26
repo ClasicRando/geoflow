@@ -120,16 +120,6 @@ sealed interface ApiResponse {
         override val responseObject: String = "message"
     }
 
-    /** API response with a single serializable object in the payload */
-    @Serializable
-    data class SuccessSingle<T>(
-        /** type of response object */
-        @SerialName("object")
-        val responseObject: String,
-        /** payload of response as a single object */
-        val payload: T,
-    ): ApiResponse
-
     /** API error response, contains details of error */
     @Serializable
     data class Error(
