@@ -4,6 +4,7 @@ import database.NoRecordFound
 import database.enums.MergeType
 import database.enums.OperationState
 import database.extensions.queryFirstOrNull
+import database.extensions.queryHasResult
 import database.extensions.runUpdate
 import database.extensions.submitQuery
 import formatLocalDateDefault
@@ -262,13 +263,7 @@ object PipelineRuns : DbTable("pipeline_runs"), ApiExposed, Triggers {
             WHERE  t1.run_id = ?
             AND    COALESCE(t2.user_oid,t3.user_oid,t4.user_oid,t5.user_oid,t6.user_oid) IS NOT NULL
         """.trimIndent()
-        return connection.prepareStatement(sql).use { statement ->
-            statement.setString(1, username)
-            statement.setLong(2, runId)
-            statement.executeQuery().use { rs ->
-                rs.next()
-            }
-        }
+        return connection.queryHasResult(sql, username, runId)
     }
 
     /** API response data class for JSON serialization */
