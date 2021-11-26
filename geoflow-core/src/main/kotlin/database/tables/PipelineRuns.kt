@@ -32,6 +32,7 @@ object PipelineRuns : DbTable("pipeline_runs"), ApiExposed, Triggers {
         "load_user" to mapOf(),
         "check_user" to mapOf(),
         "qa_user" to mapOf("name" to "QA User"),
+        "actions" to mapOf("formatter" to "actionsFormatter")
     )
 
     override val createStatement: String = """
