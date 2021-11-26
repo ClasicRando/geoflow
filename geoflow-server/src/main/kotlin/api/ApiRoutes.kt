@@ -26,7 +26,7 @@ import mongo.MongoDb
 import publisher2
 
 /** Base API route */
-fun Route.apiv2() {
+fun Route.apiV2() {
     route("/api/v2") {
         operations()
         actions()

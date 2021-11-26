@@ -1,6 +1,6 @@
 @file:Suppress("unused")
 
-import api.apiv2
+import api.apiV2
 import auth.UserSession
 import database.Database
 import database.tables.InternalUsers
@@ -161,7 +161,7 @@ fun Application.module() {
         authenticate("auth-session") {
             index()
             api()
-            apiv2()
+            apiV2()
             pipelineStatus()
             pipelineTasks()
             sockets()
