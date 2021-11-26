@@ -43,8 +43,9 @@ object AdminDashboard {
             div(classes = "col") {
                 basicTable(
                     tableId = USER_TABLE_ID,
-                    dataUrl = "/api/users",
+                    dataUrl = "/api/v2/users",
                     fields = InternalUsers.tableDisplayFields,
+                    dataField = "payload",
                     tableButtons = tableButtons,
                 )
                 formModal(
