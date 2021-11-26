@@ -371,7 +371,6 @@ fun Route.api() {
                 val response = runCatching {
                     val user = call.receive<InternalUsers.RequestUser>()
                     val userOid = Database.runWithConnection { InternalUsers.createUser(it, user) }
-                        ?: error("INSERT statement did not return any data")
                     mapOf("success" to "Created new user, ${user.username} (${userOid})")
                 }.getOrElse { t ->
                     call.application.log.info("POST /api/users", t)

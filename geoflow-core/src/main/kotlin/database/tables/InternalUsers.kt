@@ -149,7 +149,7 @@ object InternalUsers : DbTable("internal_users"), ApiExposed {
      * @throws IllegalArgumentException when the password provided is null
      * @throws [java.sql.SQLException] when the connection throws an error
      */
-    fun createUser(connection: Connection, user: RequestUser): Long? {
+    fun createUser(connection: Connection, user: RequestUser): Long {
         requireNotNull(user.password) { "User to create must have a non-null password" }
         val sql = """
             INSERT INTO $tableName(name,username,password,roles)
@@ -162,7 +162,7 @@ object InternalUsers : DbTable("internal_users"), ApiExposed {
             user.username,
             user.password,
             user.roles,
-        )
+        ) ?: throw NoRecordAffected(tableName, "INSERT statement did not return any data")
     }
 
     /**
