@@ -9,6 +9,7 @@ import database.procedures.DeleteRunTaskChildren
 import database.extensions.queryFirstOrNull
 import database.extensions.runReturningFirstOrNull
 import database.extensions.runUpdate
+import database.functions.UserHasRun
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 import java.sql.Connection
@@ -206,13 +207,13 @@ object PipelineRunTasks: DbTable("pipeline_run_tasks"), ApiExposed, Triggers {
 
     /**
      * Returns [NextTask] instance representing the next runnable task for the given [runId]. Verifies that the
-     * [username] has the ability to run tasks for this [runId].
+     * [userOid] has the ability to run tasks for this [runId].
      *
      * @throws IllegalArgumentException when the user is not able to run tasks for the run or the next task to run
      * cannot be found
      */
-    fun getRecordForRun(connection: Connection, username: String, runId: Long): NextTask {
-        require(PipelineRuns.checkUserRun(connection, runId, username)) {
+    fun getRecordForRun(connection: Connection, userOid: Long, runId: Long): NextTask {
+        require(UserHasRun.checkUserRun(connection, userOid, runId)) {
             "User provided cannot run tasks for this pipeline run"
         }
         return getNextTask(connection, runId) ?: throw NoRecordFound(tableName, message = "Cannot find next task")
@@ -221,16 +222,12 @@ object PipelineRunTasks: DbTable("pipeline_run_tasks"), ApiExposed, Triggers {
     /**
      * Reset task to waiting state and deletes all children tasks using a stored procedure
      *
-     * @throws IllegalArgumentException when the user is not able to run tasks for the run
      * @throws NoRecordAffected various cases can throw this exception. These include:
+     * - the user is not able to run tasks for the run
      * - there is no record with the [pipelineRunTaskId] specified
-     * - the record associated with the [pipelineRunTaskId] has a different runId
      * - the record obtained is waiting to be scheduled
      */
-    fun resetRecord(connection: Connection, username: String, runId: Long, pipelineRunTaskId: Long) {
-        require(PipelineRuns.checkUserRun(connection, runId, username)) {
-            "User provided cannot run tasks for this pipeline run"
-        }
+    fun resetRecord(connection: Connection, userOid: Long, pipelineRunTaskId: Long) {
         val sql = """
             UPDATE $tableName
             SET    task_status = ?,
@@ -240,14 +237,14 @@ object PipelineRunTasks: DbTable("pipeline_run_tasks"), ApiExposed, Triggers {
                    task_stack_trace = null
             WHERE  pr_task_id = ?
             AND    task_status != ?
-            AND    run_id = ?
+            AND    user_has_run(?, run_id)
         """.trimIndent()
         val updateCount = connection.runUpdate(
             sql = sql,
             TaskStatus.Waiting.pgObject,
             pipelineRunTaskId,
             TaskStatus.Waiting.pgObject,
-            runId
+            userOid,
         )
         if (updateCount == 1) {
             DeleteRunTaskChildren.call(connection, pipelineRunTaskId)
