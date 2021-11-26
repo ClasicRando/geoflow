@@ -23,16 +23,18 @@ object Index {
         div(classes = "row") {
             div(classes = "col") {
                 basicTable(
-                    operationsTableId,
-                    "/api/operations",
-                    WorkflowOperations.tableDisplayFields
+                    tableId = operationsTableId,
+                    dataUrl = "/api/v2/operations",
+                    dataField = "payload",
+                    fields = WorkflowOperations.tableDisplayFields,
                 )
             }
             div(classes = "col") {
                 basicTable(
-                    actionsTableId,
-                    "/api/actions",
-                    Actions.tableDisplayFields
+                    tableId = actionsTableId,
+                    dataUrl = "/api/v2/actions",
+                    dataField = "payload",
+                    fields = Actions.tableDisplayFields,
                 )
             }
         }
