@@ -70,6 +70,7 @@ inline fun <reified T> ResultSet.rowToClass(): T {
                 val item = when (val current = getObject(i + 1)) {
                     null -> current
                     is Timestamp -> formatInstantDateTime(current.toInstant())
+                    is java.sql.Array -> current.getList<String>()
                     else -> current
                 }
                 add(item)
