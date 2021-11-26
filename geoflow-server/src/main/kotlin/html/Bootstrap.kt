@@ -265,9 +265,9 @@ fun FlowContent.sourceTablesModal(runId: Long) {
                 div(classes = "modal-body") {
                     id = "${SOURCE_TABLES_MODAL_ID}Body"
                     basicTable(
-                        SOURCE_TABLES_TABLE_ID,
-                        "/api/source-tables/$runId",
-                        SourceTables.tableDisplayFields,
+                        tableId = SOURCE_TABLES_TABLE_ID,
+                        dataUrl = "/api/source-tables/$runId",
+                        fields = SourceTables.tableDisplayFields,
                         tableButtons = listOf(
                             TableButton(
                                 "btnAddTable",
