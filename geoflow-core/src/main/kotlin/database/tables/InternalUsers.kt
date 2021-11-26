@@ -140,7 +140,7 @@ object InternalUsers : DbTable("internal_users"), ApiExposed {
         val roles: List<String>,
         /** */
         @SerialName("password")
-        val password: String?,
+        val password: String? = null,
     )
 
     /**
@@ -203,7 +203,7 @@ object InternalUsers : DbTable("internal_users"), ApiExposed {
                    username = ?,
                    roles = ARRAY[${"?,".repeat(user.roles.size).trim(',')}]
             WHERE  user_oid = ?
-            RETURNING name, username, roles, user_oid
+            RETURNING user_oid, name, username, roles, null
         """.trimIndent()
         return connection.runReturningFirstOrNull(
             sql = sql,
