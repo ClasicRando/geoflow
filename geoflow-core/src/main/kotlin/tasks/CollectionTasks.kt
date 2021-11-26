@@ -98,7 +98,7 @@ private fun checkSourceFolder(
 ): Pair<List<File>, Map<String, String>> {
     val fileNames = buildMap<String, Pair<String?, File?>> {
         for (sourceFile in SourceTables.getRunSourceTables(connection, runId)) {
-            this[sourceFile.fileName] = Pair(sourceFile.collectType.name, null)
+            this[sourceFile.fileName] = Pair(sourceFile.collectType, null)
         }
         for (file in folder.walk().filter { it.isFile }) {
             this[file.name] = if (file.name in this) {

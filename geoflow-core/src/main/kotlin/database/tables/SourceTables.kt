@@ -98,7 +98,7 @@ object SourceTables : DbTable("source_tables"), ApiExposed {
         val subTable: String?,
         /** classification of the loader type for the file. Name of the enum value */
         @SerialName("loader_type")
-        val loaderType: LoaderType,
+        val loaderType: String,
         /** delimiter of the data, if required */
         @SerialName("delimiter")
         val delimiter: String?,
@@ -119,7 +119,7 @@ object SourceTables : DbTable("source_tables"), ApiExposed {
         val recordCount: Int,
         /** collection method to obtain the file. Name of the enum value */
         @SerialName("collect_type")
-        val collectType: FileCollectType,
+        val collectType: String,
         /** flag denoting if the source table has been analyzed */
         @SerialName("analyze")
         val analyze: Boolean,
