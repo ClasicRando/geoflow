@@ -70,13 +70,12 @@ object PipelineTasks {
             }
         }.withContent {
             basicTable(
-                taskTableId,
-                "/api/pipeline-run-tasks/$runId",
-                PipelineRunTasks.tableDisplayFields,
+                tableId = taskTableId,
+                fields = PipelineRunTasks.tableDisplayFields,
                 tableButtons = tableButtons,
                 headerButtons = headerButtons,
                 clickableRows = false,
-                subscriber = "ws://localhost:8080/sockets/pipeline-run-tasks/$runId",
+                subscriber = "ws://localhost:8080/api/v2/pipeline-run-tasks/$runId",
             )
             dataDisplayModal(
                 taskDataModalId,
