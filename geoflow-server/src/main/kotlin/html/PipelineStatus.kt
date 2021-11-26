@@ -21,9 +21,11 @@ object PipelineStatus {
     fun withWorkflowCode(workflowCode: String): Template<HTML> {
         return BasePage.withContent {
             basicTable(
-                tableId,
-                dataUrl = "/api/pipeline-runs/$workflowCode",
-                PipelineRuns.tableDisplayFields
+                tableId = tableId,
+                dataUrl = "/api/v2/pipeline-runs/$workflowCode",
+                dataField = "payload",
+                fields = PipelineRuns.tableDisplayFields,
+                clickableRows = false,
             )
             basicModal(
                 modalId,
