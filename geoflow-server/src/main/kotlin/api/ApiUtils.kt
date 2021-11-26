@@ -7,10 +7,13 @@ import io.ktor.application.MissingApplicationFeatureException
 import io.ktor.application.call
 import io.ktor.application.log
 import io.ktor.request.path
+import io.ktor.request.receive
 import io.ktor.response.respond
 import io.ktor.routing.Route
+import io.ktor.routing.delete
 import io.ktor.routing.get
 import io.ktor.routing.post
+import io.ktor.routing.put
 import io.ktor.util.pipeline.PipelineContext
 import kotlinx.serialization.SerializationException
 import java.sql.SQLException
@@ -52,28 +55,7 @@ fun errorCodeFromThrowable(t: Throwable): Int {
     }
 }
 
-/** Utility function that summarizes api response for a single object into some parameters and a getter lambda */
-suspend inline fun <reified T> PipelineContext<Unit, ApplicationCall>.apiResponseSingle(
-    responseObject: String,
-    errorMessage: String,
-    func: PipelineContext<Unit, ApplicationCall>.() -> T
-) {
-    val response = runCatching {
-        ApiResponse.SuccessSingle(
-            responseObject = responseObject,
-            payload = func()
-        )
-    }.getOrElse { t ->
-        call.application.log.error(call.request.path(), t)
-        ApiResponse.Error(
-            code = errorCodeFromThrowable(t),
-            errors = throwableToResponseErrors(t)
-        )
-    }
-    call.respond(response)
-}
-
-/** Utility function that summarizes api get response objects using a getter lambda */
+/** Utility function that summarizes api GET response objects using a getter lambda */
 inline fun <reified R, reified T: ApiResponse.Success<R>> Route.apiGet(
     path: String = "",
     crossinline func: suspend PipelineContext<Unit, ApplicationCall>.() -> T
@@ -92,12 +74,105 @@ inline fun <reified R, reified T: ApiResponse.Success<R>> Route.apiGet(
     }
 }
 
-/** Utility function that summarizes api get response objects using a getter lambda */
+/**
+ * Utility function that summarizes api POST response objects using a getter lambda to return an [ApiResponse] of the
+ * specified type ([T])
+ */
 inline fun <reified R, reified T: ApiResponse.Success<R>> Route.apiPost(
     path: String = "",
     crossinline func: suspend PipelineContext<Unit, ApplicationCall>.() -> T
 ) {
     post(path) {
+        val response = runCatching {
+            func()
+        }.getOrElse { t ->
+            call.application.log.error(call.request.path(), t)
+            ApiResponse.Error(
+                code = errorCodeFromThrowable(t),
+                errors = throwableToResponseErrors(t)
+            )
+        }
+        call.respond(response)
+    }
+}
+
+/**
+ * Utility function that summarizes api POST response objects, receiving the body of the request into the specified type
+ * ([B]) and returning an [ApiResponse] of the specified type ([T])
+ */
+inline fun <reified B: Any, reified R, reified T: ApiResponse.Success<R>> Route.apiPostReceive(
+    path: String = "",
+    crossinline func: suspend PipelineContext<Unit, ApplicationCall>.(B) -> T
+) {
+    post(path) {
+        val response = runCatching {
+            val requestBody = call.receive<B>()
+            func(requestBody)
+        }.getOrElse { t ->
+            call.application.log.error(call.request.path(), t)
+            ApiResponse.Error(
+                code = errorCodeFromThrowable(t),
+                errors = throwableToResponseErrors(t)
+            )
+        }
+        call.respond(response)
+    }
+}
+
+/**
+ * Utility function that summarizes api PUT response objects, receiving the body of the request into the specified type
+ * ([R]) and returning an [ApiResponse] of the specified type ([T])
+ */
+inline fun <reified R: Any, reified T: ApiResponse.Success<R>> Route.apiPutReceive(
+    path: String = "",
+    crossinline func: suspend PipelineContext<Unit, ApplicationCall>.(R) -> T
+) {
+    put(path) {
+        val response = runCatching {
+            val requestBody = call.receive<R>()
+            func(requestBody)
+        }.getOrElse { t ->
+            call.application.log.error(call.request.path(), t)
+            ApiResponse.Error(
+                code = errorCodeFromThrowable(t),
+                errors = throwableToResponseErrors(t)
+            )
+        }
+        call.respond(response)
+    }
+}
+
+/**
+ * Utility function that summarizes api PATCH response objects, receiving the body of the request into the specified
+ * type ([R]) and returning an [ApiResponse] of the specified type ([T])
+ */
+inline fun <reified R: Any, reified T: ApiResponse.Success<R>> Route.apiPatchReceive(
+    path: String = "",
+    crossinline func: suspend PipelineContext<Unit, ApplicationCall>.(R) -> T
+) {
+    put(path) {
+        val response = runCatching {
+            val requestBody = call.receive<R>()
+            func(requestBody)
+        }.getOrElse { t ->
+            call.application.log.error(call.request.path(), t)
+            ApiResponse.Error(
+                code = errorCodeFromThrowable(t),
+                errors = throwableToResponseErrors(t)
+            )
+        }
+        call.respond(response)
+    }
+}
+
+/**
+ * Utility function that summarizes api DELETE response objects returning an [ApiResponse] of the specified type ([T])
+ */
+inline fun <reified R: Any, reified T: ApiResponse.Success<R>> Route.apiDelete(
+    path: String = "",
+    crossinline func: suspend PipelineContext<Unit, ApplicationCall>.() -> T
+) {
+    delete(path) {
         val response = runCatching {
             func()
         }.getOrElse { t ->

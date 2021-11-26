@@ -15,10 +15,6 @@ import database.tables.WorkflowOperations
 import io.ktor.application.call
 import io.ktor.request.receive
 import io.ktor.routing.Route
-import io.ktor.routing.delete
-import io.ktor.routing.patch
-import io.ktor.routing.post
-import io.ktor.routing.put
 import io.ktor.routing.route
 import io.ktor.sessions.get
 import io.ktor.sessions.sessions
@@ -72,7 +68,7 @@ private fun Route.actions() {
 private fun Route.pipelineRuns() {
     route("/pipeline-runs") {
         /** Returns list of pipeline runs for the given workflow code based upon the current user. */
-        apiGet("/{code}") {
+        apiGet(path = "/{code}") {
             val payload = Database.runWithConnection {
                 PipelineRuns.userRuns(
                     it,
@@ -82,17 +78,12 @@ private fun Route.pipelineRuns() {
             }
             ApiResponse.PipelineRunsResponse(payload)
         }
-        patch("/pickup/{runId}") {
-            apiResponseSingle(
-                responseObject = "string",
-                errorMessage = "Failed to pickup pipeline run",
-            ) {
-                val runId = call.parameters.getOrFail("").toLong()
-                Database.runWithConnection {
-                    PipelineRuns.pickupRun(it, runId, call.sessions.get<UserSession>()!!.userId)
-                }
-                "Successfully picked up $runId to Active state under the current user"
+        apiPost("/pickup/{runId}") {
+            val runId = call.parameters.getOrFail("").toLong()
+            Database.runWithConnection {
+                PipelineRuns.pickupRun(it, runId, call.sessions.get<UserSession>()!!.userId)
             }
+            ApiResponse.MessageResponse("Successfully picked up $runId to Active state under the current user")
         }
     }
 }
@@ -108,47 +99,39 @@ private fun Route.pipelineRunTasks() {
                 PipelineRunTasks.getOrderedTasks(it, message.toLong())
             }
         }
-        post("/run-next/{runId}") {
-            apiResponseSingle(
-                responseObject = "next_task",
-                errorMessage = "Failed to run next task",
-            ) {
-                val user = call.sessions.get<UserSession>()!!
-                val runId = call.parameters.getOrFail("runId").toLong()
+        apiPost(path = "/run-next/{runId}") {
+            val user = call.sessions.get<UserSession>()!!
+            val runId = call.parameters.getOrFail("runId").toLong()
+            val payload = Database.runWithConnection {
+                PipelineRunTasks.getRecordForRun(it, user.username, runId)
+            }.also { nextTask ->
+                kjob.schedule(SystemJob) {
+                    props[it.pipelineRunTaskId] = nextTask.pipelineRunTaskId
+                    props[it.runId] = runId
+                    props[it.runNext] = false
+                }
                 Database.runWithConnection {
-                    PipelineRunTasks.getRecordForRun(it, user.username, runId)
-                }.also { nextTask ->
-                    kjob.schedule(SystemJob) {
-                        props[it.pipelineRunTaskId] = nextTask.pipelineRunTaskId
-                        props[it.runId] = runId
-                        props[it.runNext] = false
-                    }
-                    Database.runWithConnection {
-                        PipelineRunTasks.setStatus(it, nextTask.pipelineRunTaskId, TaskStatus.Scheduled)
-                    }
+                    PipelineRunTasks.setStatus(it, nextTask.pipelineRunTaskId, TaskStatus.Scheduled)
                 }
             }
+            ApiResponse.NextTaskResponse(payload)
         }
-        post("/run-all/{runId}") {
-            apiResponseSingle(
-                responseObject = "next_task",
-                errorMessage = "Failed to run all available tasks",
-            ) {
-                val user = call.sessions.get<UserSession>()!!
-                val runId = call.parameters.getOrFail("runId").toLong()
+        apiPost(path = "/run-all/{runId}") {
+            val user = call.sessions.get<UserSession>()!!
+            val runId = call.parameters.getOrFail("runId").toLong()
+            val payload = Database.runWithConnection {
+                PipelineRunTasks.getRecordForRun(it, user.username, runId)
+            }.also { nextTask ->
+                kjob.schedule(SystemJob) {
+                    props[it.pipelineRunTaskId] = nextTask.pipelineRunTaskId
+                    props[it.runId] = runId
+                    props[it.runNext] = true
+                }
                 Database.runWithConnection {
-                    PipelineRunTasks.getRecordForRun(it, user.username, runId)
-                }.also { nextTask ->
-                    kjob.schedule(SystemJob) {
-                        props[it.pipelineRunTaskId] = nextTask.pipelineRunTaskId
-                        props[it.runId] = runId
-                        props[it.runNext] = true
-                    }
-                    Database.runWithConnection {
-                        PipelineRunTasks.setStatus(it, nextTask.pipelineRunTaskId, TaskStatus.Scheduled)
-                    }
+                    PipelineRunTasks.setStatus(it, nextTask.pipelineRunTaskId, TaskStatus.Scheduled)
                 }
             }
+            ApiResponse.NextTaskResponse(payload)
         }
     }
 }
@@ -156,50 +139,36 @@ private fun Route.pipelineRunTasks() {
 /** Source tables API route */
 private fun Route.sourceTables() {
     route("/source-tables") {
-        apiGet("/{runId}") {
+        apiGet(path = "/{runId}") {
             val runId = call.parameters.getOrFail("runId").toLong()
             val payload = Database.runWithConnection {
                 SourceTables.getRunSourceTables(it, runId)
             }
             ApiResponse.SourceTablesResponse(payload)
         }
-        put {
-            apiResponseSingle(
-                responseObject = "source_table",
-                errorMessage = "Failed to update source table record",
-            ) {
-                val requestBody = call.receive<SourceTables.Record>()
-                val user = call.sessions.get<UserSession>()!!
-                Database.useTransaction {
-                    SourceTables.updateSourceTableV2(it, user.username, requestBody)
-                }
+        apiPutReceive { sourceTable: SourceTables.Record ->
+            val user = call.sessions.get<UserSession>()!!
+            val payload = Database.useTransaction {
+                SourceTables.updateSourceTableV2(it, user.username, sourceTable)
             }
+            ApiResponse.SourceTableResponse(payload)
         }
-        post("/{runId}")  {
-            apiResponseSingle(
-                responseObject = "source_table",
-                errorMessage = "Failed to insert source table record",
-            ) {
-                val runId = call.parameters.getOrFail("runId").toLong()
-                val requestBody = call.receive<SourceTables.Record>()
-                val user = call.sessions.get<UserSession>()!!
-                Database.runWithConnection {
-                    SourceTables.insertSourceTableV2(it, runId, user.username, requestBody)
-                }
+        apiPostReceive(path = "/{runId}") { requestRecord: SourceTables.Record ->
+            val runId = call.parameters.getOrFail("runId").toLong()
+            val user = call.sessions.get<UserSession>()!!
+            val payload = Database.runWithConnection {
+                SourceTables.insertSourceTableV2(it, runId, user.username, requestRecord)
             }
+            ApiResponse.InsertIdResponse(payload)
         }
-        delete("/{runId}/{stOid}") {
-            apiResponseSingle(
-                responseObject = "source_table",
-                errorMessage = "Failed to insert source table record",
-            ) {
-                val runId = call.parameters.getOrFail("runId").toLong()
-                val stOid = call.parameters.getOrFail("stOid").toLong()
-                val user = call.sessions.get<UserSession>()!!
-                Database.runWithConnection {
-                    SourceTables.deleteSourceTableV2(it, stOid, runId, user.username)
-                }
+        apiDelete(path = "/{runId}/{stOid}") {
+            val runId = call.parameters.getOrFail("runId").toLong()
+            val stOid = call.parameters.getOrFail("stOid").toLong()
+            val user = call.sessions.get<UserSession>()!!
+            Database.runWithConnection {
+                SourceTables.deleteSourceTableV2(it, stOid, runId, user.username)
             }
+            ApiResponse.MessageResponse("Deleted st_oid = $stOid from run_id = $runId")
         }
     }
 }
@@ -214,27 +183,17 @@ private fun Route.users() {
             }
             ApiResponse.UsersResponse(payload)
         }
-        post {
-            apiResponseSingle(
-                responseObject = "source_table",
-                errorMessage = "Failed to insert new user",
-            ) {
-                val user = call.receive<InternalUsers.RequestUser>()
-                val userOid = Database.runWithConnection { InternalUsers.createUser(it, user) }
-                    ?: error("INSERT statement did not return any data")
-                "Created new user, ${user.username} (${userOid})"
+        apiPostReceive { requestUser: InternalUsers.RequestUser ->
+            val userOid = Database.runWithConnection {
+                InternalUsers.createUser(it, requestUser)
             }
+            ApiResponse.InsertIdResponse(userOid)
         }
-        patch {
-            apiResponseSingle(
-                responseObject = "source_table",
-                errorMessage = "Failed to update user",
-            ) {
-                val user = call.receive<InternalUsers.RequestUser>()
-                Database.runWithConnection {
-                    InternalUsers.updateUserV2(it, user)
-                }
+        apiPatchReceive { requestUser: InternalUsers.RequestUser ->
+            val payload = Database.runWithConnection {
+                InternalUsers.updateUserV2(it, requestUser)
             }
+            ApiResponse.UserResponse(payload)
         }
     }
 }
