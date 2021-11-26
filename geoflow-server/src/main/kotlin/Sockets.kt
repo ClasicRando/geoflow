@@ -101,7 +101,10 @@ fun Route.publisher(path: String, channelName: String) {
 }
 
 /**
- *
+ * Publisher for api V2 that does the same thing as the original publisher except instead of sending a simple text
+ * message that comes from the postgresql notification, a lambda, [func], is provided to get the data needed in a
+ * serializable format so a JSON string can be sent to the client through the socket as the updated data rather than
+ * send a message to notify a refresh is required.
  */
 @OptIn(ExperimentalSerializationApi::class)
 inline fun <reified T> Route.publisher2(
@@ -129,8 +132,7 @@ inline fun <reified T> Route.publisher2(
                 }
             }
         }
-        val listenerRunning = if (listener != null) "Listener is running" else "Listener is not running"
-        send("Connected to pipelineRunTasks socket. $listenerRunning")
+        send(Json.encodeToString(func(connection.listenId)))
         @Suppress("TooGenericExceptionCaught")
         try {
             for (frame in incoming) {
