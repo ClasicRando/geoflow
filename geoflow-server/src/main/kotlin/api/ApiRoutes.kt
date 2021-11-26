@@ -99,6 +99,14 @@ private fun Route.pipelineRunTasks() {
                 PipelineRunTasks.getOrderedTasks(it, message.toLong())
             }
         }
+        apiPost(path = "/reset-task/{prTaskId}") {
+            val user = call.sessions.get<UserSession>()!!
+            val pipelineRunTaskId = call.parameters.getOrFail("prTaskId").toLong()
+            Database.runWithConnection {
+                PipelineRunTasks.resetRecord(it, user.userId, pipelineRunTaskId)
+            }
+            ApiResponse.MessageResponse("Successfully reset task $pipelineRunTaskId")
+        }
         apiPost(path = "/run-next/{runId}") {
             val user = call.sessions.get<UserSession>()!!
             val runId = call.parameters.getOrFail("runId").toLong()
