@@ -3,10 +3,10 @@ let code;
 
 async function pickup() {
     $(`#${modalId}`).modal('hide');
-    const response = await postJSON(`/api/v2/pipeline-runs/pickup/${runId}`);
+    const response = await fetchPOST(`/api/v2/pipeline-runs/pickup/${runId}`);
     const json = await response.json();
     if ('errors' in json) {
-        showToast('Error During Pickup', json.errors.map(error => `${error.error_name} -> ${error.message}`).join('\n'));
+        showToast('Error During Pickup', formatErrors(json.errors));
     } else {
         $(`#${tableId}`).bootstrapTable('refresh');
         showToast('Picked Up Run', json.payload);

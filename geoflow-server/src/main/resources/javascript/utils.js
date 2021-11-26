@@ -58,7 +58,7 @@ function patchJSON(url, data) {
     return fetchJSON('PATCH', url, data);
 }
 
-function postJSON(url, data) {
+function fetchPOST(url, data={}) {
     return fetchJSON('POST', url, data);
 }
 
@@ -248,4 +248,8 @@ function showToast(title, message) {
     $toast.on('hidden.bs.toast', (e) => {
         container.remove();
     });
+}
+
+function formatErrors(errors) {
+    return errors.map(error => `${error.error_name} -> ${error.message}`).join('\n');
 }

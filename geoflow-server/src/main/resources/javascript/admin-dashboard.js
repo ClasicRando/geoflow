@@ -117,7 +117,7 @@ async function submitNewUser($form) {
         password: $password.val(),
         roles: $isAdmin.prop('checked') ? ['admin'] : $roles.val(),
     };
-    const response = await postJSON('/api/v2/users', user);
+    const response = await fetchPOST('/api/v2/users', user);
     const json = await response.json();
     console.log(json);
     if ('errors' in json) {

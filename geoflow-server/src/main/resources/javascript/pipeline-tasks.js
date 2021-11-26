@@ -1,53 +1,63 @@
 let tasksSubscriber;
+let runId = -1;
 $(document).ready(function() {
     tasksSubscriber = subscriberTables[taskTableId];
+    runId = window.location.href.match(/(?<=\/)[^/]+$/g)[0];
 });
-
-function getRunId() {
-    return window.location.href.match(/(?<=\/)[^/]+$/g)[0]||'';
-}
 
 function showSourceTables() {
     $(`#${sourceTablesTableId}`).bootstrapTable('refresh');
     $(`#${sourceTableModalId}`).modal('show');
 }
 
-function clickRunTask() {
+async function clickRunTask() {
     let $table = $(`#${taskTableId}`);
     if (!tasksSubscriber.isActive) {
-        showMessageBox('Error', 'Task change listener is not currently running. Refresh page to reconnect');
+        showToast('Error', 'Task change listener is not currently running. Refresh page to reconnect');
         return;
     }
     let data = $table.bootstrapTable('getData');
     if (data.find(row => row.task_status === 'Running' || row.task_status === 'Scheduled') !== undefined) {
-        showMessageBox('Error', 'Task already running');
+        showToast('Error', 'Task already running');
         return;
     }
     let row = data.find(row => row.task_status === 'Waiting');
     if (row == undefined) {
-        showMessageBox('Error', 'No task to run');
+        showToast('Error', 'No task to run');
         return;
     }
-    postValue(`/api/run-task/${getRunId()}`);
+    const response = await fetchPOST(`/api/v2/pipeline-run-tasks/run-next/${runId}`);
+    const json = await response.json();
+    if ('errors' in json) {
+        showToast('Error', formatErrors(json.errors));
+    } else {
+        showToast('Next Task Scheduled', `Successfully scheduled ${json.payload.pipeline_run_task_id} to run`);
+    }
 }
 
-function clickRunAllTasks() {
+async function clickRunAllTasks() {
     let $table = $(`#${taskTableId}`);
     if (!tasksSubscriber.isActive) {
-        showMessageBox('Error', 'Task change listener is not currently running. Refresh page to reconnect');
+        showToast('Error', 'Task change listener is not currently running. Refresh page to reconnect');
         return;
     }
     let data = $table.bootstrapTable('getData');
     if (data.find(row => row.task_status === 'Running' || row.task_status === 'Scheduled') !== undefined) {
-        showMessageBox('Error', 'Task already running');
+        showToast('Error', 'Task already running');
         return;
     }
     let row = data.find(row => row.task_status === 'Waiting');
     if (row == undefined) {
-        showMessageBox('Error', 'No task to run');
+        showToast('Error', 'No task to run');
         return;
     }
-    postValue(`/api/run-all/${getRunId()}`);
+    const response = await fetchPOST(`/api/v2/pipeline-run-tasks/run-all/${runId}`);
+    const json = await response.json();
+    if ('errors' in json) {
+        showToast('Error', formatErrors(json.errors));
+    } else {
+        showToast('Run All Scheduled', `Successfully scheduled to run all tasks`);
+    }
 }
 
 function statusFormatter(value, row) {
@@ -79,7 +89,7 @@ function titleCase(title) {
 
 function showTaskInfo(prTaskId) {
     if (!tasksSubscriber.isActive) {
-        showMessageBox('Error', 'Task change listener is not currently running. Refresh page to reconnect');
+        showToast('Error', 'Task change listener is not currently running. Refresh page to reconnect');
         return;
     }
     let data = $(`#${taskTableId}`).bootstrapTable('getData').find(row => row.pipeline_run_task_id === prTaskId);
@@ -101,12 +111,18 @@ function showTaskInfo(prTaskId) {
     $(`#${taskDataModalId}`).modal('show');
 }
 
-function reworkTask(prTaskId) {
+async function reworkTask(prTaskId) {
     if (!tasksSubscriber.isActive) {
-        showMessageBox('Error', 'Task change listener is not currently running. Refresh page to reconnect');
+        showToast('Error', 'Task change listener is not currently running. Refresh page to reconnect');
         return;
     }
-    postValue(`/api/reset-task/${getRunId()}/${prTaskId}`);
+    const response = await fetchPOST(`/api/v2/pipeline-run-tasks/reset-task/${prTaskId}`);
+    const json = await response.json();
+    if ('errors' in json) {
+        showToast('Error', formatErrors(json.errors));
+    } else {
+        showToast('Run All Scheduled', `Successfully reworked ${prTaskId}`);
+    }
 }
 
 function taskActionFormatter(value, row) {
