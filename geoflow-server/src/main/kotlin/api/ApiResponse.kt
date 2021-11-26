@@ -2,6 +2,7 @@ package api
 
 import database.tables.Actions
 import database.tables.InternalUsers
+import database.tables.PipelineRunTasks
 import database.tables.PipelineRuns
 import database.tables.SourceTables
 import database.tables.WorkflowOperations
@@ -56,6 +57,15 @@ sealed interface ApiResponse {
         override val responseObject: String = "source_table"
     }
 
+    /** API response for a list of records from [source_tables][SourceTables] */
+    @Serializable
+    class SourceTableResponse(
+        override val payload: SourceTables.Record,
+    ): Success<SourceTables.Record> {
+        @SerialName("object")
+        override val responseObject: String = "source_table"
+    }
+
     /** API response for a list of records from [internal_users][InternalUsers] */
     @Serializable
     class UsersResponse(
@@ -65,6 +75,15 @@ sealed interface ApiResponse {
         override val responseObject: String = "internal_user"
     }
 
+    /** API response for a list of records from [internal_users][InternalUsers] */
+    @Serializable
+    class UserResponse(
+        override val payload: InternalUsers.RequestUser,
+    ): Success<InternalUsers.RequestUser> {
+        @SerialName("object")
+        override val responseObject: String = "request_user"
+    }
+
     /** API response for a list of kjob tasks */
     @Serializable
     class KJobTasksResponse(
@@ -72,6 +91,33 @@ sealed interface ApiResponse {
     ): Success<List<MongoDb.ScheduledJob>> {
         @SerialName("object")
         override val responseObject: String = "kjob_task"
+    }
+
+    /** API response for a next task scheduled to run */
+    @Serializable
+    class NextTaskResponse(
+        override val payload: PipelineRunTasks.NextTask,
+    ): Success<PipelineRunTasks.NextTask> {
+        @SerialName("object")
+        override val responseObject: String = "next_task"
+    }
+
+    /** API response for an inserted record */
+    @Serializable
+    class InsertIdResponse(
+        override val payload: Long,
+    ): Success<Long> {
+        @SerialName("object")
+        override val responseObject: String = "new_record_id"
+    }
+
+    /** API response for a successful action */
+    @Serializable
+    class MessageResponse(
+        override val payload: String,
+    ): Success<String> {
+        @SerialName("object")
+        override val responseObject: String = "message"
     }
 
     /** API response with a single serializable object in the payload */
