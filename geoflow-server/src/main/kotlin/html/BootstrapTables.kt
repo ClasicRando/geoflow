@@ -91,6 +91,7 @@ fun FlowContent.basicTable(
     tableId: String,
     dataUrl: String,
     fields: Map<String, Map<String, String>>,
+    dataField: String = "",
     tableButtons: List<TableButton> = listOf(),
     headerButtons: List<HeaderButton> = listOf(),
     customSortFunction: String = "",
@@ -112,6 +113,9 @@ fun FlowContent.basicTable(
             attributes["data-toolbar"] = "#toolbar"
         }
         attributes["data-url"] = dataUrl
+        if (dataField.isNotBlank()) {
+            attributes["data-data-field"] = dataField
+        }
         if (subscriber.isEmpty()) {
             attributes["data-show-refresh"] = "true"
         } else {
