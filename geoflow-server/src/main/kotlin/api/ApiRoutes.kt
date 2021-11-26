@@ -78,7 +78,7 @@ private fun Route.pipelineRuns() {
             }
             ApiResponse.PipelineRunsResponse(payload)
         }
-        apiPost("/pickup/{runId}") {
+        apiPost(path = "/pickup/{runId}") {
             val runId = call.parameters.getOrFail("").toLong()
             Database.runWithConnection {
                 PipelineRuns.pickupRun(it, runId, call.sessions.get<UserSession>()!!.userId)
@@ -103,7 +103,7 @@ private fun Route.pipelineRunTasks() {
             val user = call.sessions.get<UserSession>()!!
             val runId = call.parameters.getOrFail("runId").toLong()
             val payload = Database.runWithConnection {
-                PipelineRunTasks.getRecordForRun(it, user.username, runId)
+                PipelineRunTasks.getRecordForRun(it, user.userId, runId)
             }.also { nextTask ->
                 kjob.schedule(SystemJob) {
                     props[it.pipelineRunTaskId] = nextTask.pipelineRunTaskId
@@ -120,7 +120,7 @@ private fun Route.pipelineRunTasks() {
             val user = call.sessions.get<UserSession>()!!
             val runId = call.parameters.getOrFail("runId").toLong()
             val payload = Database.runWithConnection {
-                PipelineRunTasks.getRecordForRun(it, user.username, runId)
+                PipelineRunTasks.getRecordForRun(it, user.userId, runId)
             }.also { nextTask ->
                 kjob.schedule(SystemJob) {
                     props[it.pipelineRunTaskId] = nextTask.pipelineRunTaskId
@@ -149,7 +149,7 @@ private fun Route.sourceTables() {
         apiPutReceive { sourceTable: SourceTables.Record ->
             val user = call.sessions.get<UserSession>()!!
             val payload = Database.useTransaction {
-                SourceTables.updateSourceTableV2(it, user.username, sourceTable)
+                SourceTables.updateSourceTableV2(it, user.userId, sourceTable)
             }
             ApiResponse.SourceTableResponse(payload)
         }
@@ -157,18 +157,17 @@ private fun Route.sourceTables() {
             val runId = call.parameters.getOrFail("runId").toLong()
             val user = call.sessions.get<UserSession>()!!
             val payload = Database.runWithConnection {
-                SourceTables.insertSourceTableV2(it, runId, user.username, requestRecord)
+                SourceTables.insertSourceTableV2(it, runId, user.userId, requestRecord)
             }
             ApiResponse.InsertIdResponse(payload)
         }
-        apiDelete(path = "/{runId}/{stOid}") {
-            val runId = call.parameters.getOrFail("runId").toLong()
+        apiDelete(path = "/{stOid}") {
             val stOid = call.parameters.getOrFail("stOid").toLong()
             val user = call.sessions.get<UserSession>()!!
             Database.runWithConnection {
-                SourceTables.deleteSourceTableV2(it, stOid, runId, user.username)
+                SourceTables.deleteSourceTableV2(it, stOid, user.userId)
             }
-            ApiResponse.MessageResponse("Deleted st_oid = $stOid from run_id = $runId")
+            ApiResponse.MessageResponse("Deleted st_oid = $stOid")
         }
     }
 }

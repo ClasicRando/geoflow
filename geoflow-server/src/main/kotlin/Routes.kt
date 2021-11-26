@@ -227,7 +227,7 @@ fun Route.api() {
             val runId = call.parameters.getOrFail("runId").toLong()
             val response = runCatching {
                 val pipelineRunTask = Database.runWithConnection {
-                    PipelineRunTasks.getRecordForRun(it, user.username, runId)
+                    PipelineRunTasks.getRecordForRun(it, user.userId, runId)
                 }
                 Database.runWithConnection {
                     PipelineRunTasks.setStatus(it, pipelineRunTask.pipelineRunTaskId, TaskStatus.Scheduled)
@@ -259,7 +259,7 @@ fun Route.api() {
             val runId = call.parameters.getOrFail("runId").toLong()
             val response = runCatching {
                 val pipelineRunTask = Database.runWithConnection {
-                    PipelineRunTasks.getRecordForRun(it, user.username, runId)
+                    PipelineRunTasks.getRecordForRun(it, user.userId, runId)
                 }
                 Database.runWithConnection {
                     PipelineRunTasks.setStatus(it, pipelineRunTask.pipelineRunTaskId, TaskStatus.Scheduled)
@@ -277,13 +277,12 @@ fun Route.api() {
             call.respond(response)
         }
         /** Resets the provided pipeline run task to a waiting state and deletes all child tasks if any exist. */
-        post("/reset-task/{runId}/{prTaskId}") {
+        post("/reset-task/{prTaskId}") {
             val user = call.sessions.get<UserSession>()!!
-            val runId = call.parameters.getOrFail("runId").toLong()
             val pipelineRunTaskId = call.parameters.getOrFail("prTaskId").toLong()
             val response = runCatching {
                 Database.runWithConnection {
-                    PipelineRunTasks.resetRecord(it, user.username, runId, pipelineRunTaskId)
+                    PipelineRunTasks.resetRecord(it, user.userId, pipelineRunTaskId)
                 }
                 mapOf("success" to "Reset $pipelineRunTaskId")
             }.getOrElse { t ->
