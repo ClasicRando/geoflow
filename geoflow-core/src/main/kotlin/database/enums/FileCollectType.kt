@@ -7,7 +7,7 @@ import org.postgresql.util.PGobject
  * CREATE TYPE public.file_collect_type AS ENUM
  * ('Download', 'FOI', 'Email', 'Scrape', 'Collect', 'REST');
  */
-enum class FileCollectType {
+enum class FileCollectType: PostgresEnum {
     /** Download collection type */
     Download,
     /** FOI response collection type */
@@ -22,8 +22,7 @@ enum class FileCollectType {
     REST,
     ;
 
-    /** [PGobject] representation of the enum value */
-    val pgObject: PGobject = PGobject().apply {
+    override val pgObject: PGobject = PGobject().apply {
         type = "file_collect_type"
         value = name
     }

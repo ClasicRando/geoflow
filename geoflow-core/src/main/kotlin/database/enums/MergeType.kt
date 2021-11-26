@@ -7,7 +7,7 @@ import org.postgresql.util.PGobject
  * CREATE TYPE public.merge_type AS ENUM
  * ('None', 'Exclusive', 'Intersect');
  */
-enum class MergeType {
+enum class MergeType : PostgresEnum {
     /** Merge type where no files are merged with each other */
     None,
     /** Merge type where 2 or more datasets are loaded as non-overlapping sets */
@@ -16,8 +16,7 @@ enum class MergeType {
     Intersect
     ;
 
-    /** [PGobject] representation of the enum value */
-    val pgObject: PGobject = PGobject().apply {
+    override val pgObject: PGobject = PGobject().apply {
         type = "merge_type"
         value = name
     }
