@@ -121,7 +121,7 @@ async function submitNewUser($form) {
     const json = await response.json();
     console.log(json);
     if ('errors' in json) {
-        $(`#${userCreateModal}ResponseErrorMessage`).text(json.errors);
+        $(`#${userCreateModal}ResponseErrorMessage`).text(formatErrors(json.errors));
     } else {
         $(`#${userCreateModal}`).modal('hide');
         showToast('Created User', `Created ${user.username} (${json.payload})`);
@@ -164,10 +164,10 @@ async function submitEditUser($form) {
         roles: $isAdmin.prop('checked') ? ['admin'] : $roles.val(),
         password: null,
     };
-    const response = await patchJSON('/api/v2/users', user);
+    const response = await fetchPatch('/api/v2/users', user);
     const json = await response.json();
     if ('errors' in json) {
-        $(`#${userEditModal}ResponseErrorMessage`).text(json.errors);
+        $(`#${userEditModal}ResponseErrorMessage`).text(formatErrors(json.errors));
     } else {
         $(`#${userEditModal}`).modal('hide');
         showToast('Updated User', `Successful update to ${json.payload.username}`);

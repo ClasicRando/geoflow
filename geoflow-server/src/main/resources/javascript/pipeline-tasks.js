@@ -5,11 +5,6 @@ $(document).ready(function() {
     runId = window.location.href.match(/(?<=\/)[^/]+$/g)[0];
 });
 
-function showSourceTables() {
-    $(`#${sourceTablesTableId}`).bootstrapTable('refresh');
-    $(`#${sourceTableModalId}`).modal('show');
-}
-
 async function clickRunTask() {
     let $table = $(`#${taskTableId}`);
     if (!tasksSubscriber.isActive) {
@@ -121,7 +116,7 @@ async function reworkTask(prTaskId) {
     if ('errors' in json) {
         showToast('Error', formatErrors(json.errors));
     } else {
-        showToast('Run All Scheduled', `Successfully reworked ${prTaskId}`);
+        showToast('Task Reworked', `Successfully reworked ${prTaskId}`);
     }
 }
 
