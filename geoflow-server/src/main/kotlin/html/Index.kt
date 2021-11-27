@@ -24,7 +24,7 @@ object Index {
             div(classes = "col") {
                 basicTable(
                     tableId = operationsTableId,
-                    dataUrl = "/api/v2/operations",
+                    dataUrl = "/api/operations",
                     dataField = "payload",
                     fields = WorkflowOperations.tableDisplayFields,
                 )
@@ -32,7 +32,7 @@ object Index {
             div(classes = "col") {
                 basicTable(
                     tableId = actionsTableId,
-                    dataUrl = "/api/v2/actions",
+                    dataUrl = "/api/actions",
                     dataField = "payload",
                     fields = Actions.tableDisplayFields,
                 )

@@ -159,7 +159,7 @@ private const val SOURCE_TABLES_TABLE_ID = "sourceTables"
 fun FlowContent.sourceTables(runId: Long) {
     basicTable(
         tableId = SOURCE_TABLES_TABLE_ID,
-        dataUrl = "/api/v2/source-tables/$runId",
+        dataUrl = "/api/source-tables/$runId",
         dataField = "payload",
         fields = SourceTables.tableDisplayFields,
         tableButtons = listOf(

@@ -22,7 +22,7 @@ object PipelineStatus {
         return BasePage.withContent {
             basicTable(
                 tableId = tableId,
-                dataUrl = "/api/v2/pipeline-runs/$workflowCode",
+                dataUrl = "/api/pipeline-runs/$workflowCode",
                 dataField = "payload",
                 fields = PipelineRuns.tableDisplayFields,
                 clickableRows = false,

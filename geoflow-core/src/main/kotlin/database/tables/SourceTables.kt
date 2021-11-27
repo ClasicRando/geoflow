@@ -9,16 +9,13 @@ import loading.LoadingInfo
 import loading.DEFAULT_DELIMITER
 import database.enums.FileCollectType
 import database.enums.LoaderType
-import database.extensions.executeNoReturn
 import database.extensions.runReturningFirstOrNull
-import database.extensions.runUpdate
 import database.extensions.getListWithNulls
 import database.extensions.getList
 import database.extensions.useMultipleStatements
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 import java.sql.Connection
-import java.util.SortedMap
 import database.extensions.submitQuery
 import database.functions.UserHasRun
 import java.sql.ResultSet
@@ -167,7 +164,7 @@ object SourceTables : DbTable("source_tables"), ApiExposed {
      * - the update does not affect any records
      * - the user does not have the ability to operate on this run
      */
-    fun updateSourceTableV2(
+    fun updateSourceTable(
         connection: Connection,
         userOid: Long,
         requestBody: Record,
@@ -219,7 +216,7 @@ object SourceTables : DbTable("source_tables"), ApiExposed {
      * @throws IllegalArgumentException when the username provided does not have the ability to update this run
      * @throws NoRecordAffected when the insert does not create/affect any records
      */
-    fun insertSourceTableV2(
+    fun insertSourceTable(
         connection: Connection,
         runId: Long,
         userOid: Long,
@@ -259,138 +256,12 @@ object SourceTables : DbTable("source_tables"), ApiExposed {
      * - delete command does not affect any records
      * - the username provided does not have the ability to update this run
      */
-    fun deleteSourceTableV2(connection: Connection, stOid: Long, userOid: Long) {
+    fun deleteSourceTable(connection: Connection, stOid: Long, userOid: Long) {
         connection.runReturningFirstOrNull<Long>(
             sql = "DELETE FROM $tableName WHERE st_oid = ? AND user_has_run(?,run_id) RETURNING st_oid",
             stOid,
             userOid,
         ) ?: throw NoRecordAffected(tableName, "No record deleted for st_oid = $stOid")
-    }
-
-    /**
-     * Builds a [SortedMap] to provide ordered key value pairs for record updating/inserting
-     */
-    @Suppress("ComplexMethod")
-    private fun getStatementArguments(map: Map<String, String>): SortedMap<String, Any?> {
-        return buildMap {
-            for ((key, value) in map.entries) {
-                when (key){
-                    "table_name" -> {
-                        set(key, value)
-                    }
-                    "file_id" -> {
-                        set(key, value)
-                    }
-                    "file_name" -> {
-                        val loaderType = LoaderType.getLoaderType(value)
-                        if (loaderType == LoaderType.MDB || loaderType == LoaderType.Excel) {
-                            val subTable = map["sub_table"] ?: throw IllegalArgumentException(
-                                "Sub Table must be not null for the provided filename"
-                            )
-                            set("sub_table", subTable)
-                        }
-                        set(key, value)
-                        set("loader_type", loaderType.pgObject)
-                    }
-                    "delimiter" -> set(key, value.takeIf { it.isNotBlank() })
-                    "url" -> set(key, value.takeIf { it.isNotBlank() })
-                    "comments" -> set(key, value.takeIf { it.isNotBlank() })
-                    "collect_type" -> {
-                        set(key, FileCollectType.valueOf(value).pgObject)
-                    }
-                    "qualified" -> set(key, value == "on")
-                    "analyze_table" -> set(key, value == "on")
-                    "load" -> set(key, value == "on")
-                }
-            }
-        }.toSortedMap()
-    }
-
-    /**
-     * Uses [params] map to update a given record specified by the stOid provided in the map and return the stOid
-     *
-     * @throws IllegalArgumentException when various conditions are not met
-     * - [params] does not contain runId
-     * - [params] does not contain stOid
-     * - the username passed does not have access to update the source tables associated with the runId
-     * @throws NumberFormatException when the runId or stOid are not Long strings
-     */
-    fun updateSourceTable(
-        connection: Connection,
-        username: String,
-        params: Map<String, String>
-    ): Pair<Long, Int> {
-        val runId = params["runId"]
-            ?.toLong()
-            ?: throw IllegalArgumentException("runId must be a non-null parameter in the url")
-        val stOid = params["stOid"]
-            ?.toLong()
-            ?: throw IllegalArgumentException("stOid must be a non-null parameter in the url")
-        require(PipelineRuns.checkUserRun(connection, runId, username)) { "Username does not own the runId" }
-        val sortedMap = getStatementArguments(params)
-        val sql = """
-            UPDATE $tableName
-            SET    ${sortedMap.keys.joinToString { key -> "$key = ?" }}
-            WHERE  st_oid = ?
-        """.trimIndent()
-        val updateCount = connection.runUpdate(
-            sql = sql,
-            sortedMap.values,
-            stOid,
-        )
-        return stOid to updateCount
-    }
-
-    /**
-     * Uses [params] map to insert a record into [SourceTables] and return the new records stOid
-     *
-     * @throws IllegalArgumentException when various conditions are not met
-     * - [params] does not contain runId
-     * - the username passed does not have access to update the source tables associated with the runId
-     * - the insert command returns null meaning a record was not inserted
-     * @throws NumberFormatException when the runId or stOid are not Long strings
-     */
-    fun insertSourceTable(
-        connection: Connection,
-        username: String,
-        params: Map<String, String>,
-    ): Long {
-        val runId = params["runId"]
-            ?.toLong()
-            ?: throw IllegalArgumentException("runId must be a non-null parameter in the url")
-        require(PipelineRuns.checkUserRun(connection, runId, username)) { "Username does not own the runId" }
-        val sortedMap = getStatementArguments(params)
-        val sql = """
-            INSERT INTO $tableName (run_id,${sortedMap.keys.joinToString()})
-            VALUES (?,${"?,".repeat(sortedMap.size).trim(',')})
-            RETURNING st_oid
-        """.trimIndent()
-        return connection.runReturningFirstOrNull(
-            sql = sql,
-            runId,
-            sortedMap.values,
-        ) ?: throw IllegalArgumentException("Error while trying to insert record. Null returned")
-    }
-
-    /**
-     * Uses [params] map to delete a record from [SourceTables] as specified by the stOid and return the stOid
-     *
-     * @throws IllegalArgumentException when various conditions are not met
-     * - [params] does not contain runId
-     * - [params] does not contain stOid
-     * - the username passed does not have access to update the source tables associated with the runId
-     * @throws NumberFormatException when the runId or stOid are not Long strings
-     */
-    fun deleteSourceTable(connection: Connection, username: String, params: Map<String, String?>): Long {
-        val runId = params["runId"]
-            ?.toLong()
-            ?: throw IllegalArgumentException("runId must be a non-null parameter in the url")
-        val stOid = params["stOid"]
-            ?.toLong()
-            ?: throw IllegalArgumentException("stOid must be a non-null parameter in the url")
-        require(PipelineRuns.checkUserRun(connection, runId, username)) { "Username does not own the runId" }
-        connection.executeNoReturn(sql = "DELETE FROM $tableName WHERE st_oid = ?", stOid)
-        return stOid
     }
 
     /** Record representing the files required to analyze */

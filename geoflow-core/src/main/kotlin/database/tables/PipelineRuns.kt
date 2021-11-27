@@ -235,37 +235,6 @@ object PipelineRuns : DbTable("pipeline_runs"), ApiExposed, Triggers {
         }
     }
 
-    /**
-     * Checks if a username is linked to the given runId. Returns true if user is a part of the run or the user has the
-     * admin role.
-     *
-     * @throws IllegalArgumentException when the username does not link to a user in [InternalUsers]
-     */
-    fun checkUserRun(connection: Connection, runId: Long, username: String): Boolean {
-        val sql = """
-            WITH user_record as (
-                SELECT *
-                FROM   ${InternalUsers.tableName}
-                WHERE  username = ?
-            )
-            SELECT 1
-            FROM   $tableName t1
-            LEFT JOIN user_record t2
-            ON     t1.collection_user_oid = t2.user_oid
-            LEFT JOIN user_record t3
-            ON     t1.load_user_oid = t3.user_oid
-            LEFT JOIN user_record t4
-            ON     t1.check_user_oid = t4.user_oid
-            LEFT JOIN user_record t5
-            ON     t1.qa_user_oid = t5.user_oid
-            LEFT JOIN user_record t6
-            ON     'admin' = ANY(t6.roles)
-            WHERE  t1.run_id = ?
-            AND    COALESCE(t2.user_oid,t3.user_oid,t4.user_oid,t5.user_oid,t6.user_oid) IS NOT NULL
-        """.trimIndent()
-        return connection.queryHasResult(sql, username, runId)
-    }
-
     /** API response data class for JSON serialization */
     @Serializable
     data class Record(

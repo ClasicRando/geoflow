@@ -11,7 +11,7 @@ import kotlinx.html.unsafe
 object PipelineTasks {
 
     private const val taskDataModalId = "taskData"
-    private const val taskTableId = "tasks"
+    private const val taskTableId = "tasksTable"
     private val tableButtons = listOf(
         TableButton(
             "btnRun",
@@ -63,7 +63,7 @@ object PipelineTasks {
                         fields = PipelineRunTasks.tableDisplayFields,
                         tableButtons = tableButtons,
                         clickableRows = false,
-                        subscriber = "ws://localhost:8080/api/v2/pipeline-run-tasks/$runId",
+                        subscriber = "ws://localhost:8080/api/pipeline-run-tasks/$runId",
                     )
                 },
                 tabNav("Source Tables") {

@@ -12,16 +12,15 @@ async function clickRunTask() {
         return;
     }
     let data = $table.bootstrapTable('getData');
-    if (data.find(row => row.task_status === 'Running' || row.task_status === 'Scheduled') !== undefined) {
+    if (data.filter(row => row.task_status === 'Running' || row.task_status === 'Scheduled').length > 1) {
         showToast('Error', 'Task already running');
         return;
     }
-    let row = data.find(row => row.task_status === 'Waiting');
-    if (row == undefined) {
+    if (data.filter(row => row.task_status === 'Waiting').length === 0) {
         showToast('Error', 'No task to run');
         return;
     }
-    const response = await fetchPOST(`/api/v2/pipeline-run-tasks/run-next/${runId}`);
+    const response = await fetchPOST(`/api/pipeline-run-tasks/run-next/${runId}`);
     const json = await response.json();
     if ('errors' in json) {
         showToast('Error', formatErrors(json.errors));
@@ -46,7 +45,7 @@ async function clickRunAllTasks() {
         showToast('Error', 'No task to run');
         return;
     }
-    const response = await fetchPOST(`/api/v2/pipeline-run-tasks/run-all/${runId}`);
+    const response = await fetchPOST(`/api/pipeline-run-tasks/run-all/${runId}`);
     const json = await response.json();
     if ('errors' in json) {
         showToast('Error', formatErrors(json.errors));
@@ -111,7 +110,7 @@ async function reworkTask(prTaskId) {
         showToast('Error', 'Task change listener is not currently running. Refresh page to reconnect');
         return;
     }
-    const response = await fetchPOST(`/api/v2/pipeline-run-tasks/reset-task/${prTaskId}`);
+    const response = await fetchPOST(`/api/pipeline-run-tasks/reset-task/${prTaskId}`);
     const json = await response.json();
     if ('errors' in json) {
         showToast('Error', formatErrors(json.errors));

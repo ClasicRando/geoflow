@@ -1,6 +1,6 @@
 @file:Suppress("unused")
 
-import api.apiV2
+import api.api
 import auth.UserSession
 import database.Database
 import database.tables.InternalUsers
@@ -161,10 +161,8 @@ fun Application.module() {
         authenticate("auth-session") {
             index()
             api()
-            apiV2()
             pipelineStatus()
             pipelineTasks()
-            sockets()
             adminDashboard()
         }
         /** Require form authentication while posting to '/login' end point */

@@ -171,31 +171,7 @@ object InternalUsers : DbTable("internal_users"), ApiExposed {
      * @throws IllegalArgumentException when the password provided is null
      * @throws [java.sql.SQLException] when the connection throws an error
      */
-    fun updateUser(connection: Connection, user: RequestUser): Int {
-        requireNotNull(user.userOid) { "user_oid must not be null" }
-        val sql = """
-            UPDATE $tableName
-            SET    name = ?,
-                   username = ?,
-                   roles = ARRAY[${"?,".repeat(user.roles.size).trim(',')}]
-            WHERE  user_oid = ?
-        """.trimIndent()
-        return connection.runUpdate(
-            sql = sql,
-            user.name,
-            user.username,
-            user.roles,
-            user.userOid,
-        )
-    }
-
-    /**
-     * Attempts to create a new user from the provided [user], returning the new user_oid if successful
-     *
-     * @throws IllegalArgumentException when the password provided is null
-     * @throws [java.sql.SQLException] when the connection throws an error
-     */
-    fun updateUserV2(connection: Connection, user: RequestUser): RequestUser {
+    fun updateUser(connection: Connection, user: RequestUser): RequestUser {
         requireNotNull(user.userOid) { "user_oid must not be null" }
         val sql = """
             UPDATE $tableName

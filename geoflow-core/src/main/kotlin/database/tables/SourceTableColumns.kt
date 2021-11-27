@@ -8,7 +8,7 @@ package database.tables
  */
 object SourceTableColumns : DbTable("source_table_columns") {
 
-    override val createStatement = """
+    override val createStatement: String = """
         CREATE TABLE IF NOT EXISTS public.source_table_columns
         (
             stc_oid bigint PRIMARY KEY GENERATED ALWAYS AS IDENTITY,

@@ -31,24 +31,6 @@ function redirect(route) {
     window.location.assign(route);
 }
 
-function post(params) {
-    const form = document.createElement('form');
-    form.method = 'post';
-    form.action = '';
-    
-    for (const [key, value] of Object.entries(params)) {
-        const hiddenField = document.createElement('input');
-        hiddenField.type = 'hidden';
-        hiddenField.name = key;
-        hiddenField.value = value;
-        
-        form.appendChild(hiddenField);
-    }
-    
-    document.body.appendChild(form);
-    form.submit();
-}
-
 function fetchJSON(method, url, data) {
     const options = {
         method: method,
@@ -76,33 +58,6 @@ function fetchDELETE(url) {
     return fetchJSON('DELETE', url, {});
 }
 
-function postValue(url, func = function(value) {console.log(value)}) {
-    const options = {
-        method: 'POST',
-    };
-    fetch(url, options).then(func);
-}
-
-function patchValue(url, func = function(value) {console.log(value)}) {
-    const options = {
-        method: 'PATCH',
-    };
-    fetch(url, options).then(func);
-}
-
-function deleteValue(url, func = function(value) {console.log(value)}) {
-    const options = {
-        method: 'DELETE',
-    };
-    fetch(url, options).then(func);
-}
-
-var requestMethods = {
-    insert: fetchPOST,
-    update: fetchPATCH,
-    delete: deleteValue,
-}
-
 var sourceTableRecord = {};
 var sourceTablesTableId = 'sourceTables';
 var sourceTableModalId = 'sourceTableDataEditRow';
@@ -114,7 +69,7 @@ async function commitSourceTableChanges(method) {
     let json;
     switch (method) {
         case 'update':
-            response = await fetchPUT(`/api/v2/source-tables`, sourceTableRecord);
+            response = await fetchPUT(`/api/source-tables`, sourceTableRecord);
             json = await response.json();
             if ('errors' in json) {
                 $(`#${sourceTableModalId}ResponseErrorMessage`).text(formatErrors(json.errors));
@@ -125,7 +80,7 @@ async function commitSourceTableChanges(method) {
             break;
         case 'insert':
             const runId = window.location.href.match(/(?<=\/)\d+$/g)[0];
-            response = await fetchPOST(`/api/v2/source-tables/${runId}`, sourceTableRecord);
+            response = await fetchPOST(`/api/source-tables/${runId}`, sourceTableRecord);
             json = await response.json();
             if ('errors' in json) {
                 $(`#${sourceTableModalId}ResponseErrorMessage`).text(formatErrors(json.errors));
@@ -135,7 +90,7 @@ async function commitSourceTableChanges(method) {
             }
             break;
         case 'delete':
-            response = await fetchDELETE(`/api/v2/source-tables/${sourceTableRecord.st_oid}`);
+            response = await fetchDELETE(`/api/source-tables/${sourceTableRecord.st_oid}`);
             json = await response.json();
             if ('errors' in json) {
                 showToast('Error Deleting Source Table', formatErrors(json.errors));

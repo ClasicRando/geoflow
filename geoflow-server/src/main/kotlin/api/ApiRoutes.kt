@@ -23,11 +23,11 @@ import jobs.SystemJob
 import kjob
 import kotlinx.coroutines.flow.toList
 import mongo.MongoDb
-import publisher2
+import publisher
 
 /** Base API route */
-fun Route.apiV2() {
-    route("/api/v2") {
+fun Route.api() {
+    route("/api") {
         operations()
         actions()
         pipelineRuns()
@@ -91,7 +91,7 @@ private fun Route.pipelineRuns() {
 /** Pipeline run tasks API route */
 private fun Route.pipelineRunTasks() {
     route("/pipeline-run-tasks") {
-        publisher2(
+        publisher(
             channelName = "pipelineRunTasks",
             listenId = "runId",
         ) { message ->
@@ -157,7 +157,7 @@ private fun Route.sourceTables() {
         apiPutReceive { sourceTable: SourceTables.Record ->
             val user = call.sessions.get<UserSession>()!!
             val payload = Database.useTransaction {
-                SourceTables.updateSourceTableV2(it, user.userId, sourceTable)
+                SourceTables.updateSourceTable(it, user.userId, sourceTable)
             }
             ApiResponse.SourceTableResponse(payload)
         }
@@ -165,7 +165,7 @@ private fun Route.sourceTables() {
             val runId = call.parameters.getOrFail("runId").toLong()
             val user = call.sessions.get<UserSession>()!!
             val payload = Database.runWithConnection {
-                SourceTables.insertSourceTableV2(it, runId, user.userId, sourceTable)
+                SourceTables.insertSourceTable(it, runId, user.userId, sourceTable)
             }
             ApiResponse.InsertIdResponse(payload)
         }
@@ -173,7 +173,7 @@ private fun Route.sourceTables() {
             val stOid = call.parameters.getOrFail("stOid").toLong()
             val user = call.sessions.get<UserSession>()!!
             Database.runWithConnection {
-                SourceTables.deleteSourceTableV2(it, stOid, user.userId)
+                SourceTables.deleteSourceTable(it, stOid, user.userId)
             }
             ApiResponse.MessageResponse("Deleted source table record ($stOid)")
         }
@@ -198,7 +198,7 @@ private fun Route.users() {
         }
         apiPatchReceive { requestUser: InternalUsers.RequestUser ->
             val payload = Database.runWithConnection {
-                InternalUsers.updateUserV2(it, requestUser)
+                InternalUsers.updateUser(it, requestUser)
             }
             ApiResponse.UserResponse(payload)
         }
