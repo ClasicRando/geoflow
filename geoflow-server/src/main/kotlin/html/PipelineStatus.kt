@@ -28,7 +28,7 @@ object PipelineStatus {
                 clickableRows = false,
             )
             basicModal(
-                modalId,
+                modalId = modalId,
                 headerText = "Select Run",
                 bodyMessage = "Pick up this run?",
                 okClickFunction = "pickup"
@@ -36,10 +36,8 @@ object PipelineStatus {
         }.withScript {
             script {
                 addParamsAsJsGlobalVariables(
-                    mapOf(
-                        ::modalId.name to modalId,
-                        ::tableId.name to tableId,
-                    )
+                    ::modalId.name to modalId,
+                    ::tableId.name to tableId,
                 )
             }
             script {

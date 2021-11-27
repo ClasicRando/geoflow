@@ -14,18 +14,18 @@ object PipelineTasks {
     private const val taskTableId = "tasksTable"
     private val tableButtons = listOf(
         TableButton(
-            "btnRun",
-            "Run Next Task",
-            "fa-play",
-            "clickRunTask()",
-            "Run the next available task if there is no other tasks running",
+            name = "btnRun",
+            text = "Run Next Task",
+            icon = "fa-play",
+            event = "clickRunTask()",
+            title = "Run the next available task if there are no other tasks running",
         ),
         TableButton(
-            "btnRunAll",
-            "Run All Tasks",
-            "fa-fast-forward",
-            "clickRunAllTasks()",
-            "Run the next available tasks if there is no other tasks running. Stops upon task failure or User Task",
+            name = "btnRunAll",
+            text = "Run All Tasks",
+            icon = "fa-fast-forward",
+            event = "clickRunAllTasks()",
+            title = "Run the next available tasks if there are no other tasks running. Stops upon failure or User Task",
         ),
     )
 
@@ -66,7 +66,7 @@ object PipelineTasks {
                         subscriber = "ws://localhost:8080/api/pipeline-run-tasks/$runId",
                     )
                 },
-                tabNav("Source Tables") {
+                tabNav(label = "Source Tables") {
                     sourceTables(runId)
                 },
             )
@@ -78,11 +78,9 @@ object PipelineTasks {
         }.withScript {
             script {
                 addParamsAsJsGlobalVariables(
-                    mapOf(
-                        ::taskTableId.name to taskTableId,
-                        ::taskDataModalId.name to taskDataModalId,
-                        "types" to FileCollectType.values(),
-                    )
+                    ::taskTableId.name to taskTableId,
+                    ::taskDataModalId.name to taskDataModalId,
+                    "types" to FileCollectType.values(),
                 )
             }
             script {

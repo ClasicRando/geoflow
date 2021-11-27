@@ -27,7 +27,7 @@ import io.ktor.util.getOrFail
 
 /** Open login to anyone and respond with login page. */
 fun Route.loginGet() {
-    get("/login") {
+    get(path = "/login") {
         call.respondHtml {
             val message = call.request.queryParameters["message"] ?: ""
             login(
@@ -45,7 +45,7 @@ fun Route.loginGet() {
 
 /** POST endpoint for login process. Collects username and creates session */
 fun Route.loginPost() {
-    post("/login") {
+    post(path = "/login") {
         val username = call.principal<UserIdPrincipal>()?.name ?: ""
         val redirect = runCatching {
             val user = Database.runWithConnection {
@@ -70,7 +70,7 @@ fun Route.loginPost() {
 
 /** Upon logout request, remove current session and redirect to login. */
 fun Route.logout() {
-    get("/logout") {
+    get(path = "/logout") {
         call.sessions.clear<UserSession>()
         call.respondRedirect("/login")
     }
@@ -78,10 +78,10 @@ fun Route.logout() {
 
 /** Entry route that handles empty an empty path or the index route. Empty routes are redirected to index. */
 fun Route.index() {
-    get("/") {
+    get(path = "/") {
         call.respondRedirect("/index")
     }
-    get("/index") {
+    get(path = "/index") {
         call.respondHtml {
             index()
         }
@@ -96,7 +96,7 @@ fun Route.index() {
  * if operation cannot complete successfully. If successful, the user if redirected to appropriate route.
  */
 fun Route.pipelineStatus() {
-    get("/pipeline-status/{code}") {
+    get(path = "/pipeline-status/{code}") {
         val code = call.parameters.getOrFail("code")
         call.respondHtml {
             pipelineStatus(code)
@@ -106,7 +106,7 @@ fun Route.pipelineStatus() {
 
 /** Pipeline tasks route that handles request to view a specific run's task list. */
 fun Route.pipelineTasks() {
-    get("/tasks/{runId}") {
+    get(path = "/tasks/{runId}") {
         call.respondHtml {
             pipelineTasks(call.parameters.getOrFail("runId").toLong())
         }
@@ -115,7 +115,7 @@ fun Route.pipelineTasks() {
 
 /** Admin Dashboard route for viewing admin details */
 fun Route.adminDashboard() {
-    get("/admin-dashboard") {
+    get(path = "/admin-dashboard") {
         call.requireUserRole("admin")
         call.respondHtml {
             adminDashboard()
@@ -125,14 +125,14 @@ fun Route.adminDashboard() {
 
 /** Route for static Javascript assets */
 fun Route.js() {
-    static("assets") {
-        resources("javascript")
+    static(remotePath = "assets") {
+        resources(resourcePackage = "javascript")
     }
 }
 
 /** Route for static Icons */
 fun Route.icons() {
-    static("") {
-        resources("icons")
+    static(remotePath = "") {
+        resources(resourcePackage = "icons")
     }
 }

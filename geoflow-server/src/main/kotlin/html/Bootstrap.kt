@@ -19,13 +19,9 @@ import kotlinx.html.onClick
 import kotlinx.html.option
 import kotlinx.html.p
 import kotlinx.html.role
-import kotlinx.html.script
 import kotlinx.html.select
 import kotlinx.html.textInput
 import kotlinx.html.ul
-
-/** ID of the generic messagebox modal */
-const val MESSAGE_BOX_ID: String = "msgBox"
 
 /**
  * Creates a basic Bootstrap modal with an [id][modalId], [header text][headerText], [body message][bodyMessage] and
@@ -147,52 +143,6 @@ fun FlowContent.dataDisplayModal(modalId: String, headerText: String) {
                 }
             }
         }
-    }
-}
-
-/**
- * Creates a modal that can be used to display a simple message during webpage operations. Only call this function
- * once per webpage templating to avoid having more than 1 messagebox popup during message display call.
- */
-fun FlowContent.messageBoxModal() {
-    div(classes = "modal fade") {
-        id = MESSAGE_BOX_ID
-        attributes["data-backdrop"] = "static"
-        attributes["data-keyboard"] = "false"
-        attributes["tabindex"] = "-1"
-        attributes["aria-labelledby"] = "msgBoxHeader"
-        attributes["aria-hidden"] = "true"
-        div(classes = "modal-dialog modal-dialog-centered modal-dialog-scrollable") {
-            div(classes = "modal-content") {
-                div(classes = "modal-header") {
-                    h5(classes = "modal-title") {
-                        id = "msgBoxHeader"
-                    }
-                }
-                div(classes = "modal-body") {
-                    p {
-                        id = "msgBoxBody"
-                    }
-                }
-                div(classes = "modal-footer") {
-                    button(classes = "btn btn-secondary") {
-                        type = ButtonType.button
-                        attributes["data-dismiss"] = "modal"
-                        +"Close"
-                    }
-                }
-            }
-        }
-    }
-    script {
-        addParamsAsJsGlobalVariables(
-            mapOf(
-                "messageBoxId" to MESSAGE_BOX_ID,
-            )
-        )
-    }
-    script {
-        src = "/assets/messagebox.js"
     }
 }
 

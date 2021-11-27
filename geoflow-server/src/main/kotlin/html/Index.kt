@@ -41,10 +41,8 @@ object Index {
     }.withScript {
         script {
             addParamsAsJsGlobalVariables(
-                mapOf(
-                    ::operationsTableId.name to operationsTableId,
-                    ::actionsTableId.name to actionsTableId,
-                )
+                ::operationsTableId.name to operationsTableId,
+                ::actionsTableId.name to actionsTableId,
             )
         }
         script {

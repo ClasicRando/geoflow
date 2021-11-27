@@ -40,7 +40,7 @@ fun Route.api() {
 
 /** User operations API route */
 private fun Route.operations() {
-    route("/operations") {
+    route(path = "/operations") {
         /** Returns list of operations based upon the current user's roles. */
         apiGet {
             val payload = Database.runWithConnection {
@@ -53,7 +53,7 @@ private fun Route.operations() {
 
 /** User actions API route */
 private fun Route.actions() {
-    route("/actions") {
+    route(path = "/actions") {
         /** Returns list of actions based upon the current user's roles. */
         apiGet {
             val payload = Database.runWithConnection {
@@ -66,7 +66,7 @@ private fun Route.actions() {
 
 /** Pipeline runs API route */
 private fun Route.pipelineRuns() {
-    route("/pipeline-runs") {
+    route(path = "/pipeline-runs") {
         /** Returns list of pipeline runs for the given workflow code based upon the current user. */
         apiGet(path = "/{code}") {
             val payload = Database.runWithConnection {
@@ -90,7 +90,7 @@ private fun Route.pipelineRuns() {
 
 /** Pipeline run tasks API route */
 private fun Route.pipelineRunTasks() {
-    route("/pipeline-run-tasks") {
+    route(path = "/pipeline-run-tasks") {
         publisher(
             channelName = "pipelineRunTasks",
             listenId = "runId",
@@ -146,7 +146,7 @@ private fun Route.pipelineRunTasks() {
 
 /** Source tables API route */
 private fun Route.sourceTables() {
-    route("/source-tables") {
+    route(path = "/source-tables") {
         apiGet(path = "/{runId}") {
             val runId = call.parameters.getOrFail("runId").toLong()
             val payload = Database.runWithConnection {
@@ -182,7 +182,7 @@ private fun Route.sourceTables() {
 
 /** Internal Users API route */
 private fun Route.users() {
-    route("/users") {
+    route(path = "/users") {
         apiGet {
             val user = call.requireUserRole("admin")
             val payload = Database.runWithConnection {
@@ -207,14 +207,14 @@ private fun Route.users() {
 
 /** All KJob data API route */
 private fun Route.jobs() {
-    route("/jobs") {
+    route(path = "/jobs") {
         kjobTasks()
     }
 }
 
 /** KJob pipeline run tasks API route */
 private fun Route.kjobTasks() {
-    route("/tasks") {
+    route(path = "/tasks") {
         apiGet {
             val request = call.receive<MongoDb.TaskApiRequest>()
             val payload = MongoDb.getTasks(request).toList()

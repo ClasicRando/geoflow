@@ -25,11 +25,10 @@ private fun convertToJsValue(value: Any): String {
  * Extension function for the script tag that accept a [Map] of [params] that represent a javascript variable name and
  * the variable value as converted from Kotlin object to a javascript object.
  */
-fun SCRIPT.addParamsAsJsGlobalVariables(params: Map<String, Any>) {
-    val jsVariables = params
-        .mapValues { (_, value) -> convertToJsValue(value) }
-        .map { (name, value) -> "var $name = $value" }
-        .joinToString(separator = ";", postfix = ";")
+fun SCRIPT.addParamsAsJsGlobalVariables(vararg params: Pair<String, Any>) {
+    val jsVariables = params.joinToString(separator = ";", postfix = ";") { (name, value) ->
+        "var $name = ${convertToJsValue(value)}"
+    }
     unsafe {
         raw(jsVariables)
     }

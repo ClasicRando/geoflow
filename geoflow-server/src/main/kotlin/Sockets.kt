@@ -52,8 +52,8 @@ inline fun <reified T> Route.publisher(
     val connections = LinkedHashSet<Connection>()
     var listener: Job? = null
     val publisherLock = Mutex()
-    webSocket("$path/{${listenId}}") {
-        val connection = Connection(this, call.parameters.getOrFail(listenId))
+    webSocket(path = "$path/{${listenId}}") {
+        val connection = Connection(session = this, listenId = call.parameters.getOrFail(listenId))
         publisherLock.withLock {
             connections += connection
         }

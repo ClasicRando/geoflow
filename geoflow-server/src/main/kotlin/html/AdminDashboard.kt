@@ -29,11 +29,11 @@ object AdminDashboard {
 
     private val tableButtons = listOf(
         TableButton(
-            "btnCreate",
-            "Create New User",
-            "fa-plus",
-            "openNewUserModal()",
-            "Create new user for the application in a modal window",
+            name = "btnCreate",
+            text = "Create New User",
+            icon = "fa-plus",
+            event = "openNewUserModal()",
+            title = "Create new user for the application in a modal window",
         ),
     )
 
@@ -190,13 +190,11 @@ object AdminDashboard {
     }.withScript {
         script {
             addParamsAsJsGlobalVariables(
-                mapOf(
-                    "userTable" to USER_TABLE_ID,
-                    "userCreateModal" to USER_CREATE_MODAL,
-                    "userCreateForm" to CREATE_USER_FORM_ID,
-                    "userEditModal" to USER_EDIT_MODAL,
-                    "userEditForm" to EDIT_USER_FORM_ID,
-                )
+                "userTable" to USER_TABLE_ID,
+                "userCreateModal" to USER_CREATE_MODAL,
+                "userCreateForm" to CREATE_USER_FORM_ID,
+                "userEditModal" to USER_EDIT_MODAL,
+                "userEditForm" to EDIT_USER_FORM_ID,
             )
         }
         script {

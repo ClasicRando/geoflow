@@ -46,7 +46,7 @@ fun throwableToResponseErrors(t: Throwable): ApiErrors {
     }
 }
 
-/** */
+/** Returns an HTTP response code based upon the exception type of [t] */
 @Suppress("MagicNumber")
 fun errorCodeFromThrowable(t: Throwable): Int {
     return when (t) {
