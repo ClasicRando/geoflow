@@ -69,8 +69,8 @@ sealed interface ApiResponse {
     /** API response for a list of records from [internal_users][InternalUsers] */
     @Serializable
     class UsersResponse(
-        override val payload: List<InternalUsers.User>,
-    ): Success<List<InternalUsers.User>> {
+        override val payload: List<InternalUsers.ResponseUser>,
+    ): Success<List<InternalUsers.ResponseUser>> {
         @SerialName("object")
         override val responseObject: String = "internal_user"
     }
