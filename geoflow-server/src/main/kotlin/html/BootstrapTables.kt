@@ -1,5 +1,6 @@
 package html
 
+import database.tables.SourceTables
 import kotlinx.html.FlowContent
 import kotlinx.html.THEAD
 import kotlinx.html.UL
@@ -150,4 +151,27 @@ fun FlowContent.basicTable(
             }
         }
     }
+}
+
+private const val SOURCE_TABLES_TABLE_ID = "sourceTables"
+
+/** Constructs a basic table for source table data */
+fun FlowContent.sourceTables(runId: Long) {
+    basicTable(
+        tableId = SOURCE_TABLES_TABLE_ID,
+        dataUrl = "/api/v2/source-tables/$runId",
+        dataField = "payload",
+        fields = SourceTables.tableDisplayFields,
+        tableButtons = listOf(
+            TableButton(
+                name = "btnAddTable",
+                text = "Add Source Table",
+                icon = "fa-plus",
+                event = "newSourceTableRow()",
+                title = "Add new source table to the current run",
+            ),
+        ),
+        customSortFunction = "sourceTableRecordSorting",
+        clickableRows = false,
+    )
 }

@@ -1,24 +1,28 @@
 package html
 
 import database.enums.FileCollectType
-import database.tables.SourceTables
 import kotlinx.html.ButtonType
+import kotlinx.html.DIV
 import kotlinx.html.FORM
 import kotlinx.html.FlowContent
+import kotlinx.html.a
 import kotlinx.html.button
 import kotlinx.html.checkBoxInput
+import kotlinx.html.classes
 import kotlinx.html.div
 import kotlinx.html.form
 import kotlinx.html.h5
 import kotlinx.html.id
 import kotlinx.html.label
+import kotlinx.html.li
 import kotlinx.html.onClick
 import kotlinx.html.option
 import kotlinx.html.p
+import kotlinx.html.role
 import kotlinx.html.script
 import kotlinx.html.select
-import kotlinx.html.style
 import kotlinx.html.textInput
+import kotlinx.html.ul
 
 /** ID of the generic messagebox modal */
 const val MESSAGE_BOX_ID: String = "msgBox"
@@ -235,64 +239,19 @@ fun FlowContent.confirmModal(confirmModalId: String, confirmMessage: String, res
     }
 }
 
-private const val SOURCE_TABLES_MODAL_ID = "sourceTableData"
-private const val SOURCE_TABLES_TABLE_ID = "sourceTables"
+private const val SOURCE_TABLES_MODAL_ID = "sourceTableDataEditRow"
+private const val SOURCE_TABLES_RESPONSE_ERROR_MESSAGE_ID = "sourceTableDataEditRowResponseErrorMessage"
 private const val DELETE_SOURCE_TABLE_CONFIRM_ID = "deleteSourceTable"
+private const val SOURCE_TABLE_RECORD_LABEL_ID = "sourceTableRecordLabel"
 
 /**
- * Creates a modal to show the source tables for a given pipeline run in a [basicTable]. This function also adds the
- * modal to edit table entries (including the [confirmModal] after editing). Only call this function once per webpage
- * templating to avoid having more than 1 modal popup during show call.
+ * Modal for creating/editing source table records. Accepts information in a form based input to produce an object for
+ * an api call. Also includes a confirmation modal for deleting source table records
  */
 @Suppress("LongMethod")
-fun FlowContent.sourceTablesModal(runId: Long) {
+fun FlowContent.sourceTableEditModal() {
     div(classes = "modal fade") {
         id = SOURCE_TABLES_MODAL_ID
-        attributes["data-backdrop"] = "static"
-        attributes["data-keyboard"] = "false"
-        attributes["tabindex"] = "-1"
-        attributes["aria-labelledby"] = "sourceTableModalLabel"
-        attributes["aria-hidden"] = "true"
-        div(classes = "modal-dialog modal-dialog-centered modal-dialog-scrollable modal-xl") {
-            style = "max-width: 90%"
-            div(classes = "modal-content") {
-                div(classes = "modal-header") {
-                    h5(classes = "modal-title") {
-                        id = "sourceTableModalLabel"
-                        +"Source Tables"
-                    }
-                }
-                div(classes = "modal-body") {
-                    id = "${SOURCE_TABLES_MODAL_ID}Body"
-                    basicTable(
-                        tableId = SOURCE_TABLES_TABLE_ID,
-                        dataUrl = "/api/source-tables/$runId",
-                        fields = SourceTables.tableDisplayFields,
-                        tableButtons = listOf(
-                            TableButton(
-                                "btnAddTable",
-                                "Add Source Table",
-                                "fa-plus",
-                                "newSourceTableRow()",
-                                "Add new source table to the current run",
-                            ),
-                        ),
-                        customSortFunction = "sourceTableRecordSorting",
-                        clickableRows = false,
-                    )
-                }
-                div(classes = "modal-footer") {
-                    button(classes = "btn btn-secondary") {
-                        type = ButtonType.button
-                        attributes["data-dismiss"] = "modal"
-                        +"Close"
-                    }
-                }
-            }
-        }
-    }
-    div(classes = "modal fade") {
-        id = "${SOURCE_TABLES_MODAL_ID}EditRow"
         attributes["data-backdrop"] = "static"
         attributes["data-keyboard"] = "false"
         attributes["tabindex"] = "-1"
@@ -302,14 +261,14 @@ fun FlowContent.sourceTablesModal(runId: Long) {
             div(classes = "modal-content") {
                 div(classes = "modal-header") {
                     h5(classes = "modal-title") {
-                        id = "sourceTableRecordLabel"
+                        id = SOURCE_TABLE_RECORD_LABEL_ID
                         +"Edit Row"
                     }
                 }
                 div(classes = "modal-body") {
                     form {
                         action = ""
-                        id = "${SOURCE_TABLES_MODAL_ID}EditRowBody"
+                        id = "${SOURCE_TABLES_MODAL_ID}Body"
                         div(classes = "form-group row") {
                             div(classes = "col") {
                                 div(classes = "form-group") {
@@ -362,7 +321,7 @@ fun FlowContent.sourceTablesModal(runId: Long) {
                                     select(classes = "form-control") {
                                         id = "collect_type"
                                         name = "collect_type"
-                                        FileCollectType.values().forEach { type ->
+                                        for (type in FileCollectType.values()) {
                                             option {
                                                 value = type.name
                                                 +type.name
@@ -437,6 +396,9 @@ fun FlowContent.sourceTablesModal(runId: Long) {
                     }
                 }
                 div(classes = "modal-footer") {
+                    p(classes = "invalidInput") {
+                        id = SOURCE_TABLES_RESPONSE_ERROR_MESSAGE_ID
+                    }
                     button(classes = "btn btn-secondary") {
                         id = "saveChanges"
                         type = ButtonType.button
@@ -453,8 +415,74 @@ fun FlowContent.sourceTablesModal(runId: Long) {
         }
     }
     confirmModal(
-        DELETE_SOURCE_TABLE_CONFIRM_ID,
-        "Are you sure you want to delete this record?",
-        "deleteSourceTable",
+        confirmModalId = DELETE_SOURCE_TABLE_CONFIRM_ID,
+        confirmMessage = "Are you sure you want to delete this record?",
+        resultFunction = "deleteSourceTable",
     )
+}
+
+/** Container for a tab nav element. Accepts a DIV lambda for the user to customize the tab content */
+data class TabNav(
+    /** label in the tab navbar */
+    val label: String,
+    /** lambda that evaluates to html elements as the content of the tab */
+    val content: DIV.() -> Unit
+) {
+    /** Name of the tab as used in html properties. Normalizes whitespace and case of the text */
+    val name: String = label
+        .replace(Regex("\\s+"), "_")
+        .trim('_')
+        .lowercase()
+}
+
+/** Returns a [TabNav] with the [label] and [content] */
+fun tabNav(label: String, content: DIV.() -> Unit): TabNav {
+    return TabNav(label, content)
+}
+
+/** Generic tab layout with the [tabs] provided */
+fun FlowContent.tabLayout(vararg tabs: TabNav) {
+    ul(classes = "nav nav-tabs") {
+        id = "tabs"
+        role = "tablist"
+        for ((i, tab) in tabs.withIndex()) {
+            li(classes = "nav-item") {
+                role = "presentation"
+                a {
+                    classes = buildSet {
+                        add("nav-link")
+                        if (i == 0) {
+                            add("active")
+                        }
+                    }
+                    id = "${tab.name}-tab"
+                    href = "#${tab.name}"
+                    role = "tab"
+                    attributes["data-toggle"] = "tab"
+                    attributes["aria-controls"] = tab.name
+                    attributes["aria-selected"] = (i == 0).toString()
+                    +tab.label
+                }
+            }
+        }
+    }
+    div(classes = "tab-content") {
+        id = "tabContent"
+        for ((i, tab) in tabs.withIndex()) {
+            div {
+                classes = buildSet {
+                    add("tab-pane")
+                    add("fade")
+                    if (i == 0) {
+                        add("show")
+                        add("active")
+                    }
+                }
+                id = tab.name
+                role = "tabpanel"
+                attributes["aria-labelled-by"] = "${tab.name}-tab"
+                tab.content.invoke(this)
+            }
+        }
+    }
 }

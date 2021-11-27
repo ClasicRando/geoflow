@@ -4,9 +4,6 @@ import database.enums.FileCollectType
 import database.tables.PipelineRunTasks
 import io.ktor.html.Template
 import kotlinx.html.script
-import kotlinx.html.li
-import kotlinx.html.button
-import kotlinx.html.onClick
 import kotlinx.html.HTML
 import kotlinx.html.unsafe
 
@@ -31,25 +28,14 @@ object PipelineTasks {
             "Run the next available tasks if there is no other tasks running. Stops upon task failure or User Task",
         ),
     )
-    private val headerButtons = listOf(
-        HeaderButton("btnSourceTables") {
-            li(classes = "header-button") {
-                button(classes = "btn btn-secondary") {
-                    onClick = "showSourceTables()"
-                    +"Source Tables"
-                }
-            }
-        }
-    )
 
     /**
      * Returns a [BasePage] with:
      * - 2 CSS classes
-     * - basic table for pipeline task records with various [tableButtons] and [headerButtons]. Subscribed to given
-     * WebSocket for table updates
+     * - tab layout with a basic table for pipeline task records with [tableButtons] (subscribed to given api endpoint
+     * for table updates) and a table for the runs [SourceTables][database.tables.SourceTables]
      * - display modal for task details
-     * - modal for source tables (see [sourceTablesModal] for details)
-     * - messagebox modal
+     * - form modal for editing/creating source table records
      * - class level constants assigned to global javascript variables named after the constant's names
      * - a specific script for this page loaded from assets
      */
@@ -69,20 +55,26 @@ object PipelineTasks {
             """.trimIndent())
             }
         }.withContent {
-            basicTable(
-                tableId = taskTableId,
-                fields = PipelineRunTasks.tableDisplayFields,
-                tableButtons = tableButtons,
-                headerButtons = headerButtons,
-                clickableRows = false,
-                subscriber = "ws://localhost:8080/api/v2/pipeline-run-tasks/$runId",
+            tabLayout(
+                tabNav("Tasks") {
+                    basicTable(
+                        tableId = taskTableId,
+                        dataUrl = "",
+                        fields = PipelineRunTasks.tableDisplayFields,
+                        tableButtons = tableButtons,
+                        clickableRows = false,
+                        subscriber = "ws://localhost:8080/api/v2/pipeline-run-tasks/$runId",
+                    )
+                },
+                tabNav("Source Tables") {
+                    sourceTables(runId)
+                },
             )
             dataDisplayModal(
-                taskDataModalId,
-                "Task Details",
+                modalId = taskDataModalId,
+                headerText = "Task Details",
             )
-            sourceTablesModal(runId)
-            messageBoxModal()
+            sourceTableEditModal()
         }.withScript {
             script {
                 addParamsAsJsGlobalVariables(
