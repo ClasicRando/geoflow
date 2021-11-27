@@ -33,7 +33,6 @@ object SourceTables : DbTable("source_tables"), ApiExposed {
         "file_id" to mapOf("name" to "File ID", "editable" to "true", "sortable" to "true"),
         "file_name" to mapOf("editable" to "true", "sortable" to "true"),
         "sub_table" to mapOf("editable" to "true"),
-        "loader_type" to mapOf("editable" to "false"),
         "delimiter" to mapOf("editable" to "true"),
         "qualified" to mapOf("editable" to "true", "formatter" to "boolFormatter"),
         "encoding" to mapOf("editable" to "false"),
@@ -57,7 +56,7 @@ object SourceTables : DbTable("source_tables"), ApiExposed {
             table_name text COLLATE pg_catalog."default" NOT NULL
 				CHECK (table_name ~ '^[0-9A-Z_]+$'::text),
             file_name text COLLATE pg_catalog."default" NOT NULL CHECK (file_name ~ '^.+\..+$'),
-            "analyze" boolean NOT NULL DEFAULT true,
+            analyze_table boolean NOT NULL DEFAULT true,
             load boolean NOT NULL DEFAULT true,
             qualified boolean NOT NULL DEFAULT false,
             encoding text COLLATE pg_catalog."default" NOT NULL DEFAULT 'utf8'::text CHECK (check_not_blank_or_empty(encoding)),
@@ -95,9 +94,6 @@ object SourceTables : DbTable("source_tables"), ApiExposed {
         /** if the file has sub tables (ie mdb or excel), the name if used to collect the right data */
         @SerialName("sub_table")
         val subTable: String?,
-        /** classification of the loader type for the file. Name of the enum value */
-        @SerialName("loader_type")
-        val loaderType: String,
         /** delimiter of the data, if required */
         @SerialName("delimiter")
         val delimiter: String?,
@@ -125,7 +121,28 @@ object SourceTables : DbTable("source_tables"), ApiExposed {
         /** flag denoting if the source table has been loaded */
         @SerialName("load")
         val load: Boolean,
-    )
+    ) {
+        /** classification of the loader type for the file. Name of the enum value */
+        val loaderType: LoaderType get() = LoaderType.getLoaderType(fileName)
+        /** */
+        val fileCollectType: FileCollectType get() = FileCollectType.valueOf(collectType)
+
+        /** Initialization function to validate serialization results */
+        init {
+            require(runCatching { LoaderType.getLoaderType(fileName) }.isSuccess) {
+                "string value passed for LoaderType is not valid"
+            }
+            require(runCatching { FileCollectType.valueOf(collectType) }.isSuccess) {
+                "string value passed for FileCollectType is not valid"
+            }
+            val validSubTable = if (loaderType in setOf(LoaderType.Excel, LoaderType.MDB)) {
+                subTable != null && subTable.isNotBlank()
+            } else {
+                subTable.isNullOrBlank()
+            }
+            require(validSubTable) { "sub table must be a valid input" }
+        }
+    }
 
     /**
      * Returns JSON serializable response of all source tables linked to a given [runId]. Returns an empty list when
@@ -133,8 +150,8 @@ object SourceTables : DbTable("source_tables"), ApiExposed {
      */
     fun getRunSourceTables(connection: Connection, runId: Long): List<Record> {
         val sql = """
-            SELECT st_oid, table_name, file_id, file_name, sub_table, loader_type, delimiter, qualified, encoding, url,
-                   comments, record_count, collect_type, $tableName."analyze", load
+            SELECT st_oid, table_name, file_id, file_name, sub_table, delimiter, qualified, encoding, url,
+                   comments, record_count, collect_type, analyze_table, load
             FROM   $tableName
             WHERE  run_id = ?
         """.trimIndent()
@@ -168,26 +185,26 @@ object SourceTables : DbTable("source_tables"), ApiExposed {
                    url = ?,
                    comments = ?,
                    collect_type = ?,
-                   $tableName."analyze" = ?,
+                   analyze_table = ?,
                    load = ?
             WHERE  user_has_run(?,run_id)
             AND    st_oid = ?
             RETURNING st_oid,table_name,file_id,file_name,sub_table,loader_type,delimiter,qualified,encoding,url,
-            comments,record_count,collect_type,$tableName."analyze",load
+            comments,record_count,collect_type,analyze_table,load
         """.trimIndent()
         return connection.runReturningFirstOrNull(
             sql = sql,
             requestBody.tableName,
             requestBody.fileId,
             requestBody.fileName,
-            requestBody.subTable,
-            requestBody.loaderType,
-            requestBody.delimiter,
+            requestBody.subTable.takeIf { it?.isNotBlank() ?: false },
+            requestBody.loaderType.pgObject,
+            requestBody.delimiter.takeIf { it?.isNotBlank() ?: false },
             requestBody.qualified,
             requestBody.encoding,
             requestBody.url,
-            requestBody.comments,
-            requestBody.collectType,
+            requestBody.comments.takeIf { it?.isNotBlank() ?: false },
+            requestBody.fileCollectType.pgObject,
             requestBody.analyze,
             requestBody.load,
             userOid,
@@ -211,10 +228,9 @@ object SourceTables : DbTable("source_tables"), ApiExposed {
         require(UserHasRun.checkUserRun(connection, userOid, runId)) { "Username does not own the runId" }
         val sql = """
             INSERT INTO $tableName (run_id,table_name,file_id,file_name,sub_table,loader_type,delimiter,qualified,
-                                    encoding,url,comments,collect_type,$tableName."analyze",load)
+                                    encoding,url,comments,collect_type,analyze_table,load)
             VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?)
-            RETURNING st_oid,table_name,file_id,file_name,sub_table,loader_type,delimiter,qualified,encoding,url,
-            comments,record_count,collect_type,$tableName."analyze",load
+            RETURNING st_oid
         """.trimIndent()
         return connection.runReturningFirstOrNull(
             sql = sql,
@@ -222,14 +238,14 @@ object SourceTables : DbTable("source_tables"), ApiExposed {
             requestBody.tableName,
             requestBody.fileId,
             requestBody.fileName,
-            requestBody.subTable,
-            requestBody.loaderType,
-            requestBody.delimiter,
+            requestBody.subTable.takeIf { it?.isNotBlank() ?: false },
+            requestBody.loaderType.pgObject,
+            requestBody.delimiter.takeIf { it?.isNotBlank() ?: false },
             requestBody.qualified,
             requestBody.encoding,
             requestBody.url,
-            requestBody.comments,
-            requestBody.collectType,
+            requestBody.comments.takeIf { it?.isNotBlank() ?: false },
+            requestBody.fileCollectType.pgObject,
             requestBody.analyze,
             requestBody.load,
         ) ?: throw NoRecordAffected(tableName, message = "Error while trying to insert record. Nothing returned")
@@ -245,7 +261,7 @@ object SourceTables : DbTable("source_tables"), ApiExposed {
      */
     fun deleteSourceTableV2(connection: Connection, stOid: Long, userOid: Long) {
         connection.runReturningFirstOrNull<Long>(
-            sql = "DELETE FROM $tableName WHERE st_oid = ? AND user_has_run(?,run_id)",
+            sql = "DELETE FROM $tableName WHERE st_oid = ? AND user_has_run(?,run_id) RETURNING st_oid",
             stOid,
             userOid,
         ) ?: throw NoRecordAffected(tableName, "No record deleted for st_oid = $stOid")
@@ -283,7 +299,7 @@ object SourceTables : DbTable("source_tables"), ApiExposed {
                         set(key, FileCollectType.valueOf(value).pgObject)
                     }
                     "qualified" -> set(key, value == "on")
-                    "analyze" -> set(key, value == "on")
+                    "analyze_table" -> set(key, value == "on")
                     "load" -> set(key, value == "on")
                 }
             }
@@ -379,7 +395,7 @@ object SourceTables : DbTable("source_tables"), ApiExposed {
 
     /** Record representing the files required to analyze */
     @QueryResultRecord
-    data class AnalyzeFiles(
+    class AnalyzeFiles(
         /** name of file to be analyzed */
         val fileName: String,
         /** information provided about analyzing. List of sub table entries */
@@ -397,7 +413,7 @@ object SourceTables : DbTable("source_tables"), ApiExposed {
                        array_agg(qualified order by st_oid) qualified
                 FROM   $tableName
                 WHERE  run_id = ?
-                AND    "analyze"
+                AND    analyze_table
                 GROUP BY file_name
             """.trimIndent()
             private const val FILENAME = 1
@@ -448,7 +464,7 @@ object SourceTables : DbTable("source_tables"), ApiExposed {
         """.trimIndent()
         val tableSql = """
             UPDATE $tableName
-            SET    "analyze" = false,
+            SET    analyze_table = false,
                    record_count = ?
             WHERE  st_oid = ?
         """.trimIndent()
@@ -491,7 +507,7 @@ object SourceTables : DbTable("source_tables"), ApiExposed {
 
     /** Record representing the files required to load */
     @QueryResultRecord
-    data class LoadFiles(
+    class LoadFiles(
         /** name of file to be loaded */
         val fileName: String,
         /** information provided about loading. List of sub table entries */
