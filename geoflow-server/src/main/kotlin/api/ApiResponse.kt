@@ -42,8 +42,8 @@ sealed interface ApiResponse {
     /** API response for a list of records from [pipeline_runs][PipelineRuns] */
     @Serializable
     class PipelineRunsResponse(
-        override val payload: List<PipelineRuns.Record>,
-    ): Success<List<PipelineRuns.Record>> {
+        override val payload: List<PipelineRuns.PipelineRun>,
+    ): Success<List<PipelineRuns.PipelineRun>> {
         @SerialName("object")
         override val responseObject: String = "pipeline_run"
     }
