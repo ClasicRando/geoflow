@@ -105,9 +105,7 @@ var requestMethods = {
 
 var sourceTableRecord = {};
 var sourceTablesTableId = 'sourceTables';
-var sourceTableModalId = 'sourceTableData';
-var saveChangesId = 'saveChanges';
-var deleteRecordId = 'deleteRecord';
+var sourceTableModalId = 'sourceTableDataEditRow';
 var sourceTableRecordLabelId = 'sourceTableRecordLabel';
 var deleteSourceTableConfirmId = 'deleteSourceTable';
 
