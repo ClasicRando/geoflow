@@ -161,11 +161,11 @@ private fun Route.sourceTables() {
             }
             ApiResponse.SourceTableResponse(payload)
         }
-        apiPostReceive(path = "/{runId}") { requestRecord: SourceTables.Record ->
+        apiPostReceive(path = "/{runId}") { sourceTable: SourceTables.Record ->
             val runId = call.parameters.getOrFail("runId").toLong()
             val user = call.sessions.get<UserSession>()!!
             val payload = Database.runWithConnection {
-                SourceTables.insertSourceTableV2(it, runId, user.userId, requestRecord)
+                SourceTables.insertSourceTableV2(it, runId, user.userId, sourceTable)
             }
             ApiResponse.InsertIdResponse(payload)
         }
@@ -175,7 +175,7 @@ private fun Route.sourceTables() {
             Database.runWithConnection {
                 SourceTables.deleteSourceTableV2(it, stOid, user.userId)
             }
-            ApiResponse.MessageResponse("Deleted st_oid = $stOid")
+            ApiResponse.MessageResponse("Deleted source table record ($stOid)")
         }
     }
 }
