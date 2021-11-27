@@ -113,7 +113,7 @@ suspend fun runTask(pipelineRunTaskId: Long): TaskResult {
             val prTask = PipelineRunTasks.getWithLock(connection, pipelineRunTaskId)
             val taskInfo = tasks[prTask.task.taskId]
                 ?: throw IllegalStateException("TaskId cannot be found in registered tasks")
-            val message = when (prTask.task.taskRunType) {
+            val message = when (prTask.task.taskRunTypeEnum) {
                 TaskRunType.System -> {
                     taskInfo as TaskInfo.SystemTaskInfo
                     val result = if (taskInfo.function.isSuspend) {
