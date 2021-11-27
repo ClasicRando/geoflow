@@ -19,7 +19,6 @@ import java.time.format.DateTimeFormatter
  * Table used to store runs of generic pipelines. Holds details about the run while linking to the backing data source
  * to contain reference to what data is to be loaded.
  */
-@Suppress("unused")
 object PipelineRuns : DbTable("pipeline_runs"), ApiExposed, Triggers {
 
     override val tableDisplayFields: Map<String, Map<String, String>> = mapOf(
