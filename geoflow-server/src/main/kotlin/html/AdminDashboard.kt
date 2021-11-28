@@ -47,6 +47,7 @@ object AdminDashboard {
                     fields = InternalUsers.tableDisplayFields,
                     dataField = "payload",
                     tableButtons = tableButtons,
+                    clickableRows = false,
                 )
                 formModal(
                     modalId = USER_CREATE_MODAL,
