@@ -51,4 +51,4 @@ interface DefaultGeneratedData {
 
 /** Extends default data tables to have easy access to the resources file specified for data generation */
 val DefaultGeneratedData.dataGenerationSql: InputStream?
-    get() = this::class.java.getResourceAsStream(dataGenerationSqlFile)
+    get() = this::class.java.classLoader.getResourceAsStream(dataGenerationSqlFile)
