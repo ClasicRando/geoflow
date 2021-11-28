@@ -30,7 +30,7 @@ object Actions : DbTable("actions"), ApiExposed, DefaultData {
 			action_id bigint PRIMARY KEY NOT NULL GENERATED ALWAYS AS IDENTITY,
             state text COLLATE pg_catalog."default" NOT NULL CHECK (check_not_blank_or_empty(state)),
             role text COLLATE pg_catalog."default" NOT NULL CHECK (check_not_blank_or_empty(role))
-                REFERENCES roles(name) MATCH SIMPLE
+                REFERENCES roles (name) MATCH SIMPLE
 				ON DELETE RESTRICT
 				ON UPDATE CASCADE,
             name text COLLATE pg_catalog."default" NOT NULL CHECK (check_not_blank_or_empty(name)),
