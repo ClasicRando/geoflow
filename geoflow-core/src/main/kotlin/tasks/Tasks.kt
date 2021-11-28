@@ -28,7 +28,7 @@ sealed interface TaskInfo {
     /**
      * System task type with a single property of the function to be called
      *
-     * @param function reflection view of a function to be used for the a system task
+     * @param function reflection view of a function to be used for a system task
      */
     data class SystemTaskInfo(val function: KFunction<*>) : TaskInfo
     /** Single class for user task type */
