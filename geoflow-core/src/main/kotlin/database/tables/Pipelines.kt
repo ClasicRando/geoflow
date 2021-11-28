@@ -5,7 +5,7 @@ package database.tables
  *
  * Named for easier access and categorized by workflow operation the pipeline is associated with
  */
-object Pipelines : DbTable("pipelines") {
+object Pipelines : DbTable("pipelines"), DefaultData {
 
     override val createStatement: String = """
         CREATE TABLE IF NOT EXISTS public.pipelines
@@ -21,4 +21,6 @@ object Pipelines : DbTable("pipelines") {
             OIDS = FALSE
         );
     """.trimIndent()
+
+    override val defaultRecordsFileName: String = "pipelines.csv"
 }
