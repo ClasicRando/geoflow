@@ -22,7 +22,7 @@ class TableSubscriber {
 }
 
 $(document).ready(function() {
-    $(`#${sourceTableModalId}EditRow`).on('hidden.bs.modal', () => {
+    $(`#${sourceTableModalId}`).on('hidden.bs.modal', () => {
         $(`#${sourceTableModalId}ResponseErrorMessage`).text('');
     });
 });
@@ -74,7 +74,7 @@ async function commitSourceTableChanges(method) {
             if ('errors' in json) {
                 $(`#${sourceTableModalId}ResponseErrorMessage`).text(formatErrors(json.errors));
             } else {
-                $(`#${sourceTableModalId}EditRow`).modal('hide');
+                $(`#${sourceTableModalId}`).modal('hide');
                 showToast('Updated Source Table', `Updated source table record (${json.payload.st_oid})`);
             }
             break;
@@ -85,7 +85,7 @@ async function commitSourceTableChanges(method) {
             if ('errors' in json) {
                 $(`#${sourceTableModalId}ResponseErrorMessage`).text(formatErrors(json.errors));
             } else {
-                $(`#${sourceTableModalId}EditRow`).modal('hide');
+                $(`#${sourceTableModalId}`).modal('hide');
                 showToast('Added Source Table', `Created new source table record (${json.payload})`);
             }
             break;
@@ -173,7 +173,7 @@ function showSourceTableRow(action) {
         }
     }
 
-    $(`#${sourceTableModalId}EditRow`).modal('show');
+    $(`#${sourceTableModalId}`).modal('show');
 }
 
 function sourceTableRecordSorting(sortName, sortOrder, data) {

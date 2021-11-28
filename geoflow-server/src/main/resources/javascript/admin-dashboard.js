@@ -164,7 +164,7 @@ async function submitEditUser($form) {
         roles: $isAdmin.prop('checked') ? ['admin'] : $roles.val(),
         password: null,
     };
-    const response = await fetchPatch('/api/users', user);
+    const response = await fetchPATCH('/api/users', user);
     const json = await response.json();
     if ('errors' in json) {
         $(`#${userEditModal}ResponseErrorMessage`).text(formatErrors(json.errors));
