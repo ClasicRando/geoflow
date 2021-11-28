@@ -29,7 +29,7 @@ object Database {
 
     private val logger = KotlinLogging.logger {}
     /** Coroutine Scope used to run coroutines on the IO [Dispatchers] with the [dataSource] as a context element */
-    val scope = CoroutineScope(Dispatchers.IO + CoroutineDataSource(dataSource))
+    val scope: CoroutineScope = CoroutineScope(Dispatchers.IO + CoroutineDataSource(dataSource))
 
     /**
      * Runs the provided lambda with the current coroutineContext's connection or a new connection from the [dataSource]
@@ -99,8 +99,8 @@ object Database {
     }
 
     /**
-     * Calls [isClosed][Connection.isClosed] on this [Connection] and returns its result, catching any [SQLException] that
-     * was thrown then logging it and returning `true`.
+     * Calls [isClosed][Connection.isClosed] on this [Connection] and returns its result, catching any [SQLException]
+     * that was thrown then logging it and returning `true`.
      */
     private fun Connection.isClosedCatching(): Boolean {
         return try {
