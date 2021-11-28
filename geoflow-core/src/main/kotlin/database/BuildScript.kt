@@ -7,10 +7,11 @@ import database.functions.Constraints
 import database.functions.PlPgSqlFunction
 import database.functions.PlPgSqlTableFunction
 import database.procedures.SqlProcedure
-import database.tables.TableBuildRequirement
 import database.tables.DbTable
 import database.tables.Triggers
 import database.tables.DefaultData
+import database.tables.DefaultGeneratedData
+import database.tables.dataGenerationSql
 import database.tables.defaultRecordsFile
 import mu.KotlinLogging
 import org.reflections.Reflections
@@ -36,13 +37,6 @@ data class PostgresEnumType(
             )
         });
     """.trimIndent()
-}
-
-/** Lazy list of table build interfaces. Uses reflection to get all interface classes that are used to build tables */
-private val tableInterfaces by lazy {
-    Reflections("database.tables")
-        .get(SubTypes.of(TableBuildRequirement::class.java))
-        .map { className -> ClassLoader.getSystemClassLoader().loadClass(className) }
 }
 
 /**
@@ -124,10 +118,9 @@ private val logger = KotlinLogging.logger {}
 private fun Connection.createTable(table: DbTable) {
     logger.info("Starting ${table.tableName}")
     require(!checkTableExists(table.tableName)) { "${table.tableName} already exists" }
-    val interfaces = table::class.java.interfaces.filter { it in tableInterfaces }
     logger.info("Creating ${table.tableName}")
     this.prepareStatement(table.createStatement).execute()
-    if (Triggers::class.java in interfaces) {
+    if (table is Triggers) {
         (table as Triggers).triggers.forEach { trigger ->
             val functionName = "EXECUTE FUNCTION (public\\.)?(.+)\\(\\)"
                 .toRegex()
@@ -147,10 +140,19 @@ private fun Connection.createTable(table: DbTable) {
             this.prepareStatement(trigger.trigger)
         }
     }
-    if (DefaultData::class.java in interfaces) {
-        (table as DefaultData).defaultRecordsFile?.let { defaultRecordsStream ->
+    if (table is DefaultData) {
+        table.defaultRecordsFile?.let { defaultRecordsStream ->
             val recordCount = loadDefaultData(table.tableName, defaultRecordsStream)
             logger.info("Inserted $recordCount records into ${table.tableName}")
+        }
+    }
+    if (table is DefaultGeneratedData) {
+        table.dataGenerationSql?.let { sqlFileStream ->
+            val sqlText = sqlFileStream.bufferedReader().use { it.readText() }
+            prepareCall(sqlText).use { statement ->
+                statement.execute()
+            }
+            logger.info("Inserted records into ${table.tableName}")
         }
     }
 }
@@ -168,7 +170,7 @@ private fun Connection.createTable(table: DbTable) {
  */
 private fun Connection.createTables(
     tables: List<DbTable>,
-    createdTables: Set<String> = setOf()
+    createdTables: Set<String> = emptySet()
 ) {
     if (tables.isEmpty()) {
         return
@@ -268,5 +270,12 @@ fun Connection.buildDatabase() {
         logger.error("Error trying to construct database schema", t)
     } finally {
         logger.info("Exiting DB build")
+    }
+}
+
+/** Entry point to building the database */
+fun main() {
+    Database.runWithConnectionBlocking {
+        it.buildDatabase()
     }
 }
