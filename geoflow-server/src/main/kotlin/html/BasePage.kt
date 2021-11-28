@@ -60,7 +60,7 @@ class BasePage private constructor (
     override fun HTML.apply() {
         lang = "en-US"
         head {
-            title("GeoFlow")
+            title(content = "GeoFlow")
             meta {
                 charset = "utf-8"
             }
@@ -125,7 +125,7 @@ class BasePage private constructor (
             }
         }
         body {
-            div("container-fluid") {
+            div(classes = "container-fluid") {
                 nav(classes = "navbar navbar-expand-lg navbar-dark bg-dark") {
                     a(classes = "navbar-brand") {
                         href = "#"

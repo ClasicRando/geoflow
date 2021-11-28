@@ -178,7 +178,7 @@ inline fun <reified T> Connection.runReturning(
         statement.execute()
         statement.resultSet?.use { rs ->
             rs.collectRows()
-        } ?: listOf()
+        } ?: emptyList()
     }
 }
 

@@ -3,7 +3,7 @@ package database.tables
 /**
  * Table used to store the tasks associated with a generic pipeline from the [Pipelines] table
  */
-object PipelineTasks : DbTable("pipeline_tasks") {
+object PipelineTasks : DbTable("pipeline_tasks"), DefaultGeneratedData {
 
     override val createStatement: String = """
         CREATE TABLE IF NOT EXISTS public.pipeline_tasks
@@ -23,4 +23,6 @@ object PipelineTasks : DbTable("pipeline_tasks") {
             OIDS = FALSE
         );
     """.trimIndent()
+
+    override val dataGenerationSqlFile: String = "pipeline_tasks.sql"
 }

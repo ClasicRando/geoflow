@@ -23,26 +23,26 @@ object Index {
         div(classes = "row") {
             div(classes = "col") {
                 basicTable(
-                    operationsTableId,
-                    "/api/operations",
-                    WorkflowOperations.tableDisplayFields
+                    tableId = operationsTableId,
+                    dataUrl = "/api/operations",
+                    dataField = "payload",
+                    fields = WorkflowOperations.tableDisplayFields,
                 )
             }
             div(classes = "col") {
                 basicTable(
-                    actionsTableId,
-                    "/api/actions",
-                    Actions.tableDisplayFields
+                    tableId = actionsTableId,
+                    dataUrl = "/api/actions",
+                    dataField = "payload",
+                    fields = Actions.tableDisplayFields,
                 )
             }
         }
     }.withScript {
         script {
             addParamsAsJsGlobalVariables(
-                mapOf(
-                    ::operationsTableId.name to operationsTableId,
-                    ::actionsTableId.name to actionsTableId,
-                )
+                ::operationsTableId.name to operationsTableId,
+                ::actionsTableId.name to actionsTableId,
             )
         }
         script {

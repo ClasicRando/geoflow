@@ -7,7 +7,7 @@ import java.sql.Connection
 /**
  * Table used to store the available roles that a user can hold
  */
-object Roles : DbTable("roles") {
+object Roles : DbTable("roles"), DefaultData {
 
     override val createStatement: String = """
         CREATE TABLE IF NOT EXISTS public.roles
@@ -19,6 +19,8 @@ object Roles : DbTable("roles") {
             OIDS = FALSE
         );
     """.trimIndent()
+
+    override val defaultRecordsFileName: String = "roles.csv"
 
     /** Data class to represent a single database record */
     @Serializable

@@ -262,10 +262,10 @@ class ArcGisServiceMetadata private constructor(
                     "esriGeometryPoint" -> listOf("X", "Y")
                     "esriGeometryMultipoint" -> listOf("POINTS")
                     "esriGeometryPolygon" -> listOf("RINGS")
-                    else -> listOf()
+                    else -> emptyList()
                 }
                 val fields = json["fields"]?.jsonArray
-                    ?.mapNotNull { it.jsonObject } ?: listOf()
+                    ?.mapNotNull { it.jsonObject } ?: emptyList()
                 val fieldNames = fields
                     .filter {
                         it["name"]?.jsonPrimitive?.content != "Shape" &&
@@ -297,7 +297,7 @@ class ArcGisServiceMetadata private constructor(
                         with(client.get<JsonObject>(url + oidQuery)) {
                             val objectIds = this["objectIds"]
                                 ?.jsonArray
-                                ?.mapNotNull { it.jsonPrimitive.int } ?: listOf()
+                                ?.mapNotNull { it.jsonPrimitive.int } ?: emptyList()
                             Pair(objectIds.maxOrNull() ?: -1, objectIds.minOrNull() ?: -1)
                         }
                     }

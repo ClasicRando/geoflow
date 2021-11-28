@@ -3,8 +3,9 @@ package database.tables
 import database.enums.TaskRunType
 import database.extensions.queryFirstOrNull
 import database.extensions.submitQuery
+import kotlinx.serialization.SerialName
+import kotlinx.serialization.Serializable
 import java.sql.Connection
-import java.sql.ResultSet
 
 /**
  * Table used to store generic tasks that link to a function ([SystemTask][tasks.SystemTask]) or a const value
@@ -35,9 +36,11 @@ object Tasks : DbTable("tasks"), DefaultData {
     override val defaultRecordsFileName: String = "tasks.csv"
 
     /** Table record for [Tasks] */
-    @QueryResultRecord
-    class Task (
+    @Suppress("unused")
+    @Serializable
+    data class Task (
         /** unique ID of the task */
+        @SerialName("task_id")
         val taskId: Long,
         /** full name of the task */
         val name: String,
@@ -45,39 +48,28 @@ object Tasks : DbTable("tasks"), DefaultData {
         val description: String,
         /** intended workflow state that task is attached to */
         val state: String,
-        taskRunType: String,
+        /** string value of task run type */
+        @SerialName("task_run_type")
+        val taskRunType: String,
     ) {
         /** Enum value of task run type */
-        val taskRunType: TaskRunType = TaskRunType.valueOf(taskRunType)
+        val taskRunTypeEnum: TaskRunType get() = TaskRunType.valueOf(taskRunType)
 
-        @Suppress("UNUSED")
+        init {
+            require(runCatching { TaskRunType.valueOf(taskRunType) }.isSuccess) {
+                "string value passed for TaskRunType is not valid"
+            }
+        }
+
         companion object {
             /** SQL query used to generate the parent class */
-            val sql: String = """
-                SELECT task_id, name, description, state, task_run_type
-                FROM   $tableName
-            """.trimIndent()
-            private const val TASK_ID = 1
-            private const val NAME = 2
-            private const val DESCRIPTION = 3
-            private const val STATE = 4
-            private const val TASK_RUN_TYPE = 5
-            /** Function used to process a [ResultSet] into a result record */
-            fun fromResultSet(rs: ResultSet): Task {
-                return Task(
-                    taskId = rs.getLong(TASK_ID),
-                    name = rs.getString(NAME),
-                    description = rs.getString(DESCRIPTION),
-                    state = rs.getString(STATE),
-                    taskRunType = rs.getString(TASK_RUN_TYPE),
-                )
-            }
+            val sql: String = "SELECT task_id, name, description, state, task_run_type FROM $tableName"
         }
     }
 
     /** Returns a Task record for the given [taskId]. Returns null if no result is found */
     fun getRecord(connection: Connection, taskId: Long): Task? {
-        return connection.queryFirstOrNull(sql = "${Task.sql} WHERE task_id = ? LIMIT 1", taskId)
+        return connection.queryFirstOrNull(sql = "${Task.sql} WHERE task_id = ?", taskId)
     }
 
     /** Returns a list of [Task]s where the run type is User */

@@ -28,7 +28,7 @@ sealed interface TaskInfo {
     /**
      * System task type with a single property of the function to be called
      *
-     * @param function reflection view of a function to be used for the a system task
+     * @param function reflection view of a function to be used for a system task
      */
     data class SystemTaskInfo(val function: KFunction<*>) : TaskInfo
     /** Single class for user task type */
@@ -113,7 +113,7 @@ suspend fun runTask(pipelineRunTaskId: Long): TaskResult {
             val prTask = PipelineRunTasks.getWithLock(connection, pipelineRunTaskId)
             val taskInfo = tasks[prTask.task.taskId]
                 ?: throw IllegalStateException("TaskId cannot be found in registered tasks")
-            val message = when (prTask.task.taskRunType) {
+            val message = when (prTask.task.taskRunTypeEnum) {
                 TaskRunType.System -> {
                     taskInfo as TaskInfo.SystemTaskInfo
                     val result = if (taskInfo.function.isSuspend) {

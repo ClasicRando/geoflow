@@ -1,22 +1,23 @@
+@file:Suppress("TooManyFunctions")
+
 package database.tables
 
+import database.NoRecordAffected
 import loading.AnalyzeInfo
 import loading.AnalyzeResult
 import loading.LoadingInfo
 import loading.DEFAULT_DELIMITER
 import database.enums.FileCollectType
 import database.enums.LoaderType
-import database.extensions.executeNoReturn
 import database.extensions.runReturningFirstOrNull
-import database.extensions.runUpdate
 import database.extensions.getListWithNulls
 import database.extensions.getList
 import database.extensions.useMultipleStatements
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 import java.sql.Connection
-import java.util.SortedMap
 import database.extensions.submitQuery
+import database.functions.UserHasRun
 import java.sql.ResultSet
 
 /**
@@ -29,7 +30,6 @@ object SourceTables : DbTable("source_tables"), ApiExposed {
         "file_id" to mapOf("name" to "File ID", "editable" to "true", "sortable" to "true"),
         "file_name" to mapOf("editable" to "true", "sortable" to "true"),
         "sub_table" to mapOf("editable" to "true"),
-        "loader_type" to mapOf("editable" to "false"),
         "delimiter" to mapOf("editable" to "true"),
         "qualified" to mapOf("editable" to "true", "formatter" to "boolFormatter"),
         "encoding" to mapOf("editable" to "false"),
@@ -53,7 +53,7 @@ object SourceTables : DbTable("source_tables"), ApiExposed {
             table_name text COLLATE pg_catalog."default" NOT NULL
 				CHECK (table_name ~ '^[0-9A-Z_]+$'::text),
             file_name text COLLATE pg_catalog."default" NOT NULL CHECK (file_name ~ '^.+\..+$'),
-            "analyze" boolean NOT NULL DEFAULT true,
+            analyze_table boolean NOT NULL DEFAULT true,
             load boolean NOT NULL DEFAULT true,
             qualified boolean NOT NULL DEFAULT false,
             encoding text COLLATE pg_catalog."default" NOT NULL DEFAULT 'utf8'::text CHECK (check_not_blank_or_empty(encoding)),
@@ -91,9 +91,6 @@ object SourceTables : DbTable("source_tables"), ApiExposed {
         /** if the file has sub tables (ie mdb or excel), the name if used to collect the right data */
         @SerialName("sub_table")
         val subTable: String?,
-        /** classification of the loader type for the file. Name of the enum value */
-        @SerialName("loader_type")
-        val loaderType: String,
         /** delimiter of the data, if required */
         @SerialName("delimiter")
         val delimiter: String?,
@@ -121,7 +118,28 @@ object SourceTables : DbTable("source_tables"), ApiExposed {
         /** flag denoting if the source table has been loaded */
         @SerialName("load")
         val load: Boolean,
-    )
+    ) {
+        /** classification of the loader type for the file. Name of the enum value */
+        val loaderType: LoaderType get() = LoaderType.getLoaderType(fileName)
+        /** */
+        val fileCollectType: FileCollectType get() = FileCollectType.valueOf(collectType)
+
+        /** Initialization function to validate serialization results */
+        init {
+            require(runCatching { LoaderType.getLoaderType(fileName) }.isSuccess) {
+                "string value passed for LoaderType is not valid"
+            }
+            require(runCatching { FileCollectType.valueOf(collectType) }.isSuccess) {
+                "string value passed for FileCollectType is not valid"
+            }
+            val validSubTable = if (loaderType in setOf(LoaderType.Excel, LoaderType.MDB)) {
+                subTable != null && subTable.isNotBlank()
+            } else {
+                subTable.isNullOrBlank()
+            }
+            require(validSubTable) { "sub table must be a valid input" }
+        }
+    }
 
     /**
      * Returns JSON serializable response of all source tables linked to a given [runId]. Returns an empty list when
@@ -129,8 +147,8 @@ object SourceTables : DbTable("source_tables"), ApiExposed {
      */
     fun getRunSourceTables(connection: Connection, runId: Long): List<Record> {
         val sql = """
-            SELECT st_oid, table_name, file_id, file_name, sub_table, loader_type, delimiter, qualified, encoding, url,
-                   comments, record_count, collect_type, $tableName."analyze", load
+            SELECT st_oid, table_name, file_id, file_name, sub_table, delimiter, qualified, encoding, url,
+                   comments, record_count, collect_type, analyze_table, load
             FROM   $tableName
             WHERE  run_id = ?
         """.trimIndent()
@@ -138,134 +156,117 @@ object SourceTables : DbTable("source_tables"), ApiExposed {
     }
 
     /**
-     * Builds a [SortedMap] to provide ordered key value pairs for record updating/inserting
-     */
-    @Suppress("ComplexMethod")
-    private fun getStatementArguments(map: Map<String, String>): SortedMap<String, Any?> {
-        return buildMap {
-            for ((key, value) in map.entries) {
-                when (key){
-                    "table_name" -> {
-                        set(key, value)
-                    }
-                    "file_id" -> {
-                        set(key, value)
-                    }
-                    "file_name" -> {
-                        val loaderType = LoaderType.getLoaderType(value)
-                        if (loaderType == LoaderType.MDB || loaderType == LoaderType.Excel) {
-                            val subTable = map["sub_table"] ?: throw IllegalArgumentException(
-                                "Sub Table must be not null for the provided filename"
-                            )
-                            set("sub_table", subTable)
-                        }
-                        set(key, value)
-                        set("loader_type", loaderType.pgObject)
-                    }
-                    "delimiter" -> set(key, value.takeIf { it.isNotBlank() })
-                    "url" -> set(key, value.takeIf { it.isNotBlank() })
-                    "comments" -> set(key, value.takeIf { it.isNotBlank() })
-                    "collect_type" -> {
-                        set(key, FileCollectType.valueOf(value).pgObject)
-                    }
-                    "qualified" -> set(key, value == "on")
-                    "analyze" -> set(key, value == "on")
-                    "load" -> set(key, value == "on")
-                }
-            }
-        }.toSortedMap()
-    }
-
-    /**
-     * Uses [params] map to update a given record specified by the stOid provided in the map and return the stOid
+     * Updates a source table record with the details from the [requestBody] object. Must be run in transaction to lock
+     * selected record for update.
      *
-     * @throws IllegalArgumentException when various conditions are not met
-     * - [params] does not contain runId
-     * - [params] does not contain stOid
-     * - the username passed does not have access to update the source tables associated with the runId
-     * @throws NumberFormatException when the runId or stOid are not Long strings
+     * @throws java.sql.SQLException when the connection throws an exception
+     * @throws NoRecordAffected when:
+     * - the update does not affect any records
+     * - the user does not have the ability to operate on this run
      */
     fun updateSourceTable(
         connection: Connection,
-        username: String,
-        params: Map<String, String>
-    ): Pair<Long, Int> {
-        val runId = params["runId"]
-            ?.toLong()
-            ?: throw IllegalArgumentException("runId must be a non-null parameter in the url")
-        val stOid = params["stOid"]
-            ?.toLong()
-            ?: throw IllegalArgumentException("stOid must be a non-null parameter in the url")
-        require(PipelineRuns.checkUserRun(connection, runId, username)) { "Username does not own the runId" }
-        val sortedMap = getStatementArguments(params)
+        userOid: Long,
+        requestBody: Record,
+    ): Record {
         val sql = """
             UPDATE $tableName
-            SET    ${sortedMap.keys.joinToString { key -> "$key = ?" }}
-            WHERE  st_oid = ?
+            SET    table_name = ?,
+                   file_id = ?,
+                   file_name = ?,
+                   sub_table = ?,
+                   loader_type = ?,
+                   delimiter = ?,
+                   qualified = ?,
+                   encoding = ?,
+                   url = ?,
+                   comments = ?,
+                   collect_type = ?,
+                   analyze_table = ?,
+                   load = ?
+            WHERE  user_has_run(?,run_id)
+            AND    st_oid = ?
+            RETURNING st_oid,table_name,file_id,file_name,sub_table,loader_type,delimiter,qualified,encoding,url,
+            comments,record_count,collect_type,analyze_table,load
         """.trimIndent()
-        val updateCount = connection.runUpdate(
+        return connection.runReturningFirstOrNull(
             sql = sql,
-            sortedMap.values,
-            stOid,
-        )
-        return stOid to updateCount
+            requestBody.tableName,
+            requestBody.fileId,
+            requestBody.fileName,
+            requestBody.subTable.takeIf { it?.isNotBlank() ?: false },
+            requestBody.loaderType.pgObject,
+            requestBody.delimiter.takeIf { it?.isNotBlank() ?: false },
+            requestBody.qualified,
+            requestBody.encoding,
+            requestBody.url,
+            requestBody.comments.takeIf { it?.isNotBlank() ?: false },
+            requestBody.fileCollectType.pgObject,
+            requestBody.analyze,
+            requestBody.load,
+            userOid,
+            requestBody.stOid,
+        ) ?: throw NoRecordAffected(tableName, "Update did not return any records")
     }
 
     /**
-     * Uses [params] map to insert a record into [SourceTables] and return the new records stOid
+     * Creates a new source table record with the details from the [requestBody] object.
      *
-     * @throws IllegalArgumentException when various conditions are not met
-     * - [params] does not contain runId
-     * - the username passed does not have access to update the source tables associated with the runId
-     * - the insert command returns null meaning a record was not inserted
-     * @throws NumberFormatException when the runId or stOid are not Long strings
+     * @throws java.sql.SQLException when the connection throws an exception
+     * @throws IllegalArgumentException when the username provided does not have the ability to update this run
+     * @throws NoRecordAffected when the insert does not create/affect any records
      */
     fun insertSourceTable(
         connection: Connection,
-        username: String,
-        params: Map<String, String>,
+        runId: Long,
+        userOid: Long,
+        requestBody: Record,
     ): Long {
-        val runId = params["runId"]
-            ?.toLong()
-            ?: throw IllegalArgumentException("runId must be a non-null parameter in the url")
-        require(PipelineRuns.checkUserRun(connection, runId, username)) { "Username does not own the runId" }
-        val sortedMap = getStatementArguments(params)
+        require(UserHasRun.checkUserRun(connection, userOid, runId)) { "Username does not own the runId" }
         val sql = """
-            INSERT INTO $tableName (run_id,${sortedMap.keys.joinToString()})
-            VALUES (?,${"?,".repeat(sortedMap.size).trim(',')})
+            INSERT INTO $tableName (run_id,table_name,file_id,file_name,sub_table,loader_type,delimiter,qualified,
+                                    encoding,url,comments,collect_type,analyze_table,load)
+            VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?)
             RETURNING st_oid
         """.trimIndent()
         return connection.runReturningFirstOrNull(
             sql = sql,
             runId,
-            sortedMap.values,
-        ) ?: throw IllegalArgumentException("Error while trying to insert record. Null returned")
+            requestBody.tableName,
+            requestBody.fileId,
+            requestBody.fileName,
+            requestBody.subTable.takeIf { it?.isNotBlank() ?: false },
+            requestBody.loaderType.pgObject,
+            requestBody.delimiter.takeIf { it?.isNotBlank() ?: false },
+            requestBody.qualified,
+            requestBody.encoding,
+            requestBody.url,
+            requestBody.comments.takeIf { it?.isNotBlank() ?: false },
+            requestBody.fileCollectType.pgObject,
+            requestBody.analyze,
+            requestBody.load,
+        ) ?: throw NoRecordAffected(tableName, message = "Error while trying to insert record. Nothing returned")
     }
 
     /**
-     * Uses [params] map to delete a record from [SourceTables] as specified by the stOid and return the stOid
+     * Uses [stOid] to delete a record from [SourceTables]
      *
-     * @throws IllegalArgumentException when various conditions are not met
-     * - [params] does not contain runId
-     * - [params] does not contain stOid
-     * - the username passed does not have access to update the source tables associated with the runId
-     * @throws NumberFormatException when the runId or stOid are not Long strings
+     * @throws java.sql.SQLException when the connection throws an exception
+     * @throws NoRecordAffected:
+     * - delete command does not affect any records
+     * - the username provided does not have the ability to update this run
      */
-    fun deleteSourceTable(connection: Connection, username: String, params: Map<String, String?>): Long {
-        val runId = params["runId"]
-            ?.toLong()
-            ?: throw IllegalArgumentException("runId must be a non-null parameter in the url")
-        val stOid = params["stOid"]
-            ?.toLong()
-            ?: throw IllegalArgumentException("stOid must be a non-null parameter in the url")
-        require(PipelineRuns.checkUserRun(connection, runId, username)) { "Username does not own the runId" }
-        connection.executeNoReturn(sql = "DELETE FROM $tableName WHERE st_oid = ?", stOid)
-        return stOid
+    fun deleteSourceTable(connection: Connection, stOid: Long, userOid: Long) {
+        connection.runReturningFirstOrNull<Long>(
+            sql = "DELETE FROM $tableName WHERE st_oid = ? AND user_has_run(?,run_id) RETURNING st_oid",
+            stOid,
+            userOid,
+        ) ?: throw NoRecordAffected(tableName, "No record deleted for st_oid = $stOid")
     }
 
     /** Record representing the files required to analyze */
     @QueryResultRecord
-    data class AnalyzeFiles(
+    class AnalyzeFiles(
         /** name of file to be analyzed */
         val fileName: String,
         /** information provided about analyzing. List of sub table entries */
@@ -283,7 +284,7 @@ object SourceTables : DbTable("source_tables"), ApiExposed {
                        array_agg(qualified order by st_oid) qualified
                 FROM   $tableName
                 WHERE  run_id = ?
-                AND    "analyze"
+                AND    analyze_table
                 GROUP BY file_name
             """.trimIndent()
             private const val FILENAME = 1
@@ -334,7 +335,7 @@ object SourceTables : DbTable("source_tables"), ApiExposed {
         """.trimIndent()
         val tableSql = """
             UPDATE $tableName
-            SET    "analyze" = false,
+            SET    analyze_table = false,
                    record_count = ?
             WHERE  st_oid = ?
         """.trimIndent()
@@ -377,7 +378,7 @@ object SourceTables : DbTable("source_tables"), ApiExposed {
 
     /** Record representing the files required to load */
     @QueryResultRecord
-    data class LoadFiles(
+    class LoadFiles(
         /** name of file to be loaded */
         val fileName: String,
         /** information provided about loading. List of sub table entries */

@@ -1,11 +1,11 @@
-class TableRefreshSubscriber {
+class TableSubscriber {
 
     constructor(url, $table) {
-        this.$table = $table
+        this.$table = $table;
         this.socket = new WebSocket(url);
-        this.socket.addEventListener('message', function(event) {
-            console.log(event);
-            $table.bootstrapTable('refresh',{silent: true});
+        this.socket.addEventListener('message', (event) => {
+            const data = JSON.parse(event.data);
+            $table.bootstrapTable('load', data);
         });
     }
 
@@ -21,26 +21,14 @@ class TableRefreshSubscriber {
     }
 }
 
+$(document).ready(function() {
+    $(`#${sourceTableModalId}`).on('hidden.bs.modal', () => {
+        $(`#${sourceTableModalId}ResponseErrorMessage`).text('');
+    });
+});
+
 function redirect(route) {
     window.location.assign(route);
-}
-
-function post(params) {
-    const form = document.createElement('form');
-    form.method = 'post';
-    form.action = '';
-    
-    for (const [key, value] of Object.entries(params)) {
-        const hiddenField = document.createElement('input');
-        hiddenField.type = 'hidden';
-        hiddenField.name = key;
-        hiddenField.value = value;
-        
-        form.appendChild(hiddenField);
-    }
-    
-    document.body.appendChild(form);
-    form.submit();
 }
 
 function fetchJSON(method, url, data) {
@@ -54,118 +42,138 @@ function fetchJSON(method, url, data) {
     return fetch(url, options);
 }
 
-function patchJSON(url, data) {
+function fetchPUT(url, data={}) {
+    return fetchJSON('PUT', url, data);
+}
+
+function fetchPATCH(url, data={}) {
     return fetchJSON('PATCH', url, data);
 }
 
-function postJSON(url, data) {
+function fetchPOST(url, data={}) {
     return fetchJSON('POST', url, data);
 }
 
-function postValue(url, func = function(value) {console.log(value)}) {
-    const options = {
-        method: 'POST',
-    };
-    fetch(url, options).then(func);
+function fetchDELETE(url) {
+    return fetchJSON('DELETE', url, {});
 }
 
-function patchValue(url, func = function(value) {console.log(value)}) {
-    const options = {
-        method: 'PATCH',
-    };
-    fetch(url, options).then(func);
-}
-
-function deleteValue(url, func = function(value) {console.log(value)}) {
-    const options = {
-        method: 'DELETE',
-    };
-    fetch(url, options).then(func);
-}
-
-var requestMethods = {
-    insert: postValue,
-    update: patchValue,
-    delete: deleteValue,
-}
-
-var stOid = 0;
+var sourceTableRecord = {};
 var sourceTablesTableId = 'sourceTables';
-var sourceTableModalId = 'sourceTableData';
-var saveChangesId = 'saveChanges';
-var deleteRecordId = 'deleteRecord';
+var sourceTableModalId = 'sourceTableDataEditRow';
 var sourceTableRecordLabelId = 'sourceTableRecordLabel';
 var deleteSourceTableConfirmId = 'deleteSourceTable';
 
-function postSourceTableChanges(method) {
-    const runId = window.location.href.match(/(?<=\/)\d+$/g)[0]
-    const params = $(`#${sourceTableModalId}EditRowBody`).serialize();
-    requestMethods[method](
-        `/api/source-tables?stOid=${stOid}&runId=${runId}&${params}`,
-        function(response) {
-            $(`#${sourceTablesTableId}`).bootstrapTable('refresh');
-            response.json().then(body => {
-                if (body.error !== undefined) {
-                    showMessageBox('Error', body.error);
-                } else {
-                    $(`#${sourceTableModalId}EditRow`).modal('hide');
-                }
-            });
+async function commitSourceTableChanges(method) {
+    let response;
+    let json;
+    switch (method) {
+        case 'update':
+            response = await fetchPUT(`/api/source-tables`, sourceTableRecord);
+            json = await response.json();
+            if ('errors' in json) {
+                $(`#${sourceTableModalId}ResponseErrorMessage`).text(formatErrors(json.errors));
+            } else {
+                $(`#${sourceTableModalId}`).modal('hide');
+                showToast('Updated Source Table', `Updated source table record (${json.payload.st_oid})`);
+            }
+            break;
+        case 'insert':
+            const runId = window.location.href.match(/(?<=\/)\d+$/g)[0];
+            response = await fetchPOST(`/api/source-tables/${runId}`, sourceTableRecord);
+            json = await response.json();
+            if ('errors' in json) {
+                $(`#${sourceTableModalId}ResponseErrorMessage`).text(formatErrors(json.errors));
+            } else {
+                $(`#${sourceTableModalId}`).modal('hide');
+                showToast('Added Source Table', `Created new source table record (${json.payload})`);
+            }
+            break;
+        case 'delete':
+            response = await fetchDELETE(`/api/source-tables/${sourceTableRecord.st_oid}`);
+            json = await response.json();
+            if ('errors' in json) {
+                showToast('Error Deleting Source Table', formatErrors(json.errors));
+            } else {
+                showToast('Deleted Source Table', json.payload);
+            }
+            break;
+    }
+    if (!('errors' in json)) {
+        $(`#${sourceTablesTableId}`).bootstrapTable('refresh');
+        sourceTableRecord = {};
+    }
+}
+
+async function saveSourceTableChanges() {
+    for (const key in sourceTableRecord) {
+        const $formField = $(`#${key}`);
+        if ($formField.length) {
+            if ($formField.is(':checkbox')) {
+                sourceTableRecord[key] = $formField.prop('checked');
+            } else {
+                const value = $formField.val()
+                sourceTableRecord[key] = value === '' ? null : value;
+            }
         }
-    );
-    stOid = 0;
+    }
+    commitSourceTableChanges(sourceTableRecord.st_oid !== 0 ? 'update' : 'insert');
 }
 
-function saveSourceTableChanges() {
-    postSourceTableChanges(stOid !== 0 ? 'update' : 'insert');
-}
-
-function deleteSourceTable() {
+async function deleteSourceTable() {
     $(`#${deleteSourceTableConfirmId}`).modal('hide');
-    postSourceTableChanges('delete');
+    commitSourceTableChanges('delete');
 }
 
 function confirmSourceTableDelete(id) {
-    stOid = id;
+    sourceTableRecord = $(`#${sourceTablesTableId}`).bootstrapTable('getData').find(row => row.st_oid === id);
     $(`#${deleteSourceTableConfirmId}`).modal('show');
 }
 
 function editSourceTableRow(id) {
-    stOid = id;
-    $(`#${sourceTableRecordLabelId}`).html('Edit Row');
-    let $table = $(`#${sourceTablesTableId}`);
-    let row = $table.bootstrapTable('getData').find(row => row.st_oid === id);
-    let allColumns = $table.bootstrapTable('getOptions')['columns'][0];
-    let columns = allColumns.filter(column => column.visible && column.editable);
-    let columnNames = columns.map(column => column.field);
-    for (const [key, value] of Object.entries(row)) {
-        if (!columnNames.includes(key)) {
-            continue;
-        }
-        if (typeof(value) === 'boolean') {
-            $(`#${key}`).prop('checked', value);
-        } else {
-            $(`#${key}`).val(value);
-        }
-    }
-    $(`#${sourceTableModalId}EditRow`).modal('show');
+    sourceTableRecord = $(`#${sourceTablesTableId}`).bootstrapTable('getData').find(row => row.st_oid === id);
+    showSourceTableRow('edit');
 }
 
 function newSourceTableRow() {
-    stOid = 0;
-    $(`#${sourceTableRecordLabelId}`).html('New Source Table');
-    $(`#${sourceTableModalId}EditRow`).modal('show');
-    const columns = $(`#${sourceTablesTableId}`).bootstrapTable('getOptions').columns[0];
-    for (const column of columns) {
-        const $formField = $(`#${column.field}`);
+    sourceTableRecord = {
+        st_oid: 0,
+        table_name: '',
+        file_id: '',
+        file_name: '',
+        sub_table: '',
+        delimiter: '',
+        qualified: false,
+        encoding: 'utf8',
+        url: '',
+        comments: '',
+        record_count: 0,
+        collect_type: 'Download',
+        analyze: true,
+        load: true,
+    }
+    showSourceTableRow('new');
+}
+
+function showSourceTableRow(action) {
+    $(`#${sourceTableRecordLabelId}`).html(action === 'edit' ? 'Edit Row' : 'New Source Table');
+    const allColumns = $(`#${sourceTablesTableId}`).bootstrapTable('getOptions').columns[0];
+    const columns = allColumns.filter(column => column.visible && column.editable);
+    const columnNames = columns.map(column => column.field);
+
+    for (const [key, value] of Object.entries(sourceTableRecord)) {
+        if (!columnNames.includes(key)) {
+            continue;
+        }
+        const $formField = $(`#${key}`);
         if ($formField.is(':checkbox')) {
-            $formField.prop('checked', false);
-        } else if ($formField.is('select')) {
-            $formField.find('option:first-child').prop('selected', true);
+            $formField.prop('checked', value);
         } else {
-            $formField.val('');
+            $formField.val(value||'');
         }
     }
+
+    $(`#${sourceTableModalId}`).modal('show');
 }
 
 function sourceTableRecordSorting(sortName, sortOrder, data) {
@@ -225,7 +233,7 @@ function showToast(title, message) {
     <div class="position-fixed bottom-0 right-0 p-3" style="z-index: 5; right: 0; bottom: 0;">
         <div class="toast hide" role="alert" data-delay="10000" aria-live="assertive" aria-atomic="true">
             <div class="toast-header">
-                <img src="favicon.ico" class="rounded mr-2">
+                <img src="http://localhost:8080/favicon.ico" class="rounded mr-2">
                 <strong class="mr-2">${title}</strong>
                 <small>just now</small>
                 <button type="button" class="ml-2 mb-1 close" data-dismiss="toast" aria-label="Close">
@@ -248,4 +256,8 @@ function showToast(title, message) {
     $toast.on('hidden.bs.toast', (e) => {
         container.remove();
     });
+}
+
+function formatErrors(errors) {
+    return errors.map(error => `${error.error_name} -> ${error.message}`).join('\n');
 }

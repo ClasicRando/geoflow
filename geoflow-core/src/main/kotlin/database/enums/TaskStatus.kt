@@ -7,7 +7,7 @@ import org.postgresql.util.PGobject
  * CREATE TYPE public.task_status AS ENUM
  * ('Waiting', 'Scheduled', 'Running', 'Complete', 'Failed');
  */
-enum class TaskStatus {
+enum class TaskStatus : PostgresEnum {
     /** State of the task is waiting to be run as part of the pipeline */
     Waiting,
     /** State of the task is scheduled in the KJob repository so a worker can pick it up for running */
@@ -20,8 +20,7 @@ enum class TaskStatus {
     Failed,
     ;
 
-    /** [PGobject] representation of the enum value */
-    val pgObject: PGobject = PGobject().apply {
+    override val pgObject: PGobject = PGobject().apply {
         type = "task_status"
         value = name
     }

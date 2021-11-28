@@ -7,15 +7,14 @@ import org.postgresql.util.PGobject
  * CREATE TYPE public.operation_state AS ENUM
  * ('Ready', 'Active');
  */
-enum class OperationState {
+enum class OperationState : PostgresEnum {
     /** Operation state of the [PipelineRun][database.tables.PipelineRuns] is ready to be picked up */
     Ready,
     /** Operation state of the [PipelineRun][database.tables.PipelineRuns] is actively held by a user */
     Active,
     ;
 
-    /** [PGobject] representation of the enum value */
-    val pgObject: PGobject = PGobject().apply {
+    override val pgObject: PGobject = PGobject().apply {
         type = "operation_state"
         value = name
     }

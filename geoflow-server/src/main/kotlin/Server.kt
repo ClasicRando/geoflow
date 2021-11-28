@@ -1,5 +1,6 @@
 @file:Suppress("unused")
 
+import api.api
 import auth.UserSession
 import database.Database
 import database.tables.InternalUsers
@@ -73,7 +74,7 @@ private fun FormAuthenticationProvider.Configuration.configure(log: Logger) {
             }
         }
     }
-    challenge("/login?message=invalid")
+    challenge(redirectUrl = "/login?message=invalid")
 }
 
 /** */
@@ -135,7 +136,7 @@ fun Application.module() {
     }
     /** Install session handling. Stores cookies in memory for now. Will change later in development */
     install(Sessions) {
-        cookie<UserSession>("user_session", storage = SessionStorageMemory()) {
+        cookie<UserSession>(name = "user_session", storage = SessionStorageMemory()) {
             cookie.path = "/"
             cookie.extensions["SameSite"] = "lax"
         }
@@ -162,7 +163,6 @@ fun Application.module() {
             api()
             pipelineStatus()
             pipelineTasks()
-            sockets()
             adminDashboard()
         }
         /** Require form authentication while posting to '/login' end point */

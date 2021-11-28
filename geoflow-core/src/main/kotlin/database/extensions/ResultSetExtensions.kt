@@ -3,6 +3,7 @@ package database.extensions
 import database.tables.QueryResultRecord
 import formatInstantDateTime
 import kotlinx.serialization.Serializable
+import org.postgresql.util.PGobject
 import org.reflections.Reflections
 import org.reflections.util.ConfigurationBuilder
 import org.reflections.scanners.Scanners.TypesAnnotated
@@ -65,16 +66,15 @@ inline fun <reified T> ResultSet.rowToClass(): T {
     require(!isBeforeFirst) { "ResultSet must be at or after first record" }
     if (T::class.isData) {
         val constructor = T::class.constructors.first()
-        val row = buildList {
-            for (i in 0 until metaData.columnCount) {
-                val item = when (val current = getObject(i + 1)) {
-                    null -> current
-                    is Timestamp -> formatInstantDateTime(current.toInstant())
-                    else -> current
-                }
-                add(item)
+        val row = Array(metaData.columnCount) { i ->
+            when (val current = getObject(i + 1)) {
+                null -> current
+                is Timestamp -> formatInstantDateTime(current.toInstant())
+                is java.sql.Array -> current.getList<String>()
+                is PGobject -> current.value ?: if (current.type == "jsonb") null else ""
+                else -> current
             }
-        }.toTypedArray()
+        }
         return if (T::class.hasAnnotation<Serializable>()) {
             requireState(row.size == constructor.parameters.size - 2) {
                 "Row size must match number of required constructor parameters"

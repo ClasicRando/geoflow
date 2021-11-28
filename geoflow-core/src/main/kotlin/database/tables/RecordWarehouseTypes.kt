@@ -7,7 +7,7 @@ package database.tables
  */
 object RecordWarehouseTypes : DbTable("record_warehouse_types") {
 
-    override val createStatement = """
+    override val createStatement: String = """
         CREATE TABLE IF NOT EXISTS public.record_warehouse_types
         (
 			id integer PRIMARY KEY GENERATED ALWAYS AS IDENTITY,

@@ -11,7 +11,7 @@ import org.postgresql.util.PGobject
 enum class LoaderType(
     /** File extensions associated with each LoaderType value */
     val extensions: List<String>,
-) {
+) : PostgresEnum {
     /** Excel file type loader. Covers 'xlsx' and 'xls' files */
     Excel(listOf("xlsx", "xls")),
     /** Flat file type loader. Covers 'csv', 'tsv' and 'txt' files */
@@ -22,8 +22,7 @@ enum class LoaderType(
     MDB(listOf("mdb", "accdb")),
     ;
 
-    /** [PGobject] representation of the enum value */
-    val pgObject: PGobject = PGobject().apply {
+    override val pgObject: PGobject = PGobject().apply {
         type = "loader_type"
         value = name
     }

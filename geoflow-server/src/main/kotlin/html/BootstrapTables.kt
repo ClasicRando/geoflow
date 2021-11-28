@@ -1,5 +1,6 @@
 package html
 
+import database.tables.SourceTables
 import kotlinx.html.FlowContent
 import kotlinx.html.THEAD
 import kotlinx.html.UL
@@ -89,10 +90,11 @@ private fun THEAD.addFields(fields: Map<String, Map<String, String>>, clickableR
 @Suppress("LongParameterList")
 fun FlowContent.basicTable(
     tableId: String,
-    dataUrl: String,
     fields: Map<String, Map<String, String>>,
-    tableButtons: List<TableButton> = listOf(),
-    headerButtons: List<HeaderButton> = listOf(),
+    dataUrl: String = "",
+    dataField: String = "",
+    tableButtons: List<TableButton> = emptyList(),
+    headerButtons: List<HeaderButton> = emptyList(),
     customSortFunction: String = "",
     clickableRows: Boolean = true,
     subscriber: String = "",
@@ -111,8 +113,13 @@ fun FlowContent.basicTable(
         if (headerButtons.isNotEmpty()) {
             attributes["data-toolbar"] = "#toolbar"
         }
-        attributes["data-url"] = dataUrl
-        if (subscriber.isEmpty()) {
+        if (dataUrl.isNotBlank()) {
+            attributes["data-url"] = dataUrl
+        }
+        if (dataField.isNotBlank()) {
+            attributes["data-data-field"] = dataField
+        }
+        if (subscriber.isBlank()) {
             attributes["data-show-refresh"] = "true"
         } else {
             attributes["data-sub"] = "true"
@@ -144,4 +151,27 @@ fun FlowContent.basicTable(
             }
         }
     }
+}
+
+private const val SOURCE_TABLES_TABLE_ID = "sourceTables"
+
+/** Constructs a basic table for source table data */
+fun FlowContent.sourceTables(runId: Long) {
+    basicTable(
+        tableId = SOURCE_TABLES_TABLE_ID,
+        dataUrl = "/api/source-tables/$runId",
+        dataField = "payload",
+        fields = SourceTables.tableDisplayFields,
+        tableButtons = listOf(
+            TableButton(
+                name = "btnAddTable",
+                text = "Add Source Table",
+                icon = "fa-plus",
+                event = "newSourceTableRow()",
+                title = "Add new source table to the current run",
+            ),
+        ),
+        customSortFunction = "sourceTableRecordSorting",
+        clickableRows = false,
+    )
 }

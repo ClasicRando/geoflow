@@ -21,12 +21,14 @@ object PipelineStatus {
     fun withWorkflowCode(workflowCode: String): Template<HTML> {
         return BasePage.withContent {
             basicTable(
-                tableId,
+                tableId = tableId,
                 dataUrl = "/api/pipeline-runs/$workflowCode",
-                PipelineRuns.tableDisplayFields
+                dataField = "payload",
+                fields = PipelineRuns.tableDisplayFields,
+                clickableRows = false,
             )
             basicModal(
-                modalId,
+                modalId = modalId,
                 headerText = "Select Run",
                 bodyMessage = "Pick up this run?",
                 okClickFunction = "pickup"
@@ -34,10 +36,8 @@ object PipelineStatus {
         }.withScript {
             script {
                 addParamsAsJsGlobalVariables(
-                    mapOf(
-                        ::modalId.name to modalId,
-                        ::tableId.name to tableId,
-                    )
+                    ::modalId.name to modalId,
+                    ::tableId.name to tableId,
                 )
             }
             script {

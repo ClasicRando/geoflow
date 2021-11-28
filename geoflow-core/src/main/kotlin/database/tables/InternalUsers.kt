@@ -1,14 +1,12 @@
 package database.tables
 
-import database.extensions.getList
+import database.NoRecordAffected
 import database.extensions.queryFirstOrNull
 import database.extensions.runReturningFirstOrNull
-import database.extensions.runUpdate
 import database.extensions.submitQuery
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 import java.sql.Connection
-import java.sql.ResultSet
 
 /**
  * Table used to store users of the web server interface of the application
@@ -32,7 +30,7 @@ object InternalUsers : DbTable("internal_users"), ApiExposed {
         (
             user_oid bigint PRIMARY KEY GENERATED ALWAYS AS IDENTITY,
             name text COLLATE pg_catalog."default" NOT NULL CHECK (check_not_blank_or_empty(name)),
-            username text COLLATE pg_catalog."default" NOT NULL CHECK (check_not_blank_or_empty(username)),
+            username text COLLATE pg_catalog."default" UNIQUE NOT NULL CHECK (check_not_blank_or_empty(username)),
             password text COLLATE pg_catalog."default" NOT NULL CHECK (check_not_blank_or_empty(password)),
             roles text[] COLLATE pg_catalog."default" NOT NULL CHECK (check_array_not_blank_or_empty(roles))
         )
@@ -53,38 +51,19 @@ object InternalUsers : DbTable("internal_users"), ApiExposed {
     }
 
     /** Record for [InternalUsers]. Represents the fields of the table */
-    @QueryResultRecord
-    class InternalUser private constructor(
+    data class InternalUser(
         /** unique id of the user */
         val userOid: Long,
         /** full name of the user */
         val name: String,
         /** public username */
         val username: String,
-        /** hashed password of the user */
-        private val password: String,
         /** list of roles of the user. Provides access to endpoints or abilities in the api */
         val roles: List<String>,
     ) {
-        @Suppress("UNUSED")
         companion object {
             /** SQL query used to generate the parent class */
-            val sql: String = "SELECT * FROM $tableName WHERE username = ?"
-            private const val USER_OID = 1
-            private const val NAME = 2
-            private const val USERNAME = 3
-            private const val PASSWORD = 4
-            private const val ROLES = 5
-            /** Function to extract a row from a [ResultSet] to get a result record */
-            fun fromResultSet(rs: ResultSet): InternalUser {
-                return InternalUser(
-                    rs.getLong(USER_OID),
-                    rs.getString(NAME),
-                    rs.getString(USERNAME),
-                    rs.getString(PASSWORD),
-                    rs.getArray(ROLES).getList(),
-                )
-            }
+            val sql: String = "SELECT user_oid, name, username, roles FROM $tableName WHERE username = ?"
         }
     }
 
@@ -122,24 +101,24 @@ object InternalUsers : DbTable("internal_users"), ApiExposed {
         ) ?: throw IllegalArgumentException("User cannot be found")
     }
 
-    /** API request to */
+    /** API request to [InternalUsers] table */
     @Serializable
     data class RequestUser(
-        /** */
+        /** user_oid field for request. Can be null for create requests */
         @SerialName("user_oid")
         val userOid: Long? = null,
-        /** */
+        /** name field for request */
         @SerialName("fullName")
         val name: String,
-        /** */
+        /** username field for request */
         @SerialName("username")
         val username: String,
-        /** */
+        /** roles field for request */
         @SerialName("roles")
         val roles: List<String>,
-        /** */
+        /** password field for request. Only non-null when create request. Never send a hashed password in response */
         @SerialName("password")
-        val password: String?,
+        val password: String? = null,
     )
 
     /**
@@ -148,7 +127,7 @@ object InternalUsers : DbTable("internal_users"), ApiExposed {
      * @throws IllegalArgumentException when the password provided is null
      * @throws [java.sql.SQLException] when the connection throws an error
      */
-    fun createUser(connection: Connection, user: RequestUser): Long? {
+    fun createUser(connection: Connection, user: RequestUser): Long {
         requireNotNull(user.password) { "User to create must have a non-null password" }
         val sql = """
             INSERT INTO $tableName(name,username,password,roles)
@@ -161,7 +140,7 @@ object InternalUsers : DbTable("internal_users"), ApiExposed {
             user.username,
             user.password,
             user.roles,
-        )
+        ) ?: throw NoRecordAffected(tableName, "INSERT statement did not return any data")
     }
 
     /**
@@ -170,7 +149,7 @@ object InternalUsers : DbTable("internal_users"), ApiExposed {
      * @throws IllegalArgumentException when the password provided is null
      * @throws [java.sql.SQLException] when the connection throws an error
      */
-    fun updateUser(connection: Connection, user: RequestUser): Int {
+    fun updateUser(connection: Connection, user: RequestUser): RequestUser {
         requireNotNull(user.userOid) { "user_oid must not be null" }
         val sql = """
             UPDATE $tableName
@@ -178,19 +157,21 @@ object InternalUsers : DbTable("internal_users"), ApiExposed {
                    username = ?,
                    roles = ARRAY[${"?,".repeat(user.roles.size).trim(',')}]
             WHERE  user_oid = ?
+            AND    NOT('admin' = ANY(roles))
+            RETURNING user_oid, name, username, roles, null
         """.trimIndent()
-        return connection.runUpdate(
+        return connection.runReturningFirstOrNull(
             sql = sql,
             user.name,
             user.username,
             user.roles,
             user.userOid,
-        )
+        ) ?: throw NoRecordAffected(tableName, "No record updated for user_oid = ${user.userOid}")
     }
 
     /** API response data class for JSON serialization */
     @Serializable
-    data class User(
+    data class ResponseUser(
         /** unique id of the user */
         @SerialName("user_oid")
         val userOid: Long,
@@ -206,10 +187,9 @@ object InternalUsers : DbTable("internal_users"), ApiExposed {
     )
 
     /** API function to get a list of all users for the application */
-    fun getUsers(connection: Connection, userOid: Long): List<User> {
+    fun getUsers(connection: Connection, userOid: Long): List<ResponseUser> {
         val sql = """
-            SELECT user_oid, name, username, array_to_string(roles, ', '),
-                   CASE WHEN user_oid != ? AND 'admin' = ANY(roles) THEN false ELSE true END can_edit
+            SELECT user_oid, name, username, array_to_string(roles, ', '), 'admin' = ANY(roles) can_edit
             FROM   $tableName
         """.trimIndent()
         return connection.submitQuery(sql = sql, userOid)

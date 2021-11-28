@@ -117,14 +117,14 @@ async function submitNewUser($form) {
         password: $password.val(),
         roles: $isAdmin.prop('checked') ? ['admin'] : $roles.val(),
     };
-    const response = await postJSON('/api/users', user);
+    const response = await fetchPOST('/api/users', user);
     const json = await response.json();
     console.log(json);
-    if ('success' in json) {
-        $(`#${userCreateModal}`).modal('hide');
-        showToast('Created User', json.success);
+    if ('errors' in json) {
+        $(`#${userCreateModal}ResponseErrorMessage`).text(formatErrors(json.errors));
     } else {
-        $(`#${userCreateModal}ResponseErrorMessage`).text(json.error);
+        $(`#${userCreateModal}`).modal('hide');
+        showToast('Created User', `Created ${user.username} (${json.payload})`);
     }
 }
 
@@ -164,14 +164,13 @@ async function submitEditUser($form) {
         roles: $isAdmin.prop('checked') ? ['admin'] : $roles.val(),
         password: null,
     };
-    const response = await patchJSON('/api/users', user);
+    const response = await fetchPATCH('/api/users', user);
     const json = await response.json();
-    console.log(json);
-    if ('success' in json) {
-        $(`#${userEditModal}`).modal('hide');
-        showToast('Updated User', json.success);
+    if ('errors' in json) {
+        $(`#${userEditModal}ResponseErrorMessage`).text(formatErrors(json.errors));
     } else {
-        $(`#${userEditModal}ResponseErrorMessage`).text(json.error);
+        $(`#${userEditModal}`).modal('hide');
+        showToast('Updated User', `Successful update to ${json.payload.username}`);
     }
     updateUserOid = -1;
 }

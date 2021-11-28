@@ -1,5 +1,7 @@
 package database.tables
 
+import database.NoRecordAffected
+import database.NoRecordFound
 import database.enums.TaskRunType
 import database.enums.TaskStatus
 import database.functions.GetTasksOrdered
@@ -7,6 +9,7 @@ import database.procedures.DeleteRunTaskChildren
 import database.extensions.queryFirstOrNull
 import database.extensions.runReturningFirstOrNull
 import database.extensions.runUpdate
+import database.functions.UserHasRun
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 import java.sql.Connection
@@ -204,31 +207,27 @@ object PipelineRunTasks: DbTable("pipeline_run_tasks"), ApiExposed, Triggers {
 
     /**
      * Returns [NextTask] instance representing the next runnable task for the given [runId]. Verifies that the
-     * [username] has the ability to run tasks for this [runId].
+     * [userOid] has the ability to run tasks for this [runId].
      *
      * @throws IllegalArgumentException when the user is not able to run tasks for the run or the next task to run
      * cannot be found
      */
-    fun getRecordForRun(connection: Connection, username: String, runId: Long): NextTask {
-        require(PipelineRuns.checkUserRun(connection, runId, username)) {
+    fun getRecordForRun(connection: Connection, userOid: Long, runId: Long): NextTask {
+        require(UserHasRun.checkUserRun(connection, userOid, runId)) {
             "User provided cannot run tasks for this pipeline run"
         }
-        return getNextTask(connection, runId) ?: throw IllegalArgumentException("Cannot find next task")
+        return getNextTask(connection, runId) ?: throw NoRecordFound(tableName, message = "Cannot find next task")
     }
 
     /**
      * Reset task to waiting state and deletes all children tasks using a stored procedure
      *
-     * @throws IllegalArgumentException various cases can throw this exception (with a specific message). These include
+     * @throws NoRecordAffected various cases can throw this exception. These include:
      * - the user is not able to run tasks for the run
-     * - the record count not be found
-     * - the record obtained has a different runId
+     * - there is no record with the [pipelineRunTaskId] specified
      * - the record obtained is waiting to be scheduled
      */
-    fun resetRecord(connection: Connection, username: String, runId: Long, pipelineRunTaskId: Long) {
-        require(PipelineRuns.checkUserRun(connection, runId, username)) {
-            "User provided cannot run tasks for this pipeline run"
-        }
+    fun resetRecord(connection: Connection, userOid: Long, pipelineRunTaskId: Long) {
         val sql = """
             UPDATE $tableName
             SET    task_status = ?,
@@ -238,19 +237,20 @@ object PipelineRunTasks: DbTable("pipeline_run_tasks"), ApiExposed, Triggers {
                    task_stack_trace = null
             WHERE  pr_task_id = ?
             AND    task_status != ?
-            AND    run_id = ?
+            AND    user_has_run(?, run_id)
         """.trimIndent()
         val updateCount = connection.runUpdate(
             sql = sql,
             TaskStatus.Waiting.pgObject,
             pipelineRunTaskId,
             TaskStatus.Waiting.pgObject,
-            runId
+            userOid,
         )
         if (updateCount == 1) {
             DeleteRunTaskChildren.call(connection, pipelineRunTaskId)
         } else {
-            throw IllegalArgumentException(
+            throw NoRecordAffected(
+                tableName,
                 "No records were reset. Make sure the provided run_id matches the task and the task is Waiting"
             )
         }
@@ -339,12 +339,16 @@ object PipelineRunTasks: DbTable("pipeline_run_tasks"), ApiExposed, Triggers {
         return GetTasksOrdered.getTasks(connection, runId)
     }
 
+    @Serializable
     /** Holds minimal details of the next available task to run */
     data class NextTask(
+        @SerialName("pipeline_run_task_id")
         /** unique ID of the pipeline run task */
         val pipelineRunTaskId: Long,
+        @SerialName("task_id")
         /** unique ID of the generic underlining task run */
         val taskId: Long,
+        @SerialName("task_run_type")
         /** Run type of the underling task as the enum value */
         val taskRunType: TaskRunType,
     )

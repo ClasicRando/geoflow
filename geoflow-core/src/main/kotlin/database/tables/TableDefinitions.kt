@@ -5,9 +5,7 @@ import java.io.InputStream
 /** Base interface for interfaces used to create tables in the buildScript file. Helps reflection operations */
 interface TableBuildRequirement
 
-/**
- * Table should be created with default data during build script operation
- */
+/** Table should be created with default data during build script operation */
 interface DefaultData : TableBuildRequirement {
     /** Name of the file in the resources folder that contains the default data needed to be loaded */
     val defaultRecordsFileName: String
@@ -17,9 +15,7 @@ interface DefaultData : TableBuildRequirement {
 val DefaultData.defaultRecordsFile: InputStream?
     get() = this::class.java.classLoader.getResourceAsStream(defaultRecordsFileName)
 
-/**
- * Table is used to return results in the API
- */
+/** Table is used to return results in the API */
 interface ApiExposed {
     /**
      * Fields provided when this table is used in the server API to display in a bootstrap table.
@@ -31,19 +27,28 @@ interface ApiExposed {
     val tableDisplayFields: Map<String, Map<String, String>>
 }
 
-/**
- * Data Class to hold the trigger create statement and trigger function create statement
- * @param trigger create statement of trigger
- * @param triggerFunction function create statement that is called by the trigger
- */
-data class Trigger(val trigger: String, val triggerFunction: String)
+/** Data Class to hold the trigger create statement and trigger function create statement */
+data class Trigger(
+    /** create statement of trigger */
+    val trigger: String,
+    /** function create statement that is called by the trigger */
+    val triggerFunction: String,
+)
 
-/**
- * Table contains triggers. Defined as a list of Trigger data classes
- */
+/** Table contains triggers. Defined as a list of Trigger data classes */
 interface Triggers : TableBuildRequirement {
     /**
      * List of triggers on a Table.
      */
     val triggers: List<Trigger>
 }
+
+/** Table should be created with default data generated during build script operation */
+interface DefaultGeneratedData {
+    /** Name of the file in the resources folder that contains the data generation strategy */
+    val dataGenerationSqlFile: String
+}
+
+/** Extends default data tables to have easy access to the resources file specified for data generation */
+val DefaultGeneratedData.dataGenerationSql: InputStream?
+    get() = this::class.java.classLoader.getResourceAsStream(dataGenerationSqlFile)
