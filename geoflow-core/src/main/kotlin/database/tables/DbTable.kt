@@ -24,7 +24,7 @@ abstract class DbTable(val tableName: String) {
             "REFERENCES (public\\.)?(\\S+) "
                 .toRegex()
                 .findAll(createStatement)
-                .map { it.groupValues[1] }
+                .map { it.groupValues[2] }
                 .toSet()
         } else {
             setOf()
