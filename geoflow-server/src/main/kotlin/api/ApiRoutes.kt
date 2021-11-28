@@ -191,12 +191,14 @@ private fun Route.users() {
             ApiResponse.UsersResponse(payload)
         }
         apiPostReceive { requestUser: InternalUsers.RequestUser ->
+            call.requireUserRole("admin")
             val userOid = Database.runWithConnection {
                 InternalUsers.createUser(it, requestUser)
             }
             ApiResponse.InsertIdResponse(userOid)
         }
         apiPatchReceive { requestUser: InternalUsers.RequestUser ->
+            call.requireUserRole("admin")
             val payload = Database.runWithConnection {
                 InternalUsers.updateUser(it, requestUser)
             }
