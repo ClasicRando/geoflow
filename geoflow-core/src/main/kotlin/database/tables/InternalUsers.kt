@@ -30,7 +30,7 @@ object InternalUsers : DbTable("internal_users"), ApiExposed {
         (
             user_oid bigint PRIMARY KEY GENERATED ALWAYS AS IDENTITY,
             name text COLLATE pg_catalog."default" NOT NULL CHECK (check_not_blank_or_empty(name)),
-            username text COLLATE pg_catalog."default" NOT NULL CHECK (check_not_blank_or_empty(username)),
+            username text COLLATE pg_catalog."default" UNIQUE NOT NULL CHECK (check_not_blank_or_empty(username)),
             password text COLLATE pg_catalog."default" NOT NULL CHECK (check_not_blank_or_empty(password)),
             roles text[] COLLATE pg_catalog."default" NOT NULL CHECK (check_array_not_blank_or_empty(roles))
         )
@@ -157,6 +157,7 @@ object InternalUsers : DbTable("internal_users"), ApiExposed {
                    username = ?,
                    roles = ARRAY[${"?,".repeat(user.roles.size).trim(',')}]
             WHERE  user_oid = ?
+            AND    NOT('admin' = ANY(roles))
             RETURNING user_oid, name, username, roles, null
         """.trimIndent()
         return connection.runReturningFirstOrNull(
@@ -188,8 +189,7 @@ object InternalUsers : DbTable("internal_users"), ApiExposed {
     /** API function to get a list of all users for the application */
     fun getUsers(connection: Connection, userOid: Long): List<ResponseUser> {
         val sql = """
-            SELECT user_oid, name, username, array_to_string(roles, ', '),
-                   CASE WHEN user_oid != ? AND 'admin' = ANY(roles) THEN false ELSE true END can_edit
+            SELECT user_oid, name, username, array_to_string(roles, ', '), 'admin' = ANY(roles) can_edit
             FROM   $tableName
         """.trimIndent()
         return connection.submitQuery(sql = sql, userOid)
