@@ -5,7 +5,7 @@ package database.tables
  */
 object PlottingMethods : DbTable("plotting_methods") {
 
-    override val createStatement = """
+    override val createStatement: String = """
         CREATE TABLE IF NOT EXISTS public.plotting_methods
         (
             ds_id bigint NOT NULL,
@@ -15,7 +15,7 @@ object PlottingMethods : DbTable("plotting_methods") {
             CONSTRAINT plotting_methods_pkey PRIMARY KEY (ds_id, "order")
         )
         WITH (
-            OIDS = TRUE
+            OIDS = FALSE
         );
     """.trimIndent()
 }
