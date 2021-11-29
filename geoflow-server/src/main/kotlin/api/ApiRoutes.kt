@@ -184,9 +184,9 @@ private fun Route.sourceTables() {
 private fun Route.users() {
     route(path = "/users") {
         apiGet {
-            val user = call.requireUserRole("admin")
+            call.requireUserRole("admin")
             val payload = Database.runWithConnection {
-                InternalUsers.getUsers(it, user.userId)
+                InternalUsers.getUsers(it)
             }
             ApiResponse.UsersResponse(payload)
         }
