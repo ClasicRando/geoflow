@@ -1,6 +1,7 @@
 @file:Suppress("MatchingDeclarationName")
 package database
 
+import database.extensions.executeNoReturn
 import loading.checkTableExists
 import loading.loadDefaultData
 import database.functions.Constraints
@@ -119,9 +120,9 @@ private fun Connection.createTable(table: DbTable) {
     logger.info("Starting ${table.tableName}")
     require(!checkTableExists(table.tableName)) { "${table.tableName} already exists" }
     logger.info("Creating ${table.tableName}")
-    this.prepareStatement(table.createStatement).execute()
+    executeNoReturn(table.createStatement)
     if (table is Triggers) {
-        (table as Triggers).triggers.forEach { trigger ->
+        for (trigger in table.triggers) {
             val functionName = "EXECUTE FUNCTION (public\\.)?(.+)\\(\\)"
                 .toRegex()
                 .find(trigger.trigger)
@@ -129,7 +130,7 @@ private fun Connection.createTable(table: DbTable) {
                 ?.get(2)
                 ?: throw IllegalStateException("Cannot find trigger function name")
             logger.info("Creating ${table.tableName}'s trigger function, $functionName")
-            this.prepareStatement(trigger.triggerFunction).execute()
+            executeNoReturn(trigger.triggerFunction)
             val triggerName = "CREATE TRIGGER (\\S+)"
                 .toRegex()
                 .find(trigger.trigger)
@@ -137,7 +138,7 @@ private fun Connection.createTable(table: DbTable) {
                 ?.get(1)
                 ?: throw IllegalStateException("Cannot find trigger name")
             logger.info("Creating ${table.tableName}'s trigger, $triggerName")
-            this.prepareStatement(trigger.trigger)
+            executeNoReturn(trigger.trigger)
         }
     }
     if (table is DefaultData) {
@@ -149,9 +150,7 @@ private fun Connection.createTable(table: DbTable) {
     if (table is DefaultGeneratedData) {
         table.dataGenerationSql?.let { sqlFileStream ->
             val sqlText = sqlFileStream.bufferedReader().use { it.readText() }
-            prepareCall(sqlText).use { statement ->
-                statement.execute()
-            }
+            executeNoReturn(sqlText)
             logger.info("Inserted records into ${table.tableName}")
         }
     }
@@ -193,9 +192,7 @@ private fun Connection.createTables(
 private fun Connection.createEnums() {
     for (enum in enums) {
         logger.info("Creating ${enum.postgresName}")
-        prepareStatement(enum.create).use {
-            it.execute()
-        }
+        executeNoReturn(enum.create)
     }
 }
 
@@ -207,9 +204,7 @@ private fun Connection.createConstraintFunctions() {
             ?.groupValues
             ?.get(2)
         logger.info("Creating constraint function ${functionName ?: "!! NAME UNKNOWN !!\n$constraint"}")
-        prepareStatement(constraint).use {
-            it.execute()
-        }
+        executeNoReturn(constraint)
     }
 }
 
@@ -217,9 +212,7 @@ private fun Connection.createConstraintFunctions() {
 private fun Connection.createProcedures() {
     for (procedure in procedures) {
         logger.info("Creating ${procedure.name}")
-        prepareStatement(procedure.code).use {
-            it.execute()
-        }
+        executeNoReturn(procedure.code)
     }
 }
 
@@ -228,13 +221,9 @@ private fun Connection.createFunctions() {
     for (tableFunction in functions) {
         logger.info("Creating ${tableFunction.name}")
         for (innerFunction in tableFunction.innerFunctions) {
-            prepareStatement(innerFunction).use {
-                it.execute()
-            }
+            executeNoReturn(innerFunction)
         }
-        prepareStatement(tableFunction.functionCode).use {
-            it.execute()
-        }
+        executeNoReturn(tableFunction.functionCode)
     }
 }
 
@@ -243,13 +232,9 @@ private fun Connection.createTableFunctions() {
     for (tableFunction in tableFunctions) {
         logger.info("Creating ${tableFunction.name}")
         for (innerFunction in tableFunction.innerFunctions) {
-            prepareStatement(innerFunction).use {
-                it.execute()
-            }
+            executeNoReturn(innerFunction)
         }
-        prepareStatement(tableFunction.functionCode).use {
-            it.execute()
-        }
+        executeNoReturn(tableFunction.functionCode)
     }
 }
 
