@@ -189,7 +189,7 @@ object InternalUsers : DbTable("internal_users"), ApiExposed {
     /** API function to get a list of all users for the application */
     fun getUsers(connection: Connection): List<ResponseUser> {
         val sql = """
-            SELECT user_oid, name, username, array_to_string(roles, ', '), 'admin' = ANY(roles) can_edit
+            SELECT user_oid, name, username, array_to_string(roles, ', '), NOT('admin' = ANY(roles)) can_edit
             FROM   $tableName
         """.trimIndent()
         return connection.submitQuery(sql = sql)
