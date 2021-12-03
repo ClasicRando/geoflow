@@ -117,7 +117,7 @@ async function submitNewUser($form) {
         password: $password.val(),
         roles: $isAdmin.prop('checked') ? ['admin'] : $roles.val(),
     };
-    const response = await fetchPOST('/api/users', user);
+    const response = await fetchPOST('/data/users', user);
     const json = await response.json();
     console.log(json);
     if ('errors' in json) {
@@ -164,7 +164,7 @@ async function submitEditUser($form) {
         roles: $isAdmin.prop('checked') ? ['admin'] : $roles.val(),
         password: null,
     };
-    const response = await fetchPATCH('/api/users', user);
+    const response = await fetchPATCH('/data/users', user);
     const json = await response.json();
     if ('errors' in json) {
         $(`#${userEditModal}ResponseErrorMessage`).text(formatErrors(json.errors));

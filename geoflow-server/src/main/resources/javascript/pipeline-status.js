@@ -3,7 +3,7 @@ let code;
 
 async function pickup() {
     $(`#${modalId}`).modal('hide');
-    const response = await fetchPOST(`/api/pipeline-runs/pickup/${runId}`);
+    const response = await fetchPOST(`/data/pipeline-runs/pickup/${runId}`);
     const json = await response.json();
     if ('errors' in json) {
         showToast('Error During Pickup', formatErrors(json.errors));

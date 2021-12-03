@@ -1,5 +1,7 @@
 @file:Suppress("TooManyFunctions")
 
+import api.makeApiCall
+import auth.User
 import auth.UserSession
 import auth.requireUserRole
 import database.Database
@@ -9,63 +11,88 @@ import html.index
 import html.login
 import html.pipelineStatus
 import html.pipelineTasks
+import io.ktor.application.ApplicationCall
 import io.ktor.application.call
 import io.ktor.application.log
-import io.ktor.auth.UserIdPrincipal
-import io.ktor.auth.principal
 import io.ktor.html.respondHtml
+import io.ktor.http.HttpMethod
 import io.ktor.http.content.static
 import io.ktor.http.content.resources
+import io.ktor.request.receive
+import io.ktor.response.respond
 import io.ktor.response.respondRedirect
 import io.ktor.routing.Route
 import io.ktor.routing.get
 import io.ktor.routing.post
+import io.ktor.routing.route
 import io.ktor.sessions.clear
+import io.ktor.sessions.get
 import io.ktor.sessions.sessions
 import io.ktor.sessions.set
 import io.ktor.util.getOrFail
+import io.ktor.util.pipeline.PipelineContext
+import kotlinx.serialization.ExperimentalSerializationApi
+import java.sql.Connection
 
-/** Open login to anyone and respond with login page. */
-fun Route.loginGet() {
-    get(path = "/login") {
-        call.respondHtml {
-            val message = call.request.queryParameters["message"] ?: ""
-            login(
-                when (message) {
-                    "invalid" -> "Invalid username or password"
-                    "lookup" -> "Lookup error for session creation"
-                    "expired" -> "Session has expired"
-                    "error" -> "Session error. Please login again"
-                    else -> ""
+/** */
+val ApplicationCall.session: UserSession? get() = this.sessions.get<UserSession>()
+
+/** */
+fun Route.login() {
+    route(path = "/login") {
+        get {
+            call.respondHtml {
+                val message = call.request.queryParameters["message"] ?: ""
+                login(
+                    when (message) {
+                        "invalid" -> "Invalid username or password"
+                        "lookup" -> "Lookup error for session creation"
+                        "expired" -> "Session has expired"
+                        "error" -> "Session error. Please login again"
+                        else -> ""
+                    }
+                )
+            }
+        }
+        post {
+            val user = call.receive<User>()
+            val response = Database.runWithConnectionAsync {
+                when (val validateResult = InternalUsers.validateUser(it, user.username, user.password)) {
+                    is InternalUsers.ValidationResponse.Success -> {
+                        handleUserPostValidate(it, user)
+                        mapOf("success" to true)
+                    }
+                    is InternalUsers.ValidationResponse.Failure -> {
+                        call.application.log.info(validateResult.ERROR_MESSAGE)
+                        mapOf("error" to validateResult.ERROR_MESSAGE)
+                    }
                 }
-            )
+            }
+            call.respond(response)
         }
     }
 }
 
-/** POST endpoint for login process. Collects username and creates session */
-fun Route.loginPost() {
-    post(path = "/login") {
-        val username = call.principal<UserIdPrincipal>()?.name ?: ""
-        val redirect = runCatching {
-            val user = Database.runWithConnection {
-                InternalUsers.getUser(it, username)
-            }
-            call.sessions.set(
-                UserSession(
-                    userId = user.userOid,
-                    username = username,
-                    name = user.name,
-                    roles = user.roles
-                )
-            )
-            "/index"
-        }.getOrElse { t ->
-            call.application.log.info("Error session-auth", t)
-            "/login?message=lookup"
-        }
-        call.respondRedirect(redirect)
-    }
+/** */
+@OptIn(ExperimentalSerializationApi::class)
+private suspend fun PipelineContext<Unit, ApplicationCall>.handleUserPostValidate(
+    connection: Connection,
+    user: User,
+) {
+    val internalUser = InternalUsers.getUser(connection, user.username)
+    val response: Map<String, String> = makeApiCall(
+        endPoint = "/login",
+        httpMethod = HttpMethod.Post,
+        content = user,
+    )
+    val session = UserSession(
+        userId = internalUser.userOid,
+        username = internalUser.username,
+        name = internalUser.name,
+        roles = internalUser.roles,
+        apiToken = response["token"] ?: throw IllegalStateException("Token from api must not be null")
+    )
+    call.sessions.set(session)
 }
 
 /** Upon logout request, remove current session and redirect to login. */
@@ -124,15 +151,11 @@ fun Route.adminDashboard() {
 }
 
 /** Route for static Javascript assets */
-fun Route.js() {
-    static(remotePath = "assets") {
+fun Route.assets() {
+    static(remotePath = "/assets") {
         resources(resourcePackage = "javascript")
     }
-}
-
-/** Route for static Icons */
-fun Route.icons() {
-    static(remotePath = "") {
+    static(remotePath = "/") {
         resources(resourcePackage = "icons")
     }
 }

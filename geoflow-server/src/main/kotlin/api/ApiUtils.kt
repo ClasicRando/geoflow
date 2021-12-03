@@ -1,12 +1,21 @@
 package api
 
-import database.NoRecordAffected
-import database.NoRecordFound
 import io.ktor.application.ApplicationCall
-import io.ktor.application.MissingApplicationFeatureException
 import io.ktor.application.call
-import io.ktor.application.log
-import io.ktor.request.path
+import io.ktor.client.HttpClient
+import io.ktor.client.engine.cio.CIO
+import io.ktor.client.features.json.JsonFeature
+import io.ktor.client.features.json.serializer.KotlinxSerializer
+import io.ktor.client.features.websocket.DefaultClientWebSocketSession
+import io.ktor.client.features.websocket.webSocket
+import io.ktor.client.request.header
+import io.ktor.client.request.request
+import io.ktor.http.ContentType
+import io.ktor.http.HttpHeaders
+import io.ktor.http.HttpMethod
+import io.ktor.http.cio.websocket.CloseReason
+import io.ktor.http.cio.websocket.close
+import io.ktor.http.contentType
 import io.ktor.request.receive
 import io.ktor.response.respond
 import io.ktor.routing.Route
@@ -15,174 +24,135 @@ import io.ktor.routing.get
 import io.ktor.routing.patch
 import io.ktor.routing.post
 import io.ktor.routing.put
+import io.ktor.util.getOrFail
 import io.ktor.util.pipeline.PipelineContext
-import kotlinx.serialization.SerializationException
-import java.sql.SQLException
+import io.ktor.websocket.DefaultWebSocketServerSession
+import io.ktor.websocket.webSocket
+import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.cancelAndJoin
+import kotlinx.coroutines.channels.ClosedReceiveChannelException
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.isActive
+import kotlinx.coroutines.launch
+import session
 
-/** alias describing API error information as array of objects */
-typealias ApiErrors = List<Map<String, String?>>
+/** */
+suspend inline fun <reified B, reified T> makeApiCall(
+    endPoint: String,
+    httpMethod: HttpMethod = HttpMethod.Get,
+    content: B? = null,
+    apiToken: String? = null
+): T {
+    return HttpClient(CIO) {
+        install(JsonFeature) {
+            serializer = KotlinxSerializer()
+        }
+    }.use { client ->
+        client.request("http://localhost:8081$endPoint") {
+            method = httpMethod
+            content?.let { body = it }
+            contentType(ContentType.Application.Json)
+            apiToken?.let { header(HttpHeaders.Authorization, "Bearer $apiToken") }
+        }
+    }
+}
 
-/**
- * Extracts all errors thrown (includes suppressed exceptions) with connection to the throwable caught ([t]) and
- * converts each [Throwable] into a JSON object with the class name and [message][Throwable.message]
- */
-fun throwableToResponseErrors(t: Throwable): ApiErrors {
-    return t.suppressedExceptions.plus(t).map {
-        val errorName = when (it) {
-            is SQLException -> "sql_error"
-            is SerializationException -> "json_decode_error"
-            is IllegalArgumentException -> "argument_error"
-            is IllegalStateException -> "internal_state_error"
-            else -> {
-                it::class.simpleName?.replace("([A-Z])([a-z])".toRegex()) { match ->
-                    "${match.groupValues[1].lowercase()}_${match.groupValues[2]}"
-                }?.lowercase()
+private suspend fun DefaultClientWebSocketSession.socketLoop(serverSocket: DefaultWebSocketServerSession): Job {
+    return launch {
+        @Suppress("TooGenericExceptionCaught")
+        try {
+            for (frame in incoming) {
+                if (!serverSocket.isActive) {
+                    break
+                }
+                serverSocket.send(frame)
+            }
+        } catch (_: ClosedReceiveChannelException) {
+        } catch (c: CancellationException) {
+            if (!serverSocket.isActive) {
+                serverSocket.call.application.environment.log.info("pipelineRunTasks WebSocket job was cancelled", c)
+            }
+        }  catch (t: Throwable) {
+            if (!serverSocket.isActive) {
+                serverSocket.call.application.environment.log.info(
+                    "Exception during pipelineRunTasks WebSocket session",
+                    t
+                )
             }
         }
-        mapOf(
-            "error_name" to errorName,
-            "message" to it.message,
-        )
     }
 }
 
-/** Returns an HTTP response code based upon the exception type of [t] */
-@Suppress("MagicNumber")
-fun errorCodeFromThrowable(t: Throwable): Int {
-    return when (t) {
-        is MissingApplicationFeatureException, is IllegalArgumentException, is SerializationException -> 406
-        is NoRecordFound, is NoRecordAffected -> 404
-        else -> 500
+private const val SOCKET_LOOP_CHECKUP = 500L
+
+/** */
+fun Route.publisher(endPoint: String, path: String = "") {
+    webSocket(path = path) {
+        val socketSession = this
+        val apiPath = Regex("\\{[^}]+}").findAll(path).fold(endPoint) { acc, current ->
+            acc.replace(current.value, call.parameters.getOrFail(current.value.trim('{', '}')))
+        }
+        val session = call.session
+        requireNotNull(session)
+        HttpClient(CIO){
+            install(io.ktor.client.features.websocket.WebSockets)
+        }.use { client ->
+            client.webSocket(
+                urlString = "ws://localhost:8081/api/$apiPath",
+                request = {
+                    header(HttpHeaders.Authorization, "Bearer ${session.apiToken}")
+                }
+            ) {
+                val job = socketLoop(socketSession)
+                while (job.isActive) {
+                    delay(SOCKET_LOOP_CHECKUP)
+                    if (!socketSession.isActive) {
+                        break
+                    }
+                }
+                if (job.isActive) {
+                    job.cancelAndJoin()
+                }
+                if (socketSession.isActive) {
+                    socketSession.close(CloseReason(CloseReason.Codes.TRY_AGAIN_LATER, "API connection closed"))
+                }
+            }
+        }
     }
 }
+
+/** */
+object NoBody
 
 /** Utility function that summarizes api GET response objects using a getter lambda */
-inline fun <reified R, reified T: ApiResponse.Success<R>> Route.apiGet(
+inline fun <reified B> Route.apiCall(
+    apiEndPoint: String,
+    httpMethod: HttpMethod,
     path: String = "",
-    crossinline func: suspend PipelineContext<Unit, ApplicationCall>.() -> T
 ) {
-    get(path) {
-        val response = runCatching {
-            func()
-        }.getOrElse { t ->
-            call.application.log.error(call.request.path(), t)
-            ApiResponse.Error(
-                code = errorCodeFromThrowable(t),
-                errors = throwableToResponseErrors(t)
-            )
+    val action: suspend PipelineContext<Unit, ApplicationCall>.() -> Unit = {
+        val session = call.session
+        requireNotNull(session)
+        val apiPath = Regex("\\{[^}]+}").findAll(path).fold(apiEndPoint) { acc, current ->
+            acc.replace(current.value, call.parameters.getOrFail(current.value.trim('{', '}')))
         }
-        call.respond(response)
+        val content: B? = if (NoBody !is B) {
+            call.receive()
+        } else null
+        val apiResponse = makeApiCall<B, String>(
+            endPoint = "/api/${apiPath}",
+            httpMethod = httpMethod,
+            content = content,
+            apiToken = session.apiToken
+        )
+        call.respond(apiResponse)
     }
-}
-
-/**
- * Utility function that summarizes api POST response objects using a getter lambda to return an [ApiResponse] of the
- * specified type ([T])
- */
-inline fun <reified R, reified T: ApiResponse.Success<R>> Route.apiPost(
-    path: String = "",
-    crossinline func: suspend PipelineContext<Unit, ApplicationCall>.() -> T
-) {
-    post(path) {
-        val response = runCatching {
-            func()
-        }.getOrElse { t ->
-            call.application.log.error(call.request.path(), t)
-            ApiResponse.Error(
-                code = errorCodeFromThrowable(t),
-                errors = throwableToResponseErrors(t)
-            )
-        }
-        call.respond(response)
-    }
-}
-
-/**
- * Utility function that summarizes api POST response objects, receiving the body of the request into the specified type
- * ([B]) and returning an [ApiResponse] of the specified type ([T])
- */
-inline fun <reified B: Any, reified R, reified T: ApiResponse.Success<R>> Route.apiPostReceive(
-    path: String = "",
-    crossinline func: suspend PipelineContext<Unit, ApplicationCall>.(B) -> T
-) {
-    post(path) {
-        val response = runCatching {
-            val requestBody = call.receive<B>()
-            func(requestBody)
-        }.getOrElse { t ->
-            call.application.log.error(call.request.path(), t)
-            ApiResponse.Error(
-                code = errorCodeFromThrowable(t),
-                errors = throwableToResponseErrors(t)
-            )
-        }
-        call.respond(response)
-    }
-}
-
-/**
- * Utility function that summarizes api PUT response objects, receiving the body of the request into the specified type
- * ([R]) and returning an [ApiResponse] of the specified type ([T])
- */
-inline fun <reified R: Any, reified T: ApiResponse.Success<R>> Route.apiPutReceive(
-    path: String = "",
-    crossinline func: suspend PipelineContext<Unit, ApplicationCall>.(R) -> T
-) {
-    put(path) {
-        val response = runCatching {
-            val requestBody = call.receive<R>()
-            func(requestBody)
-        }.getOrElse { t ->
-            call.application.log.error(call.request.path(), t)
-            ApiResponse.Error(
-                code = errorCodeFromThrowable(t),
-                errors = throwableToResponseErrors(t)
-            )
-        }
-        call.respond(response)
-    }
-}
-
-/**
- * Utility function that summarizes api PATCH response objects, receiving the body of the request into the specified
- * type ([R]) and returning an [ApiResponse] of the specified type ([T])
- */
-inline fun <reified R: Any, reified T: ApiResponse.Success<R>> Route.apiPatchReceive(
-    path: String = "",
-    crossinline func: suspend PipelineContext<Unit, ApplicationCall>.(R) -> T
-) {
-    patch(path) {
-        val response = runCatching {
-            val requestBody = call.receive<R>()
-            func(requestBody)
-        }.getOrElse { t ->
-            call.application.log.error(call.request.path(), t)
-            ApiResponse.Error(
-                code = errorCodeFromThrowable(t),
-                errors = throwableToResponseErrors(t)
-            )
-        }
-        call.respond(response)
-    }
-}
-
-/**
- * Utility function that summarizes api DELETE response objects returning an [ApiResponse] of the specified type ([T])
- */
-inline fun <reified R: Any, reified T: ApiResponse.Success<R>> Route.apiDelete(
-    path: String = "",
-    crossinline func: suspend PipelineContext<Unit, ApplicationCall>.() -> T
-) {
-    delete(path) {
-        val response = runCatching {
-            func()
-        }.getOrElse { t ->
-            call.application.log.error(call.request.path(), t)
-            ApiResponse.Error(
-                code = errorCodeFromThrowable(t),
-                errors = throwableToResponseErrors(t)
-            )
-        }
-        call.respond(response)
+    when (httpMethod) {
+        HttpMethod.Get -> get(path) { action() }
+        HttpMethod.Post -> post(path) { action() }
+        HttpMethod.Put -> put(path) { action() }
+        HttpMethod.Patch -> patch(path) { action() }
+        HttpMethod.Delete -> delete(path) { action() }
     }
 }

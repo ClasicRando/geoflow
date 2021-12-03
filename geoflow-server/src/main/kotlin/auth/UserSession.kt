@@ -22,6 +22,8 @@ data class UserSession(
     val roles: List<String>,
     /** expiration of the session */
     val expiration: Long = Instant.now().plusSeconds(60L * 60).epochSecond,
+    /** token used to call the api */
+    val apiToken: String,
 ) : Principal {
     /** getter that checks if the current [Instant] is after the expiration epoch second */
     val isExpired: Boolean

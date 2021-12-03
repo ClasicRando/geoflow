@@ -1,21 +1,16 @@
 @file:Suppress("unused")
 
-import api.api
+import api.data
 import auth.UserSession
-import database.Database
-import database.tables.InternalUsers
 import html.errorPage
 import io.ktor.application.call
 import io.ktor.application.Application
 import io.ktor.application.install
 import io.ktor.application.log
-import io.ktor.auth.form
 import io.ktor.auth.session
 import io.ktor.auth.Authentication
-import io.ktor.auth.FormAuthenticationProvider
 import io.ktor.auth.SessionAuthenticationProvider
 import io.ktor.auth.authenticate
-import io.ktor.auth.UserIdPrincipal
 import io.ktor.features.ContentNegotiation
 import io.ktor.features.StatusPages
 import io.ktor.features.MissingRequestParameterException
@@ -57,25 +52,6 @@ val kjob: KJob = kjob(Mongo) {
     lockCollection = "kjob-locks"
     expireLockInMinutes = 5L
 }.start()
-
-/** */
-private fun FormAuthenticationProvider.Configuration.configure(log: Logger) {
-    userParamName = "username"
-    passwordParamName = "password"
-    validate { credentials ->
-        val validateResult = Database.runWithConnection {
-            InternalUsers.validateUser(it, credentials.name, credentials.password)
-        }
-        when (validateResult) {
-            is InternalUsers.ValidationResponse.Success -> UserIdPrincipal(credentials.name)
-            is InternalUsers.ValidationResponse.Failure -> {
-                log.info(validateResult.ERROR_MESSAGE)
-                null
-            }
-        }
-    }
-    challenge(redirectUrl = "/login?message=invalid")
-}
 
 /** */
 private fun SessionAuthenticationProvider.Configuration<UserSession>.configure(log: Logger) {
@@ -127,9 +103,6 @@ fun Application.module() {
      * requests
      */
     install(Authentication) {
-        form("auth-form") {
-            configure(log)
-        }
         session<UserSession>("auth-session") {
             configure(log)
         }
@@ -153,23 +126,17 @@ fun Application.module() {
     }
     /** Base routing of application */
     routing {
-        /** Static Javascript assets. Does not require authentication */
-        js()
-        /** Static Icon assets. Does not require authentication */
-        icons()
+        /** Static resources. Does not require authentication */
+        assets()
         /** Group all other non-login pages to require session authentication */
         authenticate("auth-session") {
             index()
-            api()
+            data()
             pipelineStatus()
             pipelineTasks()
             adminDashboard()
         }
-        /** Require form authentication while posting to '/login' end point */
-        authenticate("auth-form") {
-            loginPost()
-        }
-        loginGet()
+        login()
         logout()
     }
 }

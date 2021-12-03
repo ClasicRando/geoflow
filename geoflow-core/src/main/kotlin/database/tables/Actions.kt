@@ -56,13 +56,19 @@ object Actions : DbTable("actions"), ApiExposed, DefaultData {
     )
 
     /**
-     * API function to get a list of all user actions based upon the [roles] of the current user
+     * API function to get a list of all user actions based upon the [userOid] of the current user
      */
-    fun userActions(connection: Connection, roles: List<String>): List<Action> {
-        val whereClause = if ("admin" !in roles) {
-            " WHERE $tableName.role in (${"?,".repeat(roles.size).trim(',')})"
-        } else ""
-        val sql = "SELECT $tableName.name, $tableName.description, $tableName.href FROM $tableName$whereClause"
-        return connection.submitQuery(sql = sql, roles.minus("admin"))
+    fun userActions(connection: Connection, userOid: Long): List<Action> {
+        val sql = """
+            WITH user_roles AS (
+                SELECT REGEXP_REPLACE(unnest(roles),'admin',null) "role"
+                FROM   ${InternalUsers.tableName}
+                WHERE  user_oid = ?
+            )
+            SELECT name, description, href
+            FROM   $tableName t1, user_roles t2
+            WHERE  t1.role = COALESCE(t2.role,t1.role)
+        """.trimIndent()
+        return connection.submitQuery(sql = sql, userOid)
     }
 }

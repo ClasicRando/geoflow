@@ -43,16 +43,18 @@ object WorkflowOperations : DbTable("workflow_operations"), DefaultData, ApiExpo
      *
      * @throws IllegalStateException when either QueryRowSet value is null
      */
-    fun userOperations(connection: Connection, roles: List<String>): List<WorkflowOperation> {
-        val whereClause = if ("admin" !in roles) {
-            " WHERE $tableName.role in (${"?,".repeat(roles.size).trim(',')})"
-        } else ""
+    fun userOperations(connection: Connection, userOid: Long): List<WorkflowOperation> {
         val sql = """
-            SELECT $tableName.name, $tableName.href
-            FROM $tableName
-            $whereClause
-            ORDER BY $tableName.workflow_order
+            WITH user_roles AS (
+                SELECT REGEXP_REPLACE(unnest(roles),'admin',null) "role"
+                FROM   ${InternalUsers.tableName}
+                WHERE  user_oid = ?
+            )
+            SELECT name, href
+            FROM   $tableName t1, user_roles t2
+            WHERE  t1.role = COALESCE(t2.role,t1.role)
+            ORDER BY workflow_order
         """.trimIndent()
-        return connection.submitQuery(sql = sql, roles.minus("admin"))
+        return connection.submitQuery(sql = sql, userOid)
     }
 }

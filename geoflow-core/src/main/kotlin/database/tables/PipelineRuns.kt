@@ -4,6 +4,7 @@ import database.NoRecordFound
 import database.enums.MergeType
 import database.enums.OperationState
 import database.extensions.queryFirstOrNull
+import database.extensions.queryHasResult
 import database.extensions.runUpdate
 import database.extensions.submitQuery
 import formatLocalDateDefault
@@ -233,15 +234,40 @@ object PipelineRuns : DbTable("pipeline_runs"), ApiExposed, Triggers {
      * @throws IllegalArgumentException when the state provided does not match the required values
      */
     fun userRuns(connection: Connection, userId: Long, state: String): List<PipelineRun> {
+        val isAdmin = connection.queryHasResult(
+            sql = "SELECT 1 FROM ${InternalUsers.tableName} WHERE user_oid = ? AND 'admin' = ANY(roles)",
+            userId,
+        )
         require(state in listOf("collection", "load", "check", "qa")) {
             "state provided does not point to anything"
         }
-        return connection.submitQuery(
-            sql = "${PipelineRun.sql} WHERE COALESCE(t1.${state}_user_oid, ?) = ? AND workflow_operation = ?",
-            userId,
-            userId,
-            state,
-        )
+        return if (isAdmin) {
+            connection.submitQuery(
+                sql = "${PipelineRun.sql} WHERE workflow_operation = ?",
+                state,
+            )
+        } else {
+            connection.submitQuery(
+                sql = """
+                    WITH user_operations AS (
+                        SELECT code
+                        FROM   ${WorkflowOperations.tableName} wo
+                        JOIN   ${InternalUsers.tableName} iu
+                        ON     wo.role = ANY(iu.roles)
+                        WHERE  iu.user_oid = ?
+                    )
+                    ${PipelineRun.sql}
+                    WHERE workflow_operation = ?
+                    AND   COALESCE(t1.${state}_user_oid, ?) = ?
+                    AND   ? IN (SELECT code FROM user_operations)"
+                """.trimIndent(),
+                userId,
+                state,
+                userId,
+                userId,
+                state,
+            )
+        }
     }
 
     /**

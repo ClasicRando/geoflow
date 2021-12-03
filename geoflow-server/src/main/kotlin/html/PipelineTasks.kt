@@ -63,7 +63,7 @@ object PipelineTasks {
                         fields = PipelineRunTasks.tableDisplayFields,
                         tableButtons = tableButtons,
                         clickableRows = false,
-                        subscriber = "ws://localhost:8080/api/pipeline-run-tasks/$runId",
+                        subscriber = "ws://localhost:8080/data/pipeline-run-tasks/$runId",
                     )
                 },
                 tabNav(label = "Source Tables") {

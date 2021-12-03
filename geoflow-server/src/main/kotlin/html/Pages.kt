@@ -1,7 +1,6 @@
 package html
 
 import io.ktor.html.Template
-import kotlinx.html.FormMethod
 import kotlinx.html.HTML
 import kotlinx.html.body
 import kotlinx.html.div
@@ -66,46 +65,6 @@ fun HTML.login(message: String = "") {
             integrity = "sha384-UHRtZLI+pbxtHCWp1t77Bi1L4ZtiqrqD80Kn4Z8NTSRyMA2Fd33n5dQ8lWUE00s/"
             attributes["crossorigin"] = "anonymous"
         }
-    }
-    body {
-        form(classes = "mx-auto") {
-            action = ""
-            method = FormMethod.post
-            style = "width: 400px"
-            h3 {
-                +"Login to GeoFlow"
-            }
-            if (message.isNotEmpty()) {
-                p {
-                    +message
-                }
-            }
-            div(classes = "form-group") {
-                label {
-                    htmlFor = "username"
-                    +"Username"
-                }
-                textInput(classes = "form-control") {
-                    id = "username"
-                    name = "username"
-                    required = true
-                }
-            }
-            div(classes = "form-group") {
-                label {
-                    htmlFor = "password"
-                    +"Password"
-                }
-                passwordInput(classes = "form-control") {
-                    id = "password"
-                    name = "password"
-                    required = true
-                }
-            }
-            submitInput(classes = "btn btn-primary") {
-                value = "Submit"
-            }
-        }
         script {
             src = "https://cdn.jsdelivr.net/npm/jquery/dist/jquery.min.js"
         }
@@ -116,6 +75,53 @@ fun HTML.login(message: String = "") {
             src = "https://stackpath.bootstrapcdn.com/bootstrap/4.3.1/js/bootstrap.min.js"
             integrity = "sha384-JjSmVgyd0p3pXB1rRibZUAYoIIy6OrQ6VrjIEaFf/nJGzIxFDsf4x0xIM+B07jRM"
             attributes["crossorigin"] = "anonymous"
+        }
+        script {
+            src = "https://cdn.jsdelivr.net/npm/jquery-validation@1.19.3/dist/jquery.validate.min.js"
+        }
+        script {
+            src = "/assets/utils.js"
+        }
+        script {
+            src = "/assets/login.js"
+        }
+    }
+    body {
+        form(classes = "mx-auto") {
+            id = "loginForm"
+            action = ""
+            style = "width: 400px"
+            h3 {
+                +"Login to GeoFlow"
+            }
+            p {
+                id = "message"
+                +message
+            }
+            div(classes = "form-group") {
+                label {
+                    htmlFor = "username"
+                    +"Username"
+                }
+                textInput(classes = "form-control") {
+                    id = "username"
+                    name = "username"
+                }
+            }
+            div(classes = "form-group") {
+                label {
+                    htmlFor = "password"
+                    +"Password"
+                }
+                passwordInput(classes = "form-control") {
+                    id = "password"
+                    name = "password"
+                }
+            }
+            submitInput(classes = "btn btn-primary") {
+                id = "submit"
+                value = "Submit"
+            }
         }
     }
 }

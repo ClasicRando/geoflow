@@ -44,7 +44,7 @@ private fun Route.operations() {
         /** Returns list of operations based upon the current user's roles. */
         apiGet {
             val payload = Database.runWithConnection {
-                WorkflowOperations.userOperations2(it, userOid)
+                WorkflowOperations.userOperations(it, userOid)
             }
             ApiResponse.OperationsResponse(payload)
         }
@@ -57,7 +57,7 @@ private fun Route.actions() {
         /** Returns list of actions based upon the current user's roles. */
         apiGet {
             val payload = Database.runWithConnection {
-                Actions.userActions2(it, userOid)
+                Actions.userActions(it, userOid)
             }
             ApiResponse.ActionsResponse(payload)
         }
@@ -70,7 +70,7 @@ private fun Route.pipelineRuns() {
         /** Returns list of pipeline runs for the given workflow code based upon the current user. */
         apiGet(path = "/{code}") {
             val payload = Database.runWithConnection {
-                PipelineRuns.userRuns2(it, userOid, call.parameters.getOrFail("code"))
+                PipelineRuns.userRuns(it, userOid, call.parameters.getOrFail("code"))
             }
             ApiResponse.PipelineRunsResponse(payload)
         }

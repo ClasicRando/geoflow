@@ -27,6 +27,13 @@ $(document).ready(function() {
     });
 });
 
+const apiFetchOptions = {
+    headers: {
+        'Content-Type': 'application/json',
+    },
+    credentials: "include",
+}
+
 function redirect(route) {
     window.location.assign(route);
 }
@@ -69,7 +76,7 @@ async function commitSourceTableChanges(method) {
     let json;
     switch (method) {
         case 'update':
-            response = await fetchPUT(`/api/source-tables`, sourceTableRecord);
+            response = await fetchPUT(`/data/source-tables`, sourceTableRecord);
             json = await response.json();
             if ('errors' in json) {
                 $(`#${sourceTableModalId}ResponseErrorMessage`).text(formatErrors(json.errors));
@@ -80,7 +87,7 @@ async function commitSourceTableChanges(method) {
             break;
         case 'insert':
             const runId = window.location.href.match(/(?<=\/)\d+$/g)[0];
-            response = await fetchPOST(`/api/source-tables/${runId}`, sourceTableRecord);
+            response = await fetchPOST(`/data/source-tables/${runId}`, sourceTableRecord);
             json = await response.json();
             if ('errors' in json) {
                 $(`#${sourceTableModalId}ResponseErrorMessage`).text(formatErrors(json.errors));
@@ -90,7 +97,7 @@ async function commitSourceTableChanges(method) {
             }
             break;
         case 'delete':
-            response = await fetchDELETE(`/api/source-tables/${sourceTableRecord.st_oid}`);
+            response = await fetchDELETE(`/data/source-tables/${sourceTableRecord.st_oid}`);
             json = await response.json();
             if ('errors' in json) {
                 showToast('Error Deleting Source Table', formatErrors(json.errors));

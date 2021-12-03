@@ -2,6 +2,7 @@ package database.tables
 
 import database.NoRecordAffected
 import database.extensions.queryFirstOrNull
+import database.extensions.queryHasResult
 import database.extensions.runReturningFirstOrNull
 import database.extensions.submitQuery
 import kotlinx.serialization.SerialName
@@ -127,8 +128,9 @@ object InternalUsers : DbTable("internal_users"), ApiExposed {
      * @throws IllegalArgumentException when the password provided is null
      * @throws [java.sql.SQLException] when the connection throws an error
      */
-    fun createUser(connection: Connection, user: RequestUser): Long {
+    fun createUser(connection: Connection, user: RequestUser, userId: Long): Long {
         requireNotNull(user.password) { "User to create must have a non-null password" }
+        requireAdmin(connection, userId)
         val sql = """
             INSERT INTO $tableName(name,username,password,roles)
             VALUES(?,?,crypt(?,gen_salt('bf')),ARRAY[${"?,".repeat(user.roles.size).trim(',')}])
@@ -149,8 +151,9 @@ object InternalUsers : DbTable("internal_users"), ApiExposed {
      * @throws IllegalArgumentException when the password provided is null
      * @throws [java.sql.SQLException] when the connection throws an error
      */
-    fun updateUser(connection: Connection, user: RequestUser): RequestUser {
+    fun updateUser(connection: Connection, user: RequestUser, userId: Long): RequestUser {
         requireNotNull(user.userOid) { "user_oid must not be null" }
+        requireAdmin(connection, userId)
         val sql = """
             UPDATE $tableName
             SET    name = ?,
@@ -187,11 +190,27 @@ object InternalUsers : DbTable("internal_users"), ApiExposed {
     )
 
     /** API function to get a list of all users for the application */
-    fun getUsers(connection: Connection): List<ResponseUser> {
+    fun getUsers(connection: Connection, userId: Long): List<ResponseUser> {
+        requireAdmin(connection, userId)
         val sql = """
             SELECT user_oid, name, username, array_to_string(roles, ', '), NOT('admin' = ANY(roles)) can_edit
             FROM   $tableName
         """.trimIndent()
         return connection.submitQuery(sql = sql)
+    }
+
+    /** */
+    class UserNotAdmin
+        : Throwable("API action requires admin role and the user ID provided does not meet that requirement")
+
+    /** */
+    private fun requireAdmin(connection: Connection, userId: Long) {
+        val isAdmin = connection.queryHasResult(
+            sql = "SELECT 1 FROM $tableName WHERE user_oid = ? AND 'admin' = ANY(roles)",
+            userId,
+        )
+        if (!isAdmin) {
+            throw UserNotAdmin()
+        }
     }
 }

@@ -114,7 +114,7 @@ fun FlowContent.basicTable(
             attributes["data-toolbar"] = "#toolbar"
         }
         if (dataUrl.isNotBlank()) {
-            attributes["data-url"] = dataUrl
+            attributes["data-url"] = "http://localhost:8080/data/$dataUrl"
         }
         if (dataField.isNotBlank()) {
             attributes["data-data-field"] = dataField
@@ -159,7 +159,7 @@ private const val SOURCE_TABLES_TABLE_ID = "sourceTables"
 fun FlowContent.sourceTables(runId: Long) {
     basicTable(
         tableId = SOURCE_TABLES_TABLE_ID,
-        dataUrl = "/api/source-tables/$runId",
+        dataUrl = "source-tables/$runId",
         dataField = "payload",
         fields = SourceTables.tableDisplayFields,
         tableButtons = listOf(

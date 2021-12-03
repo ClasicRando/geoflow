@@ -20,7 +20,7 @@ async function clickRunTask() {
         showToast('Error', 'No task to run');
         return;
     }
-    const response = await fetchPOST(`/api/pipeline-run-tasks/run-next/${runId}`);
+    const response = await fetchPOST(`/data/pipeline-run-tasks/run-next/${runId}`);
     const json = await response.json();
     if ('errors' in json) {
         showToast('Error', formatErrors(json.errors));
@@ -45,7 +45,7 @@ async function clickRunAllTasks() {
         showToast('Error', 'No task to run');
         return;
     }
-    const response = await fetchPOST(`/api/pipeline-run-tasks/run-all/${runId}`);
+    const response = await fetchPOST(`/data/pipeline-run-tasks/run-all/${runId}`);
     const json = await response.json();
     if ('errors' in json) {
         showToast('Error', formatErrors(json.errors));
@@ -110,7 +110,7 @@ async function reworkTask(prTaskId) {
         showToast('Error', 'Task change listener is not currently running. Refresh page to reconnect');
         return;
     }
-    const response = await fetchPOST(`/api/pipeline-run-tasks/reset-task/${prTaskId}`);
+    const response = await fetchPOST(`/data/pipeline-run-tasks/reset-task/${prTaskId}`);
     const json = await response.json();
     if ('errors' in json) {
         showToast('Error', formatErrors(json.errors));
