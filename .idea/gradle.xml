@@ -11,6 +11,7 @@
         <option name="modules">
           <set>
             <option value="$PROJECT_DIR$" />
+            <option value="$PROJECT_DIR$/geoflow-api" />
             <option value="$PROJECT_DIR$/geoflow-core" />
             <option value="$PROJECT_DIR$/geoflow-server" />
             <option value="$PROJECT_DIR$/geoflow-worker" />

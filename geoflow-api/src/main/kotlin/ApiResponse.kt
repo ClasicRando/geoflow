@@ -1,5 +1,3 @@
-package api
-
 import database.tables.Actions
 import database.tables.InternalUsers
 import database.tables.PipelineRunTasks
