@@ -1,6 +1,5 @@
 # Project exclude paths
 /.gradle/
-*.json
 /test-files/
 /geoflow-core/test-files
 /geoflow-server/test-files
