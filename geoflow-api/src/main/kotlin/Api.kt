@@ -16,6 +16,7 @@ import io.ktor.http.content.static
 import io.ktor.request.receive
 import io.ktor.response.respond
 import io.ktor.routing.post
+import io.ktor.routing.route
 import io.ktor.routing.routing
 import io.ktor.serialization.json
 import io.ktor.websocket.WebSockets
@@ -25,6 +26,13 @@ import it.justwrote.kjob.job.JobExecutionType
 import it.justwrote.kjob.kjob
 import mu.KLogger
 import mu.KotlinLogging
+import paths.ApiActions
+import paths.ApiJobs
+import paths.ApiOperations
+import paths.ApiPipelineRunTasks
+import paths.ApiPipelineRuns
+import paths.ApiSourceTables
+import paths.ApiUsers
 import java.security.KeyFactory
 import java.security.interfaces.RSAPrivateKey
 import java.security.interfaces.RSAPublicKey
@@ -38,9 +46,10 @@ private const val JWT_LEEWAY = 10L
 private const val JWT_BUCKET_SIZE = 10L
 private const val JWT_REFILL_RATE = 1L
 private const val EXPIRE_DURATION = 57600000
+
 /** logger used for the KJob instance */
 val logger: KLogger = KotlinLogging.logger {}
-/** Kjob instance used by the server to schedule jobs for the worker application */
+/** Kjob instance used by the API to schedule jobs for the worker application */
 @Suppress("MagicNumber")
 val kjob: KJob = kjob(Mongo) {
     nonBlockingMaxJobs = 1
@@ -61,7 +70,7 @@ val kjob: KJob = kjob(Mongo) {
     expireLockInMinutes = 5L
 }.start()
 
-/** Main entry of the server application. Initializes the server engine. */
+/** Main entry of the API. Initializes the server engine. */
 fun main(args: Array<String>): Unit = io.ktor.server.cio.EngineMain.main(args)
 
 /** Module describing server features and routing */
@@ -100,12 +109,20 @@ fun Application.module() {
     }
 
     /** Install WebSockets for pub/sub pattern. */
-    install(WebSockets) { }
+    install(WebSockets)
 
     /** Base routing of application */
     routing {
         authenticate("auth-jwt") {
-            api()
+            route("/api") {
+                ApiOperations.generatePath(this)
+                ApiActions.generatePath(this)
+                ApiPipelineRuns.generatePath(this)
+                ApiPipelineRunTasks.generatePath(this)
+                ApiSourceTables.generatePath(this)
+                ApiUsers.generatePath(this)
+                ApiJobs.generatePath(this)
+            }
         }
         post(path = "/login") {
             val user = call.receive<User>()
