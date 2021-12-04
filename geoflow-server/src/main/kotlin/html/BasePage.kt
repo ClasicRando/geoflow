@@ -76,14 +76,15 @@ class BasePage private constructor (
             }
             link {
                 rel = "stylesheet"
-                href = "https://cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free@5.15.4/css/all.min.css"
+                href = "https://use.fontawesome.com/releases/v5.15.4/css/all.css"
             }
             link {
                 rel = "stylesheet"
                 href = "https://unpkg.com/bootstrap-table@1.18.3/dist/bootstrap-table.min.css"
             }
             script {
-                src = "https://cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free@5.15.4/js/all.min.js"
+                src = "https://use.fontawesome.com/releases/v5.15.4/js/all.js"
+                attributes["data-auto-replace-svg"] = "nest"
             }
             script {
                 src = "https://cdn.jsdelivr.net/npm/lodash@4.17.21/lodash.min.js"
