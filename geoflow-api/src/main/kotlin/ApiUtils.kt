@@ -5,6 +5,9 @@ import io.ktor.application.ApplicationCall
 import io.ktor.application.MissingApplicationFeatureException
 import io.ktor.application.call
 import io.ktor.application.log
+import io.ktor.auth.jwt.JWTPrincipal
+import io.ktor.auth.principal
+import io.ktor.http.HttpMethod
 import io.ktor.request.path
 import io.ktor.request.receive
 import io.ktor.response.respond
@@ -53,6 +56,37 @@ fun errorCodeFromThrowable(t: Throwable): Int {
         is MissingApplicationFeatureException, is SerializationException, is IllegalArgumentException, -> 406
         is NoRecordFound, is NoRecordAffected -> 404
         else -> 500
+    }
+}
+
+/** Property for quick access to the request's user_oid contained in the JWT */
+val PipelineContext<Unit, ApplicationCall>.userOid: Long
+    get() = call.principal<JWTPrincipal>()!!.payload.getClaim("user_oid").asLong()
+
+/** */
+inline fun <reified R, reified T: ApiResponse.Success<R>> Route.apiCall(
+    httpMethod: HttpMethod,
+    path: String = "",
+    crossinline func: suspend PipelineContext<Unit, ApplicationCall>.(Long) -> T
+) {
+    val action: suspend PipelineContext<Unit, ApplicationCall>.() -> Unit = {
+        val response = runCatching {
+            func(userOid)
+        }.getOrElse { t ->
+            call.application.log.error(call.request.path(), t)
+            ApiResponse.Error(
+                code = errorCodeFromThrowable(t),
+                errors = throwableToResponseErrors(t)
+            )
+        }
+        call.respond(response)
+    }
+    when (httpMethod) {
+        HttpMethod.Get -> get(path) { action() }
+        HttpMethod.Post -> post(path) { action() }
+        HttpMethod.Put -> put(path) { action() }
+        HttpMethod.Patch -> patch(path) { action() }
+        HttpMethod.Delete -> delete(path) { action() }
     }
 }
 
