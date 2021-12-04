@@ -1,8 +1,10 @@
 package html
 
 import io.ktor.html.Template
+import kotlinx.html.ButtonType
 import kotlinx.html.HTML
 import kotlinx.html.body
+import kotlinx.html.button
 import kotlinx.html.div
 import kotlinx.html.form
 import kotlinx.html.h3
@@ -16,7 +18,6 @@ import kotlinx.html.p
 import kotlinx.html.passwordInput
 import kotlinx.html.script
 import kotlinx.html.style
-import kotlinx.html.submitInput
 import kotlinx.html.textInput
 import kotlinx.html.title
 
@@ -118,9 +119,10 @@ fun HTML.login(message: String = "") {
                     name = "password"
                 }
             }
-            submitInput(classes = "btn btn-primary") {
+            button(classes = "btn btn-primary") {
                 id = "submit"
-                value = "Submit"
+                type = ButtonType.button
+                +"Submit"
             }
         }
     }
