@@ -11,7 +11,7 @@ import mongo.MongoDb
 /** Sealed definition of any API response */
 sealed interface ApiResponse {
 
-    /** */
+    /** Template for a successful API response. Contains a payload of type [T] and a name of the payload object type */
     interface Success<T>: ApiResponse {
         /** type of response object */
         val responseObject: String
