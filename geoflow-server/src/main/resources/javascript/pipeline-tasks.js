@@ -7,14 +7,12 @@ $(document).ready(() => {
         if (tasksSubscriber.isActive) {
             return;
         } else {
-            showSpinnerInButton(e.target);
             const isActive = await tasksSubscriber.attemptRestart();
             if (isActive) {
                 showToast('Reconnected', 'Connected to subsriber!');
             } else {
                 showToast('Error', 'Attempted restart of subscriber failed');
             }
-            removeSpinnerInButton(e.target);
         }
     });
 });

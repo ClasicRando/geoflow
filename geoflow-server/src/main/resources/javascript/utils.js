@@ -21,6 +21,14 @@ class TableSubscriber {
         } catch (ex) {
             console.log(ex);
         }
+        const $button = this.$table.parent().parent().parent().find('button[name="btnConnected"]');
+        $button.find('.fa-layers').addClass('hidden');
+        $button.prop('disabled', true);
+        const spinner = document.createElement('span');
+        spinner.classList.add('spinner-border', 'spinner-border-sm');
+        spinner.setAttribute('role', 'status');
+        spinner.setAttribute('aria-hidden', 'true');
+        $button.append(spinner);
         this.socket = new WebSocket(this.url);
         const handler = (e) => { this.handleEvent(e); };
         const callback = () => {
@@ -30,6 +38,9 @@ class TableSubscriber {
         }
         return new Promise((resolve) => {
             setTimeout(() => {
+                $button.prop('disabled', false);
+                $button.find('.spinner-border').remove();
+                $button.find('.fa-layers').removeClass('hidden');
                 if (this.socket.readyState === WebSocket.prototype.OPEN) {
                     handler(new Event('open'));
                     callback();
@@ -43,12 +54,12 @@ class TableSubscriber {
     }
 
     handleEvent(event) {
-        const $icon = this.$table.parent().parent().parent().find('.fa-slash');
-        const isHidden = $icon.hasClass('hidden');
+        const $slashIcon = $('.fa-slash');
+        const isHidden = $slashIcon.hasClass('hidden');
         switch(event.type) {
             case 'open':
                 if (!isHidden) {
-                    $icon.addClass('hidden');
+                    $slashIcon.addClass('hidden');
                 }
                 break;
             case 'message':
@@ -57,12 +68,12 @@ class TableSubscriber {
                 break;
             case 'error':
                 if (isHidden) {
-                    $icon.removeClass('hidden');
+                    $slashIcon.removeClass('hidden');
                 }
                 break;
             case 'close':
                 if (isHidden) {
-                    $icon.removeClass('hidden');
+                    $slashIcon.removeClass('hidden');
                 }
                 break;
         }
@@ -315,20 +326,4 @@ function showToast(title, message) {
 
 function formatErrors(errors) {
     return errors.map(error => `${error.error_name} -> ${error.message}`).join('\n');
-}
-
-function showSpinnerInButton(button) {
-    button.disabled = true;
-    const spinner = document.createElement('i');
-    spinner.classList.add('fas', 'fa-spinner', 'fa-spin');
-    button.appendChild(spinner);
-}
-
-function removeSpinnerInButton(button) {
-    for (const child of button.children) {
-        if (child.classList.contains('fa-spinner')) {
-            button.removeChild(child);
-        }
-    }
-    button.disabled = false;
 }
