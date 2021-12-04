@@ -31,7 +31,6 @@ import io.ktor.sessions.sessions
 import io.ktor.sessions.set
 import io.ktor.util.getOrFail
 import io.ktor.util.pipeline.PipelineContext
-import kotlinx.serialization.ExperimentalSerializationApi
 import java.sql.Connection
 
 /** */
@@ -74,7 +73,6 @@ fun Route.login() {
 }
 
 /** */
-@OptIn(ExperimentalSerializationApi::class)
 private suspend fun PipelineContext<Unit, ApplicationCall>.handleUserPostValidate(
     connection: Connection,
     user: User,
