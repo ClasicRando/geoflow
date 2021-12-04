@@ -204,7 +204,7 @@ object InternalUsers : DbTable("internal_users"), ApiExposed {
         : Throwable("API action requires admin role and the user ID provided does not meet that requirement")
 
     /** */
-    private fun requireAdmin(connection: Connection, userId: Long) {
+    fun requireAdmin(connection: Connection, userId: Long) {
         val isAdmin = connection.queryHasResult(
             sql = "SELECT 1 FROM $tableName WHERE user_oid = ? AND 'admin' = ANY(roles)",
             userId,
