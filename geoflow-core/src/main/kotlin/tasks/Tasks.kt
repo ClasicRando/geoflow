@@ -52,7 +52,7 @@ val tasks: Map<Long, TaskInfo> by lazy {
         .getMethodsAnnotatedWith(SystemTask::class.java)
         .asSequence()
         .mapNotNull { it.kotlinFunction }
-    val systemTasks = buildMap {
+    val systemTasks = buildMap<Long, TaskInfo> {
         for (systemTask in systemTasksList) {
             val annotation = systemTask.annotations.first {
                 it.annotationClass.java == SystemTask::class.java
