@@ -1,8 +1,22 @@
 let tasksSubscriber;
 let runId = -1;
-$(document).ready(function() {
+$(document).ready(() => {
     tasksSubscriber = subscriberTables[taskTableId];
     runId = window.location.href.match(/(?<=\/)[^/]+$/g)[0];
+    $('button[name="btnConnected"]').click(async (e) => {
+        if (tasksSubscriber.isActive) {
+            return;
+        } else {
+            showSpinnerInButton(e.target);
+            const isActive = await tasksSubscriber.attemptRestart();
+            if (isActive) {
+                showToast('Reconnected', 'Connected to subsriber!');
+            } else {
+                showToast('Error', 'Attempted restart of subscriber failed');
+            }
+            removeSpinnerInButton(e.target);
+        }
+    });
 });
 
 async function clickRunTask() {
