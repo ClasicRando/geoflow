@@ -26,27 +26,33 @@ fun getFieldTable(field: String): String = field
  *
  * See [buttons](https://bootstrap-table.com/docs/api/table-options/#buttons) option for more details.
  */
-data class TableButton(
-    /** name of the button, used as the key in the resulting json key value pair */
-    val name: String,
-    /** text shown in the button */
-    val text: String,
-    /** icon within the button */
-    val icon: String,
-    /** javascript function called on button click */
-    val event: String,
-    /** title of the button, shown on hover */
-    val title: String,
-) {
+fun tableButton(
+    name: String,
+    text: String,
+    icon: String,
+    event: String,
+    title: String,
+): String {
     /** json key value pair as text */
-    val button: String = """
+    return """
         $name: {
             text: '$text',
-            icon: '$icon',
+            icon: 'fa-${icon.replace("^fa-".toRegex(), "")}',
             event: () => { $event; },
             attributes: {
                 title: '$title',
             },
+        }
+    """.trimIndent()
+}
+
+/**
+ *
+ */
+fun tableButton(name: String, html: String): String {
+    return """
+        $name: {
+            html: `$html`
         }
     """.trimIndent()
 }
@@ -93,7 +99,7 @@ fun FlowContent.basicTable(
     fields: Map<String, Map<String, String>>,
     dataUrl: String = "",
     dataField: String = "",
-    tableButtons: List<TableButton> = emptyList(),
+    tableButtons: List<String> = emptyList(),
     headerButtons: List<HeaderButton> = emptyList(),
     customSortFunction: String = "",
     clickableRows: Boolean = true,
@@ -143,7 +149,7 @@ fun FlowContent.basicTable(
                     raw("""
                         function ${tableId}buttons() {
                             return {
-                                ${tableButtons.joinToString { it.button }}
+                                ${tableButtons.joinToString()}
                             }
                         }
                     """.trimIndent())
@@ -163,7 +169,7 @@ fun FlowContent.sourceTables(runId: Long) {
         dataField = "payload",
         fields = SourceTables.tableDisplayFields,
         tableButtons = listOf(
-            TableButton(
+            tableButton(
                 name = "btnAddTable",
                 text = "Add Source Table",
                 icon = "fa-plus",

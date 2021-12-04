@@ -13,20 +13,32 @@ object PipelineTasks {
     private const val taskDataModalId = "taskData"
     private const val taskTableId = "tasksTable"
     private val tableButtons = listOf(
-        TableButton(
+        tableButton(
             name = "btnRun",
             text = "Run Next Task",
-            icon = "fa-play",
+            icon = "play",
             event = "clickRunTask()",
             title = "Run the next available task if there are no other tasks running",
         ),
-        TableButton(
+        tableButton(
             name = "btnRunAll",
             text = "Run All Tasks",
-            icon = "fa-fast-forward",
+            icon = "fast-forward",
             event = "clickRunAllTasks()",
             title = "Run the next available tasks if there are no other tasks running. Stops upon failure or User Task",
         ),
+        tableButton(
+            name = "btnConnected",
+            html = """
+                <button class="btn btn-secondary" name="btnConnected"
+                    title="Shows if the subscriber is active. Click to attempt restart if inactive">
+                    <span class="fa-layers fa-fw">
+                        <i class="fas fa-plug"></i>
+                        <i class="fas fa-slash"></i>
+                    </span>
+                </button>
+            """.trimIndent()
+        )
     )
 
     /**

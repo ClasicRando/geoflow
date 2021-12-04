@@ -28,7 +28,7 @@ object AdminDashboard {
     private const val EDIT_USER_FORM_ID = "editUserForm"
 
     private val tableButtons = listOf(
-        TableButton(
+        tableButton(
             name = "btnCreate",
             text = "Create New User",
             icon = "fa-plus",
