@@ -1,23 +1,71 @@
 class TableSubscriber {
 
     constructor(url, $table) {
+        this.url = url;
         this.$table = $table;
         this.socket = new WebSocket(url);
-        this.socket.addEventListener('message', (event) => {
-            const data = JSON.parse(event.data);
-            $table.bootstrapTable('load', data);
-        });
+        const handler = (e) => { this.handleEvent(e); }
+        this.socket.addEventListener('message', handler);
+        this.socket.addEventListener('open', handler);
+        this.socket.addEventListener('error', handler);
+        this.socket.addEventListener('close', handler);
     }
 
     get isActive() {
-        return this.socket.readyState == this.socket.OPEN;
+        return this.socket.readyState === WebSocket.prototype.OPEN;
     }
 
     attemptRestart() {
-        if (this.isActive) {
+        try {
             this.socket.close();
+        } catch (ex) {
+            console.log(ex);
         }
-        this.socket = new WebSocket(this.socket.url);
+        this.socket = new WebSocket(this.url);
+        const handler = (e) => { this.handleEvent(e); };
+        const callback = () => {
+            this.socket.addEventListener('error', handler);
+            this.socket.addEventListener('close', handler);
+            this.socket.addEventListener('message', handler);
+        }
+        return new Promise((resolve) => {
+            setTimeout(() => {
+                if (this.socket.readyState === WebSocket.prototype.OPEN) {
+                    handler(new Event('open'));
+                    callback();
+                    resolve(true);
+                } else {
+                    handler(new Event('close'));
+                    resolve(false);
+                }
+            }, 3000)
+        });
+    }
+
+    handleEvent(event) {
+        const $icon = this.$table.parent().parent().parent().find('.fa-slash');
+        const isHidden = $icon.hasClass('hidden');
+        switch(event.type) {
+            case 'open':
+                if (!isHidden) {
+                    $icon.addClass('hidden');
+                }
+                break;
+            case 'message':
+                const data = JSON.parse(event.data);
+                this.$table.bootstrapTable('load', data);
+                break;
+            case 'error':
+                if (isHidden) {
+                    $icon.removeClass('hidden');
+                }
+                break;
+            case 'close':
+                if (isHidden) {
+                    $icon.removeClass('hidden');
+                }
+                break;
+        }
     }
 }
 
@@ -267,4 +315,20 @@ function showToast(title, message) {
 
 function formatErrors(errors) {
     return errors.map(error => `${error.error_name} -> ${error.message}`).join('\n');
+}
+
+function showSpinnerInButton(button) {
+    button.disabled = true;
+    const spinner = document.createElement('i');
+    spinner.classList.add('fas', 'fa-spinner', 'fa-spin');
+    button.appendChild(spinner);
+}
+
+function removeSpinnerInButton(button) {
+    for (const child of button.children) {
+        if (child.classList.contains('fa-spinner')) {
+            button.removeChild(child);
+        }
+    }
+    button.disabled = false;
 }
