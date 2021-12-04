@@ -2,6 +2,7 @@ package api
 
 import io.ktor.application.ApplicationCall
 import io.ktor.application.call
+import io.ktor.application.log
 import io.ktor.client.HttpClient
 import io.ktor.client.engine.cio.CIO
 import io.ktor.client.features.json.JsonFeature
@@ -16,6 +17,7 @@ import io.ktor.http.HttpMethod
 import io.ktor.http.cio.websocket.CloseReason
 import io.ktor.http.cio.websocket.close
 import io.ktor.http.contentType
+import io.ktor.request.path
 import io.ktor.request.receive
 import io.ktor.response.respond
 import io.ktor.routing.Route
@@ -36,6 +38,7 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
 import session
+import java.net.ConnectException
 
 /** */
 suspend inline fun <reified B, reified T> makeApiCall(
@@ -84,6 +87,33 @@ private suspend fun DefaultClientWebSocketSession.socketLoop(serverSocket: Defau
     }
 }
 
+private suspend fun HttpClient.runSocket(
+    apiPath: String,
+    apiToken: String,
+    socketSession: DefaultWebSocketServerSession,
+) {
+    webSocket(
+        urlString = "ws://localhost:8081/api/$apiPath",
+        request = {
+            header(HttpHeaders.Authorization, "Bearer $apiToken")
+        }
+    ) {
+        val job = socketLoop(socketSession)
+        while (job.isActive) {
+            delay(SOCKET_LOOP_CHECKUP)
+            if (!socketSession.isActive) {
+                break
+            }
+        }
+        if (job.isActive) {
+            job.cancelAndJoin()
+        }
+        if (socketSession.isActive) {
+            socketSession.close(CloseReason(CloseReason.Codes.TRY_AGAIN_LATER, "API connection closed"))
+        }
+    }
+}
+
 private const val SOCKET_LOOP_CHECKUP = 500L
 
 /** */
@@ -95,28 +125,25 @@ fun Route.publisher(endPoint: String, path: String = "") {
         }
         val session = call.session
         requireNotNull(session)
-        HttpClient(CIO){
-            install(io.ktor.client.features.websocket.WebSockets)
-        }.use { client ->
-            client.webSocket(
-                urlString = "ws://localhost:8081/api/$apiPath",
-                request = {
-                    header(HttpHeaders.Authorization, "Bearer ${session.apiToken}")
-                }
-            ) {
-                val job = socketLoop(socketSession)
-                while (job.isActive) {
-                    delay(SOCKET_LOOP_CHECKUP)
-                    if (!socketSession.isActive) {
-                        break
-                    }
-                }
-                if (job.isActive) {
-                    job.cancelAndJoin()
-                }
-                if (socketSession.isActive) {
-                    socketSession.close(CloseReason(CloseReason.Codes.TRY_AGAIN_LATER, "API connection closed"))
-                }
+        runCatching {
+            HttpClient(CIO){
+                install(io.ktor.client.features.websocket.WebSockets)
+            }.use { client ->
+                client.runSocket(
+                    apiPath = apiPath,
+                    apiToken = session.apiToken,
+                    socketSession = socketSession,
+                )
+            }
+        }.getOrElse { t ->
+            call.application.log.info(call.request.path(), t)
+            when (t) {
+                is ConnectException -> socketSession.close(
+                    CloseReason(CloseReason.Codes.CANNOT_ACCEPT, "API refused connection")
+                )
+                else -> socketSession.close(
+                    CloseReason(CloseReason.Codes.TRY_AGAIN_LATER, "Unknown error. Check log")
+                )
             }
         }
     }
@@ -132,20 +159,29 @@ inline fun <reified B> Route.apiCall(
     path: String = "",
 ) {
     val action: suspend PipelineContext<Unit, ApplicationCall>.() -> Unit = {
-        val session = call.session
-        requireNotNull(session)
-        val apiPath = Regex("\\{[^}]+}").findAll(path).fold(apiEndPoint) { acc, current ->
-            acc.replace(current.value, call.parameters.getOrFail(current.value.trim('{', '}')))
+        val apiResponse = runCatching {
+            val session = call.session
+            requireNotNull(session)
+            val apiPath = Regex("\\{[^}]+}").findAll(path).fold(apiEndPoint) { acc, current ->
+                acc.replace(current.value, call.parameters.getOrFail(current.value.trim('{', '}')))
+            }
+            val content: B? = if (NoBody !is B) {
+                call.receive()
+            } else null
+            makeApiCall<B, String>(
+                endPoint = "/api/${apiPath}",
+                httpMethod = httpMethod,
+                content = content,
+                apiToken = session.apiToken
+            )
+        }.getOrElse { t ->
+            call.application.log.info(call.request.path(), t)
+            """
+                {
+                    "error": "${t.message}"
+                }
+            """.trimIndent()
         }
-        val content: B? = if (NoBody !is B) {
-            call.receive()
-        } else null
-        val apiResponse = makeApiCall<B, String>(
-            endPoint = "/api/${apiPath}",
-            httpMethod = httpMethod,
-            content = content,
-            apiToken = session.apiToken
-        )
         call.respond(apiResponse)
     }
     when (httpMethod) {
