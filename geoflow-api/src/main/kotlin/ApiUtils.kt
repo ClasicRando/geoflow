@@ -9,7 +9,6 @@ import io.ktor.auth.jwt.JWTPrincipal
 import io.ktor.auth.principal
 import io.ktor.http.HttpMethod
 import io.ktor.request.path
-import io.ktor.request.receive
 import io.ktor.response.respond
 import io.ktor.routing.Route
 import io.ktor.routing.delete
@@ -53,25 +52,21 @@ fun throwableToResponseErrors(t: Throwable): ApiErrors {
 @Suppress("MagicNumber")
 fun errorCodeFromThrowable(t: Throwable): Int {
     return when (t) {
-        is MissingApplicationFeatureException, is SerializationException, is IllegalArgumentException, -> 406
+        is MissingApplicationFeatureException, is SerializationException, is IllegalArgumentException -> 406
         is NoRecordFound, is NoRecordAffected -> 404
         else -> 500
     }
 }
 
-/** Property for quick access to the request's user_oid contained in the JWT */
-val PipelineContext<Unit, ApplicationCall>.userOid: Long
-    get() = call.principal<JWTPrincipal>()!!.payload.getClaim("user_oid").asLong()
-
 /** */
-inline fun <reified R, reified T: ApiResponse.Success<R>> Route.apiCall(
+inline fun <R, T: ApiResponse.Success<R>> Route.apiCall(
     httpMethod: HttpMethod,
     path: String = "",
     crossinline func: suspend PipelineContext<Unit, ApplicationCall>.(Long) -> T
 ) {
     val action: suspend PipelineContext<Unit, ApplicationCall>.() -> Unit = {
         val response = runCatching {
-            func(userOid)
+            func(call.principal<JWTPrincipal>()!!.payload.getClaim("user_oid").asLong())
         }.getOrElse { t ->
             call.application.log.error(call.request.path(), t)
             ApiResponse.Error(
@@ -87,136 +82,5 @@ inline fun <reified R, reified T: ApiResponse.Success<R>> Route.apiCall(
         HttpMethod.Put -> put(path) { action() }
         HttpMethod.Patch -> patch(path) { action() }
         HttpMethod.Delete -> delete(path) { action() }
-    }
-}
-
-/** Utility function that summarizes api GET response objects using a getter lambda */
-inline fun <reified R, reified T: ApiResponse.Success<R>> Route.apiGet(
-    path: String = "",
-    crossinline func: suspend PipelineContext<Unit, ApplicationCall>.() -> T
-) {
-    get(path) {
-        val response = runCatching {
-            func()
-        }.getOrElse { t ->
-            call.application.log.error(call.request.path(), t)
-            ApiResponse.Error(
-                code = errorCodeFromThrowable(t),
-                errors = throwableToResponseErrors(t)
-            )
-        }
-        call.respond(response)
-    }
-}
-
-/**
- * Utility function that summarizes api POST response objects using a getter lambda to return an [ApiResponse] of the
- * specified type ([T])
- */
-inline fun <reified R, reified T: ApiResponse.Success<R>> Route.apiPost(
-    path: String = "",
-    crossinline func: suspend PipelineContext<Unit, ApplicationCall>.() -> T
-) {
-    post(path) {
-        val response = runCatching {
-            func()
-        }.getOrElse { t ->
-            call.application.log.error(call.request.path(), t)
-            ApiResponse.Error(
-                code = errorCodeFromThrowable(t),
-                errors = throwableToResponseErrors(t)
-            )
-        }
-        call.respond(response)
-    }
-}
-
-/**
- * Utility function that summarizes api POST response objects, receiving the body of the request into the specified type
- * ([B]) and returning an [ApiResponse] of the specified type ([T])
- */
-inline fun <reified B: Any, reified R, reified T: ApiResponse.Success<R>> Route.apiPostReceive(
-    path: String = "",
-    crossinline func: suspend PipelineContext<Unit, ApplicationCall>.(B) -> T
-) {
-    post(path) {
-        val response = runCatching {
-            val requestBody = call.receive<B>()
-            func(requestBody)
-        }.getOrElse { t ->
-            call.application.log.error(call.request.path(), t)
-            ApiResponse.Error(
-                code = errorCodeFromThrowable(t),
-                errors = throwableToResponseErrors(t)
-            )
-        }
-        call.respond(response)
-    }
-}
-
-/**
- * Utility function that summarizes api PUT response objects, receiving the body of the request into the specified type
- * ([R]) and returning an [ApiResponse] of the specified type ([T])
- */
-inline fun <reified R: Any, reified T: ApiResponse.Success<R>> Route.apiPutReceive(
-    path: String = "",
-    crossinline func: suspend PipelineContext<Unit, ApplicationCall>.(R) -> T
-) {
-    put(path) {
-        val response = runCatching {
-            val requestBody = call.receive<R>()
-            func(requestBody)
-        }.getOrElse { t ->
-            call.application.log.error(call.request.path(), t)
-            ApiResponse.Error(
-                code = errorCodeFromThrowable(t),
-                errors = throwableToResponseErrors(t)
-            )
-        }
-        call.respond(response)
-    }
-}
-
-/**
- * Utility function that summarizes api PATCH response objects, receiving the body of the request into the specified
- * type ([R]) and returning an [ApiResponse] of the specified type ([T])
- */
-inline fun <reified R: Any, reified T: ApiResponse.Success<R>> Route.apiPatchReceive(
-    path: String = "",
-    crossinline func: suspend PipelineContext<Unit, ApplicationCall>.(R) -> T
-) {
-    patch(path) {
-        val response = runCatching {
-            val requestBody = call.receive<R>()
-            func(requestBody)
-        }.getOrElse { t ->
-            call.application.log.error(call.request.path(), t)
-            ApiResponse.Error(
-                code = errorCodeFromThrowable(t),
-                errors = throwableToResponseErrors(t)
-            )
-        }
-        call.respond(response)
-    }
-}
-
-/**
- * Utility function that summarizes api DELETE response objects returning an [ApiResponse] of the specified type ([T])
- */
-inline fun <reified R: Any, reified T: ApiResponse.Success<R>> Route.apiDelete(
-    path: String = "",
-    crossinline func: suspend PipelineContext<Unit, ApplicationCall>.() -> T
-) {
-    delete(path) {
-        val response = runCatching {
-            func()
-        }.getOrElse { t ->
-            call.application.log.error(call.request.path(), t)
-            ApiResponse.Error(
-                code = errorCodeFromThrowable(t),
-                errors = throwableToResponseErrors(t)
-            )
-        }
-        call.respond(response)
     }
 }
