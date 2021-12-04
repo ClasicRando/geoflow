@@ -76,13 +76,14 @@ class BasePage private constructor (
             }
             link {
                 rel = "stylesheet"
-                href = "https://use.fontawesome.com/releases/v5.6.3/css/all.css"
-                integrity = "sha384-UHRtZLI+pbxtHCWp1t77Bi1L4ZtiqrqD80Kn4Z8NTSRyMA2Fd33n5dQ8lWUE00s/"
-                attributes["crossorigin"] = "anonymous"
+                href = "https://cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free@5.15.4/css/all.min.css"
             }
             link {
                 rel = "stylesheet"
                 href = "https://unpkg.com/bootstrap-table@1.18.3/dist/bootstrap-table.min.css"
+            }
+            script {
+                src = "https://cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free@5.15.4/js/all.min.js"
             }
             script {
                 src = "https://cdn.jsdelivr.net/npm/lodash@4.17.21/lodash.min.js"
@@ -116,6 +117,9 @@ class BasePage private constructor (
                         .invalidInput {
                             color: #dc3545;
                             border-color: #dc3545;
+                        }
+                        .hidden {
+                            display: none;
                         }
                     """.trimIndent())
                 }
