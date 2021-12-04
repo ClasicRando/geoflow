@@ -1,6 +1,7 @@
 package database.tables
 
 import database.extensions.submitQuery
+import database.functions.GetUserActions
 import kotlinx.serialization.Serializable
 import java.sql.Connection
 
@@ -60,14 +61,8 @@ object Actions : DbTable("actions"), ApiExposed, DefaultData {
      */
     fun userActions(connection: Connection, userOid: Long): List<Action> {
         val sql = """
-            WITH user_roles AS (
-                SELECT REGEXP_REPLACE(unnest(roles),'admin',null) "role"
-                FROM   ${InternalUsers.tableName}
-                WHERE  user_oid = ?
-            )
             SELECT name, description, href
-            FROM   $tableName t1, user_roles t2
-            WHERE  t1.role = COALESCE(t2.role,t1.role)
+            FROM   ${GetUserActions.name}(?)
         """.trimIndent()
         return connection.submitQuery(sql = sql, userOid)
     }

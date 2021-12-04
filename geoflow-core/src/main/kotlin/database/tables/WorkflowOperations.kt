@@ -1,6 +1,7 @@
 package database.tables
 
 import database.extensions.submitQuery
+import database.functions.GetUserOperations
 import kotlinx.serialization.Serializable
 import java.sql.Connection
 
@@ -45,15 +46,8 @@ object WorkflowOperations : DbTable("workflow_operations"), DefaultData, ApiExpo
      */
     fun userOperations(connection: Connection, userOid: Long): List<WorkflowOperation> {
         val sql = """
-            WITH user_roles AS (
-                SELECT REGEXP_REPLACE(unnest(roles),'admin',null) "role"
-                FROM   ${InternalUsers.tableName}
-                WHERE  user_oid = ?
-            )
             SELECT name, href
-            FROM   $tableName t1, user_roles t2
-            WHERE  t1.role = COALESCE(t2.role,t1.role)
-            ORDER BY workflow_order
+            FROM   ${GetUserOperations.name}(?)
         """.trimIndent()
         return connection.submitQuery(sql = sql, userOid)
     }
