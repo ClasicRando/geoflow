@@ -259,7 +259,7 @@ object PipelineRuns : DbTable("pipeline_runs"), ApiExposed, Triggers {
                     ${PipelineRun.sql}
                     WHERE workflow_operation = ?
                     AND   COALESCE(t1.${state}_user_oid, ?) = ?
-                    AND   ? IN (SELECT code FROM user_operations)"
+                    AND   ? IN (SELECT code FROM user_operations)
                 """.trimIndent(),
                 userId,
                 state,
