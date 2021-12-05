@@ -1,12 +1,13 @@
 package paths
 
-import apiCall
+import utils.apiCall
 import database.Database
 import database.tables.InternalUsers
 import io.ktor.application.call
 import io.ktor.http.HttpMethod
 import io.ktor.request.receive
 import io.ktor.routing.Route
+import utils.ApiResponse
 
 /** Internal Users API route */
 object ApiUsers : ApiPath(path = "/users") {
@@ -17,6 +18,7 @@ object ApiUsers : ApiPath(path = "/users") {
         updateUser(this)
     }
 
+    /** Returns list of user records */
     private fun getUsers(parent: Route) {
         parent.apiCall(httpMethod = HttpMethod.Get) { userOid ->
             val payload = Database.runWithConnection {
@@ -26,6 +28,10 @@ object ApiUsers : ApiPath(path = "/users") {
         }
     }
 
+    /**
+     * Requests to create a new user entry with the entire contents of the provided JSON body. Checks to ensure the
+     * requesting user has privileges to create a new user
+     */
     private fun createUser(parent: Route) {
         parent.apiCall(httpMethod = HttpMethod.Post) { userOid ->
             val requestUser = call.receive<InternalUsers.RequestUser>()
@@ -36,6 +42,10 @@ object ApiUsers : ApiPath(path = "/users") {
         }
     }
 
+    /**
+     * Requests that the specified user is updated in part with the contents of the provided JSON body. Checks to ensure
+     * the requesting user has privileges to update users
+     */
     private fun updateUser(parent: Route) {
         parent.apiCall(httpMethod = HttpMethod.Put) { userOid ->
             val requestUser = call.receive<InternalUsers.RequestUser>()

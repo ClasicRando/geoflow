@@ -1,3 +1,5 @@
+package utils
+
 import kotlinx.serialization.Serializable
 
 /** */

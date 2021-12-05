@@ -3,6 +3,7 @@ import com.auth0.jwt.JWT
 import com.auth0.jwt.algorithms.Algorithm
 import database.Database
 import database.tables.InternalUsers
+import utils.User
 import io.ktor.application.Application
 import io.ktor.application.call
 import io.ktor.application.install
@@ -20,8 +21,10 @@ import io.ktor.routing.route
 import io.ktor.routing.routing
 import io.ktor.serialization.json
 import io.ktor.websocket.WebSockets
+import it.justwrote.kjob.Job
 import it.justwrote.kjob.KJob
 import it.justwrote.kjob.Mongo
+import it.justwrote.kjob.dsl.ScheduleContext
 import it.justwrote.kjob.job.JobExecutionType
 import it.justwrote.kjob.kjob
 import mu.KLogger
@@ -47,28 +50,42 @@ private const val JWT_BUCKET_SIZE = 10L
 private const val JWT_REFILL_RATE = 1L
 private const val EXPIRE_DURATION = 57600000
 
+private const val KEEP_ALIVE_PERIOD = 60L
+private const val CLEANUP_PERIOD = 60L
+private const val CLEANUP_SIZE = 50
+private const val EXPIRE_LOCK = 5L
+
 /** logger used for the KJob instance */
 val logger: KLogger = KotlinLogging.logger {}
 /** Kjob instance used by the API to schedule jobs for the worker application */
-@Suppress("MagicNumber")
-val kjob: KJob = kjob(Mongo) {
+private val kjob: KJob = kjob(Mongo) {
     nonBlockingMaxJobs = 1
     blockingMaxJobs = 1
     maxRetries = 0
     defaultJobExecutor = JobExecutionType.NON_BLOCKING
 
     exceptionHandler = { t -> logger.error("Unhandled exception", t) }
-    keepAliveExecutionPeriodInSeconds = 60
+    keepAliveExecutionPeriodInSeconds = KEEP_ALIVE_PERIOD
     jobExecutionPeriodInSeconds = 1
-    cleanupPeriodInSeconds = 300
-    cleanupSize = 50
+    cleanupPeriodInSeconds = CLEANUP_PERIOD
+    cleanupSize = CLEANUP_SIZE
 
     connectionString = "mongodb://127.0.0.1:27017"
     databaseName = "kjob"
     jobCollection = "kjob-jobs"
     lockCollection = "kjob-locks"
-    expireLockInMinutes = 5L
+    expireLockInMinutes = EXPIRE_LOCK
 }.start()
+
+/**
+ * Access point for scheduling jobs for the kjob instance. Provides the same api as the [schedule][KJob.schedule]
+ * function but does not provide access to the instance itself
+ */
+suspend fun<J: Job> scheduleJob(job: J, action: ScheduleContext<J>.(J) -> Unit) {
+    kjob.schedule(job) {
+        action(job)
+    }
+}
 
 /** Main entry of the API. Initializes the server engine. */
 fun main(args: Array<String>): Unit = io.ktor.server.cio.EngineMain.main(args)
@@ -126,7 +143,6 @@ fun Application.module() {
         }
         post(path = "/login") {
             val user = call.receive<User>()
-            @Suppress("MoveVariableDeclarationIntoWhen")
             val validation = Database.runWithConnection {
                 InternalUsers.validateUser(it, user.username, user.password)
             }

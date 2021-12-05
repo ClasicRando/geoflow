@@ -1,6 +1,6 @@
 package paths
 
-import apiCall
+import utils.apiCall
 import database.Database
 import database.enums.TaskStatus
 import database.tables.PipelineRunTasks
@@ -9,8 +9,9 @@ import io.ktor.http.HttpMethod
 import io.ktor.routing.Route
 import io.ktor.util.getOrFail
 import jobs.SystemJob
-import kjob
-import publisher
+import sockets.publisher
+import scheduleJob
+import utils.ApiResponse
 
 /** Pipeline run tasks API route */
 object ApiPipelineRunTasks : ApiPath(path = "/pipeline-run-tasks") {
@@ -55,7 +56,7 @@ object ApiPipelineRunTasks : ApiPath(path = "/pipeline-run-tasks") {
             val payload = Database.runWithConnection {
                 PipelineRunTasks.getRecordForRun(it, userOid, runId)
             }.also { nextTask ->
-                kjob.schedule(SystemJob) {
+                scheduleJob(SystemJob) {
                     props[it.pipelineRunTaskId] = nextTask.pipelineRunTaskId
                     props[it.runId] = runId
                     props[it.runNext] = false
@@ -79,7 +80,7 @@ object ApiPipelineRunTasks : ApiPath(path = "/pipeline-run-tasks") {
             val payload = Database.runWithConnection {
                 PipelineRunTasks.getRecordForRun(it, userOid, runId)
             }.also { nextTask ->
-                kjob.schedule(SystemJob) {
+                scheduleJob(SystemJob) {
                     props[it.pipelineRunTaskId] = nextTask.pipelineRunTaskId
                     props[it.runId] = runId
                     props[it.runNext] = true

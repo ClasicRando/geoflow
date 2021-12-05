@@ -1,6 +1,6 @@
 package paths
 
-import apiCall
+import utils.apiCall
 import database.Database
 import database.tables.InternalUsers
 import io.ktor.application.call
@@ -9,6 +9,7 @@ import io.ktor.request.receive
 import io.ktor.routing.Route
 import kotlinx.coroutines.flow.toList
 import mongo.MongoDb
+import utils.ApiResponse
 
 /** All KJob data API route */
 object ApiJobs : ApiPath(path = "/jobs") {

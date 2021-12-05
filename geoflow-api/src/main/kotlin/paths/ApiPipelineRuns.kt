@@ -1,12 +1,13 @@
 package paths
 
-import apiCall
+import utils.apiCall
 import database.Database
 import database.tables.PipelineRuns
 import io.ktor.application.call
 import io.ktor.http.HttpMethod
 import io.ktor.routing.Route
 import io.ktor.util.getOrFail
+import utils.ApiResponse
 
 /** Pipeline runs API route */
 object ApiPipelineRuns : ApiPath(path = "/pipeline-runs")  {

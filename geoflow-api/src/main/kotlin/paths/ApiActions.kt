@@ -1,10 +1,11 @@
 package paths
 
-import apiCall
+import utils.apiCall
 import database.Database
 import database.tables.Actions
 import io.ktor.http.HttpMethod
 import io.ktor.routing.Route
+import utils.ApiResponse
 
 /** User actions API route */
 object ApiActions : ApiPath(path = "/actions") {

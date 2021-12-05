@@ -1,10 +1,9 @@
-@file:Suppress("MatchingDeclarationName")
+package sockets
 
 import database.startListener
-import io.ktor.http.cio.websocket.DefaultWebSocketSession
-import io.ktor.http.cio.websocket.send
 import io.ktor.http.cio.websocket.Frame
 import io.ktor.http.cio.websocket.readText
+import io.ktor.http.cio.websocket.send
 import io.ktor.routing.Route
 import io.ktor.util.getOrFail
 import io.ktor.websocket.webSocket
@@ -17,14 +16,6 @@ import kotlinx.coroutines.sync.withLock
 import kotlinx.serialization.ExperimentalSerializationApi
 import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
-
-/** Generic connection to a web socket endpoint */
-data class Connection(
-    /** web socket session for the connection */
-    val session: DefaultWebSocketSession,
-    /** message payload to listen for on the given postgresql notification socket */
-    val listenId: String,
-)
 
 /**
  * Base publisher for a given [path] and LISTEN [channel name][channelName] for the database.

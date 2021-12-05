@@ -1,6 +1,6 @@
 package paths
 
-import apiCall
+import utils.apiCall
 import database.Database
 import database.tables.SourceTables
 import io.ktor.application.call
@@ -8,6 +8,7 @@ import io.ktor.http.HttpMethod
 import io.ktor.request.receive
 import io.ktor.routing.Route
 import io.ktor.util.getOrFail
+import utils.ApiResponse
 
 /** Source tables API route */
 object ApiSourceTables : ApiPath(path = "/source-tables") {
@@ -19,6 +20,7 @@ object ApiSourceTables : ApiPath(path = "/source-tables") {
         deleteSourceTable(this)
     }
 
+    /** Returns list of source table records for the given runId */
     private fun getSourceTables(parent: Route) {
         parent.apiCall(httpMethod = HttpMethod.Get, path = "/{runId}") {
             val runId = call.parameters.getOrFail("runId").toLong()
@@ -29,6 +31,10 @@ object ApiSourceTables : ApiPath(path = "/source-tables") {
         }
     }
 
+    /**
+     * Requests that the specified source table is updated with the entire contents of the provided JSON body. Checks
+     * to ensure the requesting user has privileges to update the record in question
+     */
     private fun updateSourceTable(parent: Route) {
         parent.apiCall(httpMethod = HttpMethod.Put) { userOid ->
             val sourceTable = call.receive<SourceTables.Record>()
@@ -39,6 +45,10 @@ object ApiSourceTables : ApiPath(path = "/source-tables") {
         }
     }
 
+    /**
+     * Requests to create a new source table entry with the entire contents of the provided JSON body for the specified
+     * runId. Checks to ensure the requesting user has privileges to create a record for the run
+     */
     private fun createSourceTable(parent: Route) {
         parent.apiCall(httpMethod = HttpMethod.Post, path = "/{runId}") { userOid ->
             val sourceTable = call.receive<SourceTables.Record>()
@@ -50,6 +60,10 @@ object ApiSourceTables : ApiPath(path = "/source-tables") {
         }
     }
 
+    /**
+     * Requests that the specified source table is deleted. Checks to ensure the requesting user has privileges to
+     * delete the record in question
+     */
     private fun deleteSourceTable(parent: Route) {
         parent.apiCall(httpMethod = HttpMethod.Delete, path = "/{stOid}") { userOid ->
             val stOid = call.parameters.getOrFail("stOid").toLong()
