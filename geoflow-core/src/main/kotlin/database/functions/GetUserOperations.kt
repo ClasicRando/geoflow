@@ -2,7 +2,10 @@ package database.functions
 
 import kotlin.reflect.typeOf
 
-/** */
+/**
+ * DB function for getting all operations available to a give user. No public API for calling within the codebase.
+ * Currently, used within queries and existing here for build script purposes.
+ */
 object GetUserOperations: PlPgSqlTableFunction(
     name = "get_user_operation",
     parameterTypes = listOf(
