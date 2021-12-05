@@ -1,6 +1,6 @@
 package database.functions
 
-import database.NoRecordAffected
+import database.errors.NoRecordAffected
 import database.extensions.queryFirstOrNull
 import java.sql.Connection
 import kotlin.reflect.KType

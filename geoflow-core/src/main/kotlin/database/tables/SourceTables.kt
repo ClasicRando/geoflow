@@ -2,7 +2,7 @@
 
 package database.tables
 
-import database.NoRecordAffected
+import database.errors.NoRecordAffected
 import loading.AnalyzeInfo
 import loading.AnalyzeResult
 import loading.LoadingInfo

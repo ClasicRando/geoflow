@@ -1,6 +1,6 @@
 package database.tables
 
-import database.NoRecordAffected
+import database.errors.NoRecordAffected
 import database.extensions.queryFirstOrNull
 import database.extensions.queryHasResult
 import database.extensions.runReturningFirstOrNull

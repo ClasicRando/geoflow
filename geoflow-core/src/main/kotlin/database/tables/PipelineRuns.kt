@@ -1,6 +1,6 @@
 package database.tables
 
-import database.NoRecordFound
+import database.errors.NoRecordFound
 import database.enums.MergeType
 import database.enums.OperationState
 import database.extensions.queryFirstOrNull

@@ -1,7 +1,7 @@
 package database.tables
 
-import database.NoRecordAffected
-import database.NoRecordFound
+import database.errors.NoRecordAffected
+import database.errors.NoRecordFound
 import database.enums.TaskRunType
 import database.enums.TaskStatus
 import database.functions.GetTasksOrdered

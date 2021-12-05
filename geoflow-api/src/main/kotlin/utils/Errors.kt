@@ -1,7 +1,7 @@
 package utils
 
-import database.NoRecordAffected
-import database.NoRecordFound
+import database.errors.NoRecordAffected
+import database.errors.NoRecordFound
 import database.tables.InternalUsers
 import io.ktor.application.MissingApplicationFeatureException
 import io.ktor.http.HttpStatusCode

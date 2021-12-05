@@ -1,13 +1,21 @@
 package database
 
 import database.Database.useConnection
-import kotlinx.coroutines.*
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.isActive
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.withContext
+import kotlinx.coroutines.NonCancellable
 import mu.KotlinLogging
 import org.postgresql.PGConnection
 import org.postgresql.PGNotification
 import java.sql.SQLException
 
 private val logger = KotlinLogging.logger {}
+private const val NOTIFICATION_CHECK_DELAY = 1000L
 
 /**
  * Launches a coroutine that listens for notification from a specific channel and performs a callback operation when a
@@ -23,6 +31,7 @@ fun CoroutineScope.startListener(channelName: String, callback: suspend (String)
             connection.prepareStatement("LISTEN $channelName").use {
                 it.execute()
             }
+            @Suppress("TooGenericExceptionCaught")
             try {
                 while (isActive) {
                     pgConnection.notifications?.let { notifications ->
@@ -30,12 +39,12 @@ fun CoroutineScope.startListener(channelName: String, callback: suspend (String)
                             callback(notification.parameter)
                         }
                     }
-                    delay(1000)
+                    delay(NOTIFICATION_CHECK_DELAY)
                 }
             } catch (e: SQLException) {
                 logger.info("SQL error that has caused the '$channelName' listener to close", e)
             } catch(c: CancellationException) {
-                logger.info("'$channelName' listener Job has been cancelled by parent scope")
+                logger.info("'$channelName' listener Job has been cancelled by parent scope", c)
             } catch (t: Throwable) {
                 logger.info("Generic error that has caused the '$channelName' listener to close", t)
             } finally {
