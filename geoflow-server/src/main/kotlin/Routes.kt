@@ -18,6 +18,7 @@ import io.ktor.html.respondHtml
 import io.ktor.http.HttpMethod
 import io.ktor.http.content.static
 import io.ktor.http.content.resources
+import io.ktor.request.path
 import io.ktor.request.receive
 import io.ktor.response.respond
 import io.ktor.response.respondRedirect
@@ -33,46 +34,28 @@ import io.ktor.util.getOrFail
 import io.ktor.util.pipeline.PipelineContext
 import java.sql.Connection
 
-/** */
+/** Utility to get the [UserSession] for a call */
 val ApplicationCall.session: UserSession? get() = this.sessions.get<UserSession>()
 
-/** */
-fun Route.login() {
-    route(path = "/login") {
-        get {
-            call.respondHtml {
-                val message = call.request.queryParameters["message"] ?: ""
-                login(
-                    when (message) {
-                        "invalid" -> "Invalid username or password"
-                        "lookup" -> "Lookup error for session creation"
-                        "expired" -> "Session has expired"
-                        "error" -> "Session error. Please login again"
-                        else -> ""
-                    }
-                )
-            }
-        }
-        post {
-            val user = call.receive<User>()
-            val response = Database.runWithConnectionAsync {
-                when (val validateResult = InternalUsers.validateUser(it, user.username, user.password)) {
-                    is InternalUsers.ValidationResponse.Success -> {
-                        handleUserPostValidate(it, user)
-                        mapOf("success" to true)
-                    }
-                    is InternalUsers.ValidationResponse.Failure -> {
-                        call.application.log.info(validateResult.ERROR_MESSAGE)
-                        mapOf("error" to validateResult.ERROR_MESSAGE)
-                    }
+/** GET route for login form */
+private fun Route.getLogin() {
+    get {
+        call.respondHtml {
+            val message = call.request.queryParameters["message"] ?: ""
+            login(
+                when (message) {
+                    "invalid" -> "Invalid username or password"
+                    "lookup" -> "Lookup error for session creation"
+                    "expired" -> "Session has expired"
+                    "error" -> "Session error. Please login again"
+                    else -> ""
                 }
-            }
-            call.respond(response)
+            )
         }
     }
 }
 
-/** */
+/** Handles user request once the user credentials have been validated. Calls API to get a token for future API calls */
 private suspend fun PipelineContext<Unit, ApplicationCall>.handleUserPostValidate(
     connection: Connection,
     user: User,
@@ -91,6 +74,47 @@ private suspend fun PipelineContext<Unit, ApplicationCall>.handleUserPostValidat
         apiToken = response["token"] ?: throw IllegalStateException("Token from api must not be null")
     )
     call.sessions.set(session)
+}
+
+/** Validates the user and returns a [Map] to be serialized as a JSON response */
+private suspend fun PipelineContext<Unit, ApplicationCall>.validateUser(user: User): Map<String, String> {
+    return Database.runWithConnectionAsync {
+        when (val validateResult = InternalUsers.validateUser(it, user.username, user.password)) {
+            is InternalUsers.ValidationResponse.Success -> {
+                handleUserPostValidate(it, user)
+                mapOf("success" to "true")
+            }
+            is InternalUsers.ValidationResponse.Failure -> {
+                call.application.log.info(validateResult.ERROR_MESSAGE)
+                mapOf("error" to validateResult.ERROR_MESSAGE)
+            }
+        }
+    }
+}
+
+/**
+ * POST route for login form. Validates the user and handles any errors since we do not want to response with an error
+ * page
+ */
+private fun Route.postLogin() {
+    post {
+        val user = call.receive<User>()
+        val response = runCatching {
+            validateUser(user)
+        }.getOrElse { t ->
+            call.application.log.info(call.request.path(), t.message)
+            mapOf("error" to t.message)
+        }
+        call.respond(response)
+    }
+}
+
+/** Login route  */
+fun Route.login() {
+    route(path = "/login") {
+        getLogin()
+        postLogin()
+    }
 }
 
 /** Upon logout request, remove current session and redirect to login. */
