@@ -8,10 +8,12 @@ import io.ktor.client.engine.cio.CIO
 import io.ktor.client.features.json.JsonFeature
 import io.ktor.client.features.json.serializer.KotlinxSerializer
 import io.ktor.client.request.get
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.asFlow
 import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.withContext
 import kotlinx.serialization.ExperimentalSerializationApi
 import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
@@ -49,8 +51,6 @@ class ArcGisServiceMetadata private constructor(
     val maxRecordCount: Int,
     /** flag denoting if the service supports pagination */
     val pagination: Boolean,
-    /** flag denoting if the service supports statistics */
-    val stats: Boolean,
     /** name of the server type */
     val serverType: String,
     /** name of the geometry type */
@@ -61,9 +61,8 @@ class ArcGisServiceMetadata private constructor(
     val oidField: String,
     /** Max and min OID values if the OID field exists and the values are required for scraping */
     val maxMinOid: Pair<Int, Int>,
-    /** flag denoting if the OID field exists and is incremental */
-    val incrementalOid: Boolean,
 ) {
+//    private val incrementalOid = maxMinOid.first != -1 && (maxMinOid.first - maxMinOid.second + 1) == sourceCount
     /** Scrape chunk size. Uses service max record count but caps that value to 10000 */
     private val scrapeCount = maxRecordCount.takeIf { maxRecordCount <= maxRecordScrape } ?: maxRecordScrape
     /** Number of queries required to scrape all features using the OID field */
@@ -185,8 +184,6 @@ class ArcGisServiceMetadata private constructor(
      * Makes an HTTP request and retries until it gets a valid JSON response, or it exceeds the max number of tries.
      * Once a valid response is received, a temp file is created and the features are written to the temp file.
      */
-    @OptIn(ExperimentalSerializationApi::class)
-    @Suppress("BlockingMethodInNonBlockingContext")
     private suspend fun fetchQuery(url: String): File {
         val jsonResponse = HttpClient(CIO) {
             install(JsonFeature) {
@@ -195,7 +192,9 @@ class ArcGisServiceMetadata private constructor(
         }.use { client ->
             client.tryUntilSuccess(url)
         }
-        return File.createTempFile("temp", ".csv").also { file ->
+        return withContext(Dispatchers.IO) {
+            File.createTempFile("temp", ".csv")
+        }.also { file ->
             file.deleteOnExit()
             val writer = CsvWriter(file.bufferedWriter(), csvSettings)
             writer.writeHeaders()
@@ -225,98 +224,116 @@ class ArcGisServiceMetadata private constructor(
            ++%7D%0D%0A%5D&f=json'
         """.trimIndent().replace("\n", "")
 
+        /** */
+        private suspend fun getSourceCount(client: HttpClient, url: String): Int {
+            return client.get<JsonObject>(url + countQuery)["count"]
+                ?.jsonPrimitive
+                ?.int ?: -1
+        }
+
+        /** */
+        private fun getAdvancedFeatures(json: JsonObject): Pair<Boolean, Boolean> {
+            return json["advancedQueryCapabilities"]?.jsonObject?.let { advancedQuery ->
+                Pair(
+                    advancedQuery["supportsPagination"]?.jsonPrimitive?.boolean == true,
+                    advancedQuery["supportsStatistics"]?.jsonPrimitive?.boolean ?: false
+                )
+            } ?: Pair(
+                json["supportsPagination"]?.jsonPrimitive?.boolean ?: false,
+                json["supportsStatistics"]?.jsonPrimitive?.boolean ?: false
+            )
+        }
+
+        /** */
+        private fun getFields(json: JsonObject, geoType: String): Pair<String, List<String>> {
+            val geoFields = when (geoType) {
+                "esriGeometryPoint" -> listOf("X", "Y")
+                "esriGeometryMultipoint" -> listOf("POINTS")
+                "esriGeometryPolygon" -> listOf("RINGS")
+                else -> emptyList()
+            }
+            val fields = json["fields"]?.jsonArray
+                ?.mapNotNull { it.jsonObject } ?: emptyList()
+            val fieldNames = fields
+                .filter {
+                    it["name"]?.jsonPrimitive?.content != "Shape" &&
+                            it["type"]?.jsonPrimitive?.content != "esriFieldTypeGeometry"
+                }
+                .mapNotNull { it["name"]?.jsonPrimitive?.content }
+                .plus(geoFields)
+            val oidField = fields
+                .firstOrNull { it["type"]?.jsonPrimitive?.content == "esriFieldTypeOID" }
+                ?.get("name")
+                ?.jsonPrimitive?.content ?: ""
+            return oidField to fieldNames
+        }
+
+        /** */
+        private suspend fun getMaxMinOid(
+            client: HttpClient,
+            url: String,
+            oidField: String,
+            hasStats: Boolean,
+        ): Pair<Int, Int> {
+            return if (hasStats) {
+                with(client.get<JsonObject>(url + maxMinQuery(oidField))) {
+                    this["features"]
+                        ?.jsonArray
+                        ?.get(0)
+                        ?.jsonObject
+                        ?.get("attributes")
+                        ?.jsonObject
+                        ?.let { attributes ->
+                            Pair(
+                                attributes["MAX_VALUE"]?.jsonPrimitive?.int ?: -1,
+                                attributes["MIN_VALUE"]?.jsonPrimitive?.int ?: -1
+                            )
+                        } ?: Pair(-1, -1)
+                }
+            } else {
+                with(client.get<JsonObject>(url + oidQuery)) {
+                    val objectIds = this["objectIds"]
+                        ?.jsonArray
+                        ?.mapNotNull { it.jsonPrimitive.int } ?: emptyList()
+                    Pair(objectIds.maxOrNull() ?: -1, objectIds.minOrNull() ?: -1)
+                }
+            }
+        }
+
         /**
          * Returns [metadata][ArcGisServiceMetadata] from the provided [url] that points to an ArcGIS REST service.
          *
          * Only method to obtain a class instance. Since the class requires data obtained from an HTTP request, the
          * class creation method has to be suspendable to avoid the class constructor blocking the current thread.
          */
-        @Suppress("LongMethod", "ComplexMethod")
         suspend fun fromUrl(url: String): ArcGisServiceMetadata {
             return HttpClient(CIO) {
                 install(JsonFeature) {
                     serializer = KotlinxSerializer()
                 }
             }.use { client ->
-                val sourceCount = client.get<JsonObject>(url + countQuery)["count"]
-                    ?.jsonPrimitive
-                    ?.int ?: -1
+                val sourceCount = getSourceCount(client, url)
                 val json = client.get<JsonObject>(url + fieldQuery)
                 val serverType = json["type"]?.jsonPrimitive?.content ?: ""
                 val name = json["name"]?.jsonPrimitive?.content ?: ""
                 val maxRecordCount = json["maxRecordCount"]?.jsonPrimitive?.int ?: -1
-                val advancedQuery = json["advancedQueryCapabilities"]?.jsonObject
-                val (pagination, stats) = if (advancedQuery != null) {
-                    Pair(
-                        advancedQuery["supportsPagination"]?.jsonPrimitive?.boolean == true,
-                        advancedQuery["supportsStatistics"]?.jsonPrimitive?.boolean ?: false
-                    )
-                } else {
-                    Pair(
-                        json["supportsPagination"]?.jsonPrimitive?.boolean ?: false,
-                        json["supportsStatistics"]?.jsonPrimitive?.boolean ?: false
-                    )
-                }
+                val (pagination, stats) = getAdvancedFeatures(json)
                 val geoType = json["geometryType"]?.jsonPrimitive?.content ?: ""
-                val geoFields = when (geoType) {
-                    "esriGeometryPoint" -> listOf("X", "Y")
-                    "esriGeometryMultipoint" -> listOf("POINTS")
-                    "esriGeometryPolygon" -> listOf("RINGS")
-                    else -> emptyList()
-                }
-                val fields = json["fields"]?.jsonArray
-                    ?.mapNotNull { it.jsonObject } ?: emptyList()
-                val fieldNames = fields
-                    .filter {
-                        it["name"]?.jsonPrimitive?.content != "Shape" &&
-                                it["type"]?.jsonPrimitive?.content != "esriFieldTypeGeometry"
-                    }
-                    .mapNotNull { it["name"]?.jsonPrimitive?.content }
-                    .plus(geoFields)
-                val oidField = fields
-                    .firstOrNull { it["type"]?.jsonPrimitive?.content == "esriFieldTypeOID" }
-                    ?.get("name")
-                    ?.jsonPrimitive?.content ?: ""
-                val maxMinOid = when {
-                    !pagination && stats && oidField.isNotEmpty() -> {
-                        val response = client.get<JsonObject>(url + maxMinQuery(oidField))
-                        response["features"]
-                            ?.jsonArray
-                            ?.get(0)
-                            ?.jsonObject
-                            ?.get("attributes")
-                            ?.jsonObject
-                            ?.let { attributes ->
-                                Pair(
-                                    attributes["MAX_VALUE"]?.jsonPrimitive?.int ?: -1,
-                                    attributes["MIN_VALUE"]?.jsonPrimitive?.int ?: -1
-                                )
-                            } ?: Pair(-1, -1)
-                    }
-                    !pagination && oidField.isNotEmpty() -> {
-                        with(client.get<JsonObject>(url + oidQuery)) {
-                            val objectIds = this["objectIds"]
-                                ?.jsonArray
-                                ?.mapNotNull { it.jsonPrimitive.int } ?: emptyList()
-                            Pair(objectIds.maxOrNull() ?: -1, objectIds.minOrNull() ?: -1)
-                        }
-                    }
-                    else -> Pair(-1, -1)
-                }
-                val incrementalOid = maxMinOid.first != -1 && (maxMinOid.first - maxMinOid.second + 1) == sourceCount
+                val (oidField, fieldNames) = getFields(json, geoType)
+                val maxMinOid = if (!pagination && oidField.isNotEmpty()) {
+                    getMaxMinOid(client, url, oidField, stats)
+                } else Pair(-1, -1)
                 ArcGisServiceMetadata(
                     url = url,
                     name = name,
                     sourceCount = sourceCount,
                     maxRecordCount = maxRecordCount,
                     pagination = pagination,
-                    stats = stats,
                     serverType = serverType,
                     geoType = geoType,
                     fields = fieldNames,
                     oidField = oidField,
                     maxMinOid = maxMinOid,
-                    incrementalOid = incrementalOid,
                 )
             }
         }

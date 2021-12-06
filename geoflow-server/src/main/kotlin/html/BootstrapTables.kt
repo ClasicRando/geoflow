@@ -22,7 +22,7 @@ fun getFieldTable(field: String): String = field
     .toString()
 
 /**
- * Container template for buttons found in a table. Uses properties to construct JSON entry.
+ * Template for buttons found in a table. Uses parameters to construct a JSON object entry.
  *
  * See [buttons](https://bootstrap-table.com/docs/api/table-options/#buttons) option for more details.
  */
@@ -47,7 +47,10 @@ fun tableButton(
 }
 
 /**
+ * Template for buttons found in a table. Uses the [name] as a key and the [html] code as the only entry in the object.
+ * The html can be multi-line and should be directly what html you want to implement for the button.
  *
+ * See [buttons](https://bootstrap-table.com/docs/api/table-options/#buttons) option for more details.
  */
 fun tableButton(name: String, html: String): String {
     return """
@@ -57,7 +60,7 @@ fun tableButton(name: String, html: String): String {
     """.trimIndent()
 }
 
-/** Container for table header buttons. Provides a [name] and [html code][html] for the html list entry */
+/** Container for table header buttons. Provides a [name] and [html] code for the html list entry */
 data class HeaderButton(
     /** name of button */
     val name: String,
@@ -65,7 +68,7 @@ data class HeaderButton(
     val html: UL.() -> Unit,
 )
 
-/** adds a row to the `thead` tag and populates that row with the fields provided */
+/** Adds a row to the `thead` tag and populates that row with the fields provided */
 private fun THEAD.addFields(fields: Map<String, Map<String, String>>, clickableRows: Boolean) {
     tr {
         for ((field, options) in fields) {

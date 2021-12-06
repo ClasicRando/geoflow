@@ -1,10 +1,14 @@
-package html
+package pages
 
 import database.Database
 import database.tables.InternalUsers
 import database.tables.Roles
-import io.ktor.html.Template
-import kotlinx.html.HTML
+import html.addParamsAsJsGlobalVariables
+import html.basicTable
+import html.formModal
+import html.tableButton
+import kotlinx.html.FlowContent
+import kotlinx.html.STYLE
 import kotlinx.html.checkBoxInput
 import kotlinx.html.div
 import kotlinx.html.id
@@ -18,7 +22,8 @@ import kotlinx.html.textInput
 /**
  * Home for admin related tasks. Shows data for users, runs and the worker application
  */
-object AdminDashboard {
+object AdminDashboard : BasePage() {
+
     private const val USER_TABLE_ID = "users"
     private const val USER_CREATE_MODAL = "userCreate"
     private const val USER_EDIT_MODAL = "userEdit"
@@ -37,8 +42,9 @@ object AdminDashboard {
         ),
     )
 
-    /** Page template for dashboard. Utilized getter since database result could change during lifespan of server */
-    val page: Template<HTML> get() = BasePage.withContent {
+    override val styles: STYLE.() -> Unit = {}
+
+    override val content: FlowContent.() -> Unit = {
         div(classes = "row") {
             div(classes = "col") {
                 basicTable(
@@ -188,7 +194,9 @@ object AdminDashboard {
                 }
             }
         }
-    }.withScript {
+    }
+
+    override val script: FlowContent.() -> Unit = {
         script {
             addParamsAsJsGlobalVariables(
                 "userTable" to USER_TABLE_ID,
@@ -202,4 +210,5 @@ object AdminDashboard {
             src = "/assets/admin-dashboard.js"
         }
     }
+
 }

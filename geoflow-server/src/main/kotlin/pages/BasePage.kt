@@ -1,10 +1,9 @@
-package html
+package pages
 
-import io.ktor.html.Template
 import io.ktor.html.Placeholder
+import io.ktor.html.Template
 import io.ktor.html.insert
 import kotlinx.html.FlowContent
-import kotlinx.html.script
 import kotlinx.html.HTML
 import kotlinx.html.STYLE
 import kotlinx.html.a
@@ -16,48 +15,39 @@ import kotlinx.html.li
 import kotlinx.html.link
 import kotlinx.html.meta
 import kotlinx.html.nav
+import kotlinx.html.script
 import kotlinx.html.style
 import kotlinx.html.title
 import kotlinx.html.ul
 import kotlinx.html.unsafe
 
 /**
- * Base template for all standard pages in the application. Contains a links, scripts and placeholders for later
- * additions when the page is created.
- *
- * Instances are created using static methods that fill in placeholder values by name. These methods return the instance
- * itself so more placeholders can be filled after the initial fill.
+ * Base template for all standard pages in the application. Contains links, scripts and placeholders for later
+ * additions when the page is created. All classes that implement this class must set the functions used to populate
+ * the placeholders as properties.
  */
-class BasePage private constructor (
+abstract class BasePage : Template<HTML> {
+
     /** placeholder for style component of the page */
-    val styles: Placeholder<STYLE> = Placeholder(),
+    private val stylesPlaceholder: Placeholder<STYLE> = Placeholder()
     /** placeholder for general content of the page */
-    val content: Placeholder<FlowContent> = Placeholder(),
+    private val contentPlaceholder: Placeholder<FlowContent> = Placeholder()
     /** placeholder for script content of the page */
-    val script: Placeholder<FlowContent> = Placeholder(),
-) : Template<HTML> {
+    private val scriptPlaceholder: Placeholder<FlowContent> = Placeholder()
 
-    /** Applies [block] to the [styles] Placeholder */
-    fun withStyles(block: STYLE.() -> Unit): BasePage {
-        styles { block() }
-        return this
-    }
-
-    /** Applies [block] to the [content] Placeholder */
-    fun withContent(block: FlowContent.() -> Unit): BasePage {
-        content { block() }
-        return this
-    }
-
-    /** Applies [block] to the [script] Placeholder */
-    fun withScript(block: FlowContent.() -> Unit): BasePage {
-        script { block() }
-        return this
-    }
+    /** Function used to populate the [stylesPlaceholder]. Can be an empty function */
+    abstract val styles: STYLE.() -> Unit
+    /** Function used to populate the [contentPlaceholder]. Can be an empty function */
+    abstract val content: FlowContent.() -> Unit
+    /** Function used to populate the [scriptPlaceholder]. Can be an empty function */
+    abstract val script: FlowContent.() -> Unit
 
     /** Method from [Template] to create HTML document. Contains most of the layout with some placeholders */
     @Suppress("LongMethod")
     override fun HTML.apply() {
+        stylesPlaceholder { styles() }
+        contentPlaceholder { content() }
+        scriptPlaceholder { this.script() }
         lang = "en-US"
         head {
             title(content = "GeoFlow")
@@ -126,7 +116,7 @@ class BasePage private constructor (
                 }
             }
             style {
-                insert(styles)
+                insert(stylesPlaceholder)
             }
         }
         body {
@@ -151,7 +141,7 @@ class BasePage private constructor (
                         }
                     }
                 }
-                insert(content)
+                insert(contentPlaceholder)
                 script {
                     src = "/assets/subscribe-table.js"
                 }
@@ -166,22 +156,8 @@ class BasePage private constructor (
                 script {
                     src = "https://unpkg.com/bootstrap-table@1.18.3/dist/bootstrap-table.min.js"
                 }
-                insert(script)
+                insert(scriptPlaceholder)
             }
-        }
-    }
-    companion object {
-        /** Creates a [BasePage] instance, applies [block] to the [styles] Placeholder and returns the instance */
-        fun withStyles(block: STYLE.() -> Unit): BasePage {
-            return BasePage().apply { withStyles(block) }
-        }
-        /** Creates a [BasePage] instance, applies [block] to the [content] Placeholder and returns the instance */
-        fun withContent(block: FlowContent.() -> Unit): BasePage {
-            return BasePage().apply { withContent(block) }
-        }
-        /** Creates a [BasePage] instance, applies [block] to the [script] Placeholder and returns the instance */
-        fun withScript(block: FlowContent.() -> Unit): BasePage {
-            return BasePage().apply { withScript(block) }
         }
     }
 }

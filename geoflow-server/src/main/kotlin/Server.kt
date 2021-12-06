@@ -2,7 +2,8 @@
 
 import api.data
 import auth.UserSession
-import html.errorPage
+import errors.UnauthorizedRouteAccessException
+import pages.errorPage
 import io.ktor.application.call
 import io.ktor.application.Application
 import io.ktor.application.install

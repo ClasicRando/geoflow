@@ -1,6 +1,5 @@
-package html
+package pages
 
-import io.ktor.html.Template
 import kotlinx.html.ButtonType
 import kotlinx.html.HTML
 import kotlinx.html.body
@@ -20,26 +19,6 @@ import kotlinx.html.script
 import kotlinx.html.style
 import kotlinx.html.textInput
 import kotlinx.html.title
-
-/** Utility function to apply any HTML template */
-fun HTML.applyTemplate(template: Template<HTML>): Unit = with(template) {
-    apply()
-}
-
-/** Index page with static template. Opening page of web application */
-fun HTML.index(): Unit = applyTemplate(Index.page)
-
-/** PipelineStatus page with template created from [workflowCode] */
-fun HTML.pipelineStatus(workflowCode: String): Unit = applyTemplate(PipelineStatus.withWorkflowCode(workflowCode))
-
-/** PipelineTasks page with template created from [runId] */
-fun HTML.pipelineTasks(runId: Long): Unit = applyTemplate(PipelineTasks.withRunId(runId))
-
-/** BasePage template with simple message inserted */
-fun HTML.errorPage(message: String): Unit = applyTemplate(BasePage.withContent { +message })
-
-/** Admin Dashboard page with data, tables and charts showing application administration related details */
-fun HTML.adminDashboard(): Unit = applyTemplate(AdminDashboard.page)
 
 /** Simple login form page with an optional message if session expired or past login attempt was unsuccessful */
 @Suppress("LongMethod")

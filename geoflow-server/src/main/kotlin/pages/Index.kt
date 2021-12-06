@@ -1,29 +1,27 @@
-package html
+package pages
 
 import database.tables.Actions
 import database.tables.WorkflowOperations
-import io.ktor.html.Template
-import kotlinx.html.HTML
+import html.addParamsAsJsGlobalVariables
+import html.basicTable
+import kotlinx.html.FlowContent
+import kotlinx.html.STYLE
 import kotlinx.html.div
 import kotlinx.html.script
 
 /** Page for initial page upon login */
-object Index {
-    private const val operationsTableId = "operations"
-    private const val actionsTableId = "actions"
+object Index : BasePage() {
 
-    /**
-     * A [BasePage] instance with:
-     * - a basic table for workflow operations
-     * - a basic table for user actions
-     * - mapping object properties to javascript global variables named after the property name
-     * - link to static asset for registering table row click events to navigate to the desired href
-     */
-    val page: Template<HTML> = BasePage.withContent {
+    private const val OPERATIONS_TABLE_ID = "operations"
+    private const val ACTIONS_TABLE_ID = "actions"
+
+    override val styles: STYLE.() -> Unit = {}
+
+    override val content: FlowContent.() -> Unit = {
         div(classes = "row") {
             div(classes = "col") {
                 basicTable(
-                    tableId = operationsTableId,
+                    tableId = OPERATIONS_TABLE_ID,
                     dataUrl = "operations",
                     dataField = "payload",
                     fields = WorkflowOperations.tableDisplayFields,
@@ -31,22 +29,25 @@ object Index {
             }
             div(classes = "col") {
                 basicTable(
-                    tableId = actionsTableId,
+                    tableId = ACTIONS_TABLE_ID,
                     dataUrl = "actions",
                     dataField = "payload",
                     fields = Actions.tableDisplayFields,
                 )
             }
         }
-    }.withScript {
+    }
+
+    override val script: FlowContent.() -> Unit = {
         script {
             addParamsAsJsGlobalVariables(
-                ::operationsTableId.name to operationsTableId,
-                ::actionsTableId.name to actionsTableId,
+                "operationsTableId" to OPERATIONS_TABLE_ID,
+                "actionsTableId" to ACTIONS_TABLE_ID,
             )
         }
         script {
             src = "/assets/index.js"
         }
     }
+
 }

@@ -40,7 +40,13 @@ import kotlinx.coroutines.launch
 import session
 import java.net.ConnectException
 
-/** */
+/**
+ * Utility function to make a call to the API on behalf of the user.
+ *
+ * Calls to the specified API [endPoint] using the [httpMethod] specified, with a body (if needed) of type [B]. If
+ * authentication is required (all non-login endpoints), the [apiToken] provided is used in the Authorization header.
+ * The response from the API is then returned as the type [T].
+ */
 suspend inline fun <reified B, reified T> makeApiCall(
     endPoint: String,
     httpMethod: HttpMethod = HttpMethod.Get,
@@ -61,6 +67,12 @@ suspend inline fun <reified B, reified T> makeApiCall(
     }
 }
 
+/**
+ * Loop to handle socket communication with the API. Launches a coroutine to pass forward each socket
+ * [Frame][io.ktor.http.cio.websocket.Frame]. When the Web service socket connection is no longer active, this coroutine
+ * is ended and the connection to the API socket is closed. Operation is wrapped with a complete try-catch so all
+ * exception as handled and automatically end the coroutine
+ */
 private suspend fun DefaultClientWebSocketSession.socketLoop(serverSocket: DefaultWebSocketServerSession): Job {
     return launch {
         @Suppress("TooGenericExceptionCaught")
@@ -87,6 +99,16 @@ private suspend fun DefaultClientWebSocketSession.socketLoop(serverSocket: Defau
     }
 }
 
+private const val SOCKET_LOOP_CHECKUP = 500L
+
+/**
+ * Creates a socket connection with the API and runs a loop to pass along frames (see [socketLoop]).
+ *
+ * The socket operations starts with the creation of a coroutine that handles passing forward frames. A while loop is
+ * then setup to check every 500ms to see if both the coroutine and underlining socket session with the web service
+ * client are active. When either of those conditions are not met, the coroutine job and socket session are cleaned up
+ * before exiting the function
+ */
 private suspend fun HttpClient.runSocket(
     apiPath: String,
     apiToken: String,
@@ -99,11 +121,8 @@ private suspend fun HttpClient.runSocket(
         }
     ) {
         val job = socketLoop(socketSession)
-        while (job.isActive) {
+        while (job.isActive && socketSession.isActive) {
             delay(SOCKET_LOOP_CHECKUP)
-            if (!socketSession.isActive) {
-                break
-            }
         }
         if (job.isActive) {
             job.cancelAndJoin()
@@ -114,9 +133,7 @@ private suspend fun HttpClient.runSocket(
     }
 }
 
-private const val SOCKET_LOOP_CHECKUP = 500L
-
-/** */
+/** Sets up a publisher that passes updates to data from API to the web service client */
 fun Route.publisher(endPoint: String, path: String = "") {
     webSocket(path = path) {
         val socketSession = this
@@ -149,7 +166,7 @@ fun Route.publisher(endPoint: String, path: String = "") {
     }
 }
 
-/** */
+/** Singleton class representing an api call without a body provided */
 object NoBody
 
 /** Utility function that summarizes api GET response objects using a getter lambda */

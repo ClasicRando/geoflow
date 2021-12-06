@@ -6,11 +6,11 @@ import auth.UserSession
 import auth.requireUserRole
 import database.Database
 import database.tables.InternalUsers
-import html.adminDashboard
-import html.index
-import html.login
-import html.pipelineStatus
-import html.pipelineTasks
+import pages.adminDashboard
+import pages.index
+import pages.login
+import pages.pipelineStatus
+import pages.pipelineTasks
 import io.ktor.application.ApplicationCall
 import io.ktor.application.call
 import io.ktor.application.log
