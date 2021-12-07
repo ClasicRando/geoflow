@@ -76,8 +76,8 @@ fun formatObject(value: Any?): String {
         is LocalDateTime -> value.format(DateTimeFormatter.ISO_LOCAL_DATE_TIME)
         is LocalDate -> value.format(DateTimeFormatter.ISO_LOCAL_DATE)
         is LocalTime -> value.format(DateTimeFormatter.ISO_LOCAL_TIME)
-        is Date -> value.toInstant().atOffset(ZoneOffset.UTC).format(DateTimeFormatter.ISO_DATE_TIME)
         is Time -> value.toLocalTime().format(DateTimeFormatter.ISO_LOCAL_TIME)
+        is Date -> value.toInstant().atOffset(ZoneOffset.UTC).format(DateTimeFormatter.ISO_DATE_TIME)
         else -> value.toString()
     }
 }
