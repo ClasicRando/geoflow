@@ -1,13 +1,13 @@
 package database.extensions
 
 import database.tables.QueryResultRecord
-import formatInstantDateTime
+import utils.formatInstantDateTime
 import kotlinx.serialization.Serializable
 import org.postgresql.util.PGobject
 import org.reflections.Reflections
 import org.reflections.util.ConfigurationBuilder
 import org.reflections.scanners.Scanners.TypesAnnotated
-import requireState
+import utils.requireState
 import java.sql.ResultSet
 import java.sql.Timestamp
 import kotlin.reflect.KClass

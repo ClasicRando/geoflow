@@ -7,7 +7,7 @@ import kotlinx.coroutines.flow.collect
 import kotlinx.coroutines.flow.flowOn
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.reduce
-import mapToArray
+import utils.mapToArray
 import org.postgresql.copy.CopyManager
 import java.io.File
 

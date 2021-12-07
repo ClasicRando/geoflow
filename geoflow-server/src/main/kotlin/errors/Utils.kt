@@ -1,7 +1,7 @@
 @file:Suppress("MatchingDeclarationName")
 package errors
 
-import requireEmpty
+import utils.requireEmpty
 import kotlin.reflect.full.primaryConstructor
 
 /** Require contract that throws any [Throwable] the user wants by providing a lambda that returns any Throwable. */

@@ -11,7 +11,7 @@ import mu.KLogger
 import mu.KotlinLogging
 import org.postgresql.copy.CopyManager
 import org.postgresql.jdbc.PgConnection
-import requireNotEmpty
+import utils.requireNotEmpty
 import java.io.File
 import java.io.InputStream
 import java.math.BigDecimal

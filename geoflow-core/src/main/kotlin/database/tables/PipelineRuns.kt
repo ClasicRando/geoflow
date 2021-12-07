@@ -7,7 +7,7 @@ import database.extensions.queryFirstOrNull
 import database.extensions.queryHasResult
 import database.extensions.runUpdate
 import database.extensions.submitQuery
-import formatLocalDateDefault
+import utils.formatLocalDateDefault
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.decodeFromString
