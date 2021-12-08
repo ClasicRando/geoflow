@@ -1,6 +1,8 @@
 package web
 
 import kotlinx.coroutines.runBlocking
+import me.geoflow.core.web.downloadFile
+import me.geoflow.core.web.downloadZip
 import org.junit.jupiter.api.AfterAll
 import org.junit.jupiter.api.TestInstance
 import org.junit.jupiter.params.ParameterizedTest

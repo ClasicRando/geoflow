@@ -1,9 +1,11 @@
 package tasks
 
-import database.Database
-import database.tables.PipelineRunTasks
-import database.tables.Tasks
+import me.geoflow.core.database.Database
+import me.geoflow.core.database.tables.PipelineRunTasks
+import me.geoflow.core.database.tables.Tasks
 import kotlinx.coroutines.runBlocking
+import me.geoflow.core.tasks.TaskInfo
+import me.geoflow.core.tasks.tasks
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.TestInstance
 import java.sql.Connection
