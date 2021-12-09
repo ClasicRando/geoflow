@@ -1,5 +1,6 @@
 package me.geoflow.core.tasks
 
+import me.geoflow.core.database.Database
 import me.geoflow.core.database.enums.TaskRunType
 import me.geoflow.core.database.enums.TaskStatus
 import me.geoflow.core.database.tables.PipelineRunTasks
@@ -66,7 +67,7 @@ val tasks: Map<Long, TaskInfo> by lazy {
         }
     }
 
-    val userTasks = me.geoflow.core.database.Database.runWithConnectionBlocking {
+    val userTasks = Database.runWithConnectionBlocking {
         Tasks.getUserTasks(it)
     }.associate { it.taskId to TaskInfo.UserTaskInfo }
 
@@ -99,7 +100,7 @@ fun getTaskIdFromFunction(function: KFunction<*>): Long {
  */
 suspend fun runTask(pipelineRunTaskId: Long): TaskResult {
     return runCatching {
-        me.geoflow.core.database.Database.runWithConnection {
+        Database.runWithConnection {
             PipelineRunTasks.update(
                 it,
                 pipelineRunTaskId,
@@ -108,7 +109,7 @@ suspend fun runTask(pipelineRunTaskId: Long): TaskResult {
                 taskCompleted = null,
             )
         }
-        me.geoflow.core.database.Database.useTransaction { connection ->
+        Database.useTransaction { connection ->
             val prTask = PipelineRunTasks.getWithLock(connection, pipelineRunTaskId)
             val taskInfo = tasks[prTask.task.taskId]
                 ?: throw IllegalStateException("TaskId cannot be found in registered tasks")
