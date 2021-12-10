@@ -5,9 +5,11 @@ import me.geoflow.core.database.extensions.queryFirstOrNull
 import me.geoflow.core.database.extensions.queryHasResult
 import me.geoflow.core.database.extensions.runReturningFirstOrNull
 import me.geoflow.core.database.extensions.submitQuery
-import kotlinx.serialization.SerialName
-import kotlinx.serialization.Serializable
 import me.geoflow.core.database.errors.NoRecordFound
+import me.geoflow.core.database.errors.UserNotAdmin
+import me.geoflow.core.database.tables.records.InternalUser
+import me.geoflow.core.database.tables.records.RequestUser
+import me.geoflow.core.database.tables.records.ResponseUser
 import java.sql.Connection
 
 /**
@@ -52,23 +54,6 @@ object InternalUsers : DbTable("internal_users"), ApiExposed {
         }
     }
 
-    /** Record for [InternalUsers]. Represents the fields of the table */
-    data class InternalUser(
-        /** unique id of the user */
-        val userOid: Long,
-        /** full name of the user */
-        val name: String,
-        /** public username */
-        val username: String,
-        /** list of roles of the user. Provides access to endpoints or abilities in the api */
-        val roles: List<String>,
-    ) {
-        companion object {
-            /** SQL query used to generate the parent class */
-            val sql: String = "SELECT user_oid, name, username, roles FROM $tableName WHERE username = ?"
-        }
-    }
-
     /**
      * Tries to look up the username provided and validate the password if the user can be found.
      *
@@ -102,26 +87,6 @@ object InternalUsers : DbTable("internal_users"), ApiExposed {
             username
         ) ?: throw NoRecordFound(tableName, "User cannot be found")
     }
-
-    /** API request to [InternalUsers] table */
-    @Serializable
-    data class RequestUser(
-        /** user_oid field for request. Can be null for create requests */
-        @SerialName("user_oid")
-        val userOid: Long? = null,
-        /** name field for request */
-        @SerialName("fullName")
-        val name: String,
-        /** username field for request */
-        @SerialName("username")
-        val username: String,
-        /** roles field for request */
-        @SerialName("roles")
-        val roles: List<String>,
-        /** password field for request. Only non-null when create request. Never send a hashed password in response */
-        @SerialName("password")
-        val password: String? = null,
-    )
 
     /**
      * Returns the [InternalUser] entity if the username can be found.
@@ -186,23 +151,6 @@ object InternalUsers : DbTable("internal_users"), ApiExposed {
         ) ?: throw NoRecordAffected(tableName, "No record updated for user_oid = ${user.userOid}")
     }
 
-    /** API response data class for JSON serialization */
-    @Serializable
-    data class ResponseUser(
-        /** unique id of the user */
-        @SerialName("user_oid")
-        val userOid: Long,
-        /** full name of the user */
-        val name: String,
-        /** public username */
-        val username: String,
-        /** list of roles of the user */
-        val roles: String,
-        /** flag denoting if the user can be edited by the requesting user */
-        @SerialName("can_edit")
-        val canEdit: Boolean,
-    )
-
     /** API function to get a list of all users for the application */
     fun getUsers(connection: Connection, userId: Long): List<ResponseUser> {
         requireAdmin(connection, userId)
@@ -213,11 +161,11 @@ object InternalUsers : DbTable("internal_users"), ApiExposed {
         return connection.submitQuery(sql = sql)
     }
 
-    /** */
-    class UserNotAdmin
-        : Throwable("API action requires admin role and the user ID provided does not meet that requirement")
-
-    /** */
+    /**
+     * Utility Function that checks to make sure the specified user has the admin role
+     *
+     * @throws UserNotAdmin userId provided does not have the admin role
+     */
     fun requireAdmin(connection: Connection, userId: Long) {
         val isAdmin = connection.queryHasResult(
             sql = "SELECT 1 FROM $tableName WHERE user_oid = ? AND 'admin' = ANY(roles)",

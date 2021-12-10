@@ -1,6 +1,6 @@
 package me.geoflow.core.database.functions
 
-import me.geoflow.core.database.tables.PipelineRunTasks
+import me.geoflow.core.database.tables.records.ResponsePrTask
 import java.sql.Connection
 import kotlin.reflect.full.withNullability
 import kotlin.reflect.typeOf
@@ -41,7 +41,7 @@ object GetTasksOrdered : PlPgSqlTableFunction(
      * function. Makes sure users of this object provide the correct parameters before calling the super function.
      * Returns the list of ResultSet rows as a map
      */
-    fun getTasks(connection: Connection, runId: Long, workflowState: String? = null): List<PipelineRunTasks.Record> {
+    fun getTasks(connection: Connection, runId: Long, workflowState: String? = null): List<ResponsePrTask> {
         return call(connection, runId, workflowState)
     }
 

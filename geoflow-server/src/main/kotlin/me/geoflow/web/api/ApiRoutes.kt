@@ -2,11 +2,11 @@
 
 package me.geoflow.web.api
 
-import me.geoflow.core.database.tables.InternalUsers
-import me.geoflow.core.database.tables.SourceTables
 import io.ktor.http.HttpMethod
 import io.ktor.routing.Route
 import io.ktor.routing.route
+import me.geoflow.core.database.tables.records.RequestUser
+import me.geoflow.core.database.tables.records.SourceTable
 import me.geoflow.core.mongo.MongoDb
 
 /** Base API route */
@@ -85,11 +85,11 @@ private fun Route.sourceTables() {
             apiEndPoint = "source-tables/{runId}",
             httpMethod = HttpMethod.Get,
         )
-        apiCall<SourceTables.Record>(
+        apiCall<SourceTable>(
             apiEndPoint = "/source-tables",
             httpMethod = HttpMethod.Put,
         )
-        apiCall<SourceTables.Record>(
+        apiCall<SourceTable>(
             path = "/{runId}",
             apiEndPoint = "/source-tables/{runId}",
             httpMethod = HttpMethod.Post,
@@ -106,11 +106,11 @@ private fun Route.sourceTables() {
 private fun Route.users() {
     route(path = "/users") {
         apiCall<NoBody>(apiEndPoint = "/users", httpMethod = HttpMethod.Get)
-        apiCall<InternalUsers.RequestUser>(
+        apiCall<RequestUser>(
             apiEndPoint = "/users",
             httpMethod = HttpMethod.Post,
         )
-        apiCall<InternalUsers.RequestUser>(
+        apiCall<RequestUser>(
             apiEndPoint = "/users",
             httpMethod = HttpMethod.Patch,
         )

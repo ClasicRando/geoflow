@@ -2,7 +2,7 @@ package me.geoflow.core.database.tables
 
 import me.geoflow.core.database.extensions.submitQuery
 import me.geoflow.core.database.functions.GetUserActions
-import kotlinx.serialization.Serializable
+import me.geoflow.core.database.tables.records.Action
 import java.sql.Connection
 
 /**
@@ -44,17 +44,6 @@ object Actions : DbTable("actions"), ApiExposed, DefaultData {
     """.trimIndent()
 
     override val defaultRecordsFileName: String = "actions.csv"
-
-    /** API response data class for JSON serialization */
-    @Serializable
-    data class Action(
-        /** action name */
-        val name: String,
-        /** action description */
-        val description: String,
-        /** endpoint that allows for an action to be performed */
-        val href: String,
-    )
 
     /**
      * API function to get a list of all user actions based upon the [userOid] of the current user

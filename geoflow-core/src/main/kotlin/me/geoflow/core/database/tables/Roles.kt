@@ -1,7 +1,7 @@
 package me.geoflow.core.database.tables
 
 import me.geoflow.core.database.extensions.submitQuery
-import kotlinx.serialization.Serializable
+import me.geoflow.core.database.tables.records.Role
 import java.sql.Connection
 
 /**
@@ -21,15 +21,6 @@ object Roles : DbTable("roles"), DefaultData {
     """.trimIndent()
 
     override val defaultRecordsFileName: String = "roles.csv"
-
-    /** Data class to represent a single database record */
-    @Serializable
-    data class Role(
-        /** name of role */
-        val name: String,
-        /** description of role */
-        val description: String,
-    )
 
     /**
      * Returns a list of all roles currently available to users

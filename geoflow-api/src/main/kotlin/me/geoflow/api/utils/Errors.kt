@@ -2,10 +2,10 @@ package me.geoflow.api.utils
 
 import me.geoflow.core.database.errors.NoRecordAffected
 import me.geoflow.core.database.errors.NoRecordFound
-import me.geoflow.core.database.tables.InternalUsers
 import io.ktor.application.MissingApplicationFeatureException
 import io.ktor.http.HttpStatusCode
 import kotlinx.serialization.SerializationException
+import me.geoflow.core.database.errors.UserNotAdmin
 import java.sql.SQLException
 
 /** alias describing API error information as array of objects */
@@ -22,7 +22,7 @@ fun throwableToResponseErrors(t: Throwable): ApiErrors {
             is SerializationException -> "json_decode_error"
             is IllegalArgumentException -> "argument_error"
             is IllegalStateException -> "internal_state_error"
-            is InternalUsers.UserNotAdmin -> "admin_error"
+            is UserNotAdmin -> "admin_error"
             else -> {
                 it::class.simpleName?.replace("([A-Z])([a-z])".toRegex()) { match ->
                     "${match.groupValues[1].lowercase()}_${match.groupValues[2]}"

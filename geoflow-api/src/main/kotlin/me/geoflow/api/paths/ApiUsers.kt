@@ -8,6 +8,7 @@ import io.ktor.request.receive
 import io.ktor.routing.Route
 import me.geoflow.api.utils.ApiResponse
 import me.geoflow.core.database.Database
+import me.geoflow.core.database.tables.records.RequestUser
 
 /** Internal Users API route */
 object ApiUsers : ApiPath(path = "/users") {
@@ -45,7 +46,7 @@ object ApiUsers : ApiPath(path = "/users") {
      */
     private fun createUser(parent: Route) {
         parent.apiCall(httpMethod = HttpMethod.Post) { userOid ->
-            val requestUser = call.receive<InternalUsers.RequestUser>()
+            val requestUser = call.receive<RequestUser>()
             val newUserOid = Database.runWithConnection {
                 InternalUsers.createUser(it, requestUser, userOid)
             }
@@ -59,7 +60,7 @@ object ApiUsers : ApiPath(path = "/users") {
      */
     private fun updateUser(parent: Route) {
         parent.apiCall(httpMethod = HttpMethod.Put) { userOid ->
-            val requestUser = call.receive<InternalUsers.RequestUser>()
+            val requestUser = call.receive<RequestUser>()
             val payload = Database.runWithConnection {
                 InternalUsers.updateUser(it, requestUser, userOid)
             }

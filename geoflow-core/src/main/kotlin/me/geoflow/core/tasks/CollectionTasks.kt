@@ -1,3 +1,4 @@
+@file:Suppress("UNUSED")
 package me.geoflow.core.tasks
 
 import kotlinx.coroutines.Dispatchers
@@ -12,6 +13,7 @@ import me.geoflow.core.database.extensions.submitQuery
 import me.geoflow.core.database.tables.PipelineRunTasks
 import me.geoflow.core.database.tables.PipelineRuns
 import me.geoflow.core.database.tables.SourceTables
+import me.geoflow.core.database.tables.records.PipelineRunTask
 import me.geoflow.core.web.downloadFile
 import me.geoflow.core.web.downloadZip
 import me.geoflow.core.web.scrapeArcGisService
@@ -60,7 +62,7 @@ const val FIRST_PIPELINE_DETECTED: Long = 10L
  * single zip file for backup.
  */
 @SystemTask(taskId = 2, taskName = "Build Pipeline Run")
-fun buildPipelineRun(connection: Connection, prTask: PipelineRunTasks.PipelineRunTask) {
+fun buildPipelineRun(connection: Connection, prTask: PipelineRunTask) {
     val lastRun = PipelineRuns.lastRun(connection, prTask.pipelineRunTaskId)
     if (lastRun == null) {
         PipelineRunTasks.addTask(connection, prTask.pipelineRunTaskId, 2)
@@ -130,7 +132,7 @@ private fun checkSourceFolder(
  */
 @Suppress("LongMethod")
 @SystemTask(taskId = 3, taskName = "Scan Source Folder")
-fun scanSourceFolder(connection: Connection, prTask: PipelineRunTasks.PipelineRunTask): String? {
+fun scanSourceFolder(connection: Connection, prTask: PipelineRunTask): String? {
     val pipelineRun = PipelineRuns.getRun(connection, prTask.runId)
         ?: throw IllegalArgumentException("Run cannot be null")
     val folder = File(pipelineRun.runFilesLocation)
@@ -199,7 +201,7 @@ fun scanSourceFolder(connection: Connection, prTask: PipelineRunTasks.PipelineRu
  * Finds all file names that were passed as a message to the task and attempts to download all the returned URLs
  */
 @SystemTask(taskId = 4, taskName = "Download Missing Files")
-suspend fun downloadMissingFiles(connection: Connection, prTask: PipelineRunTasks.PipelineRunTask) {
+suspend fun downloadMissingFiles(connection: Connection, prTask: PipelineRunTask) {
     val pipelineRun = PipelineRuns.getRun(connection, prTask.runId)
         ?: throw IllegalArgumentException("Run cannot be null")
     val outputFolder = File(pipelineRun.runFilesLocation)
@@ -254,7 +256,7 @@ suspend fun downloadMissingFiles(connection: Connection, prTask: PipelineRunTask
  * single zip file for backup.
  */
 @SystemTask(taskId = 7, taskName = "Backup Files to Zip Folder")
-suspend fun backupFilesToZip(connection: Connection, prTask: PipelineRunTasks.PipelineRunTask) {
+suspend fun backupFilesToZip(connection: Connection, prTask: PipelineRunTask) {
     val pipelineRun = PipelineRuns.getRun(connection, prTask.runId)
         ?: throw IllegalArgumentException("Run cannot be null")
     val backupDirectory = File(pipelineRun.runZipLocation)
@@ -291,7 +293,7 @@ suspend fun backupFilesToZip(connection: Connection, prTask: PipelineRunTasks.Pi
  */
 @Suppress("MagicNumber")
 @SystemTask(taskId = 8, taskName = "Validate Source Tables")
-fun validateSourceTables(connection: Connection, prTask: PipelineRunTasks.PipelineRunTask) {
+fun validateSourceTables(connection: Connection, prTask: PipelineRunTask) {
     UpdateFiles.call(connection, prTask.runId)
     val sql = """
             SELECT loader_type, file_name
@@ -321,7 +323,7 @@ fun validateSourceTables(connection: Connection, prTask: PipelineRunTasks.Pipeli
  * System task to validate the pipeline run has at least 1 [SourceTables] record entry
  */
 @SystemTask(taskId = 11, taskName = "Validate First Pipeline")
-fun validateFirstPipeline(connection: Connection, prTask: PipelineRunTasks.PipelineRunTask) {
+fun validateFirstPipeline(connection: Connection, prTask: PipelineRunTask) {
     val sourceTableCount = connection.queryFirstOrNull<Long>(
         sql = "SELECT COUNT(0) FROM ${SourceTables.tableName} WHERE run_id = ?",
         prTask.runId,

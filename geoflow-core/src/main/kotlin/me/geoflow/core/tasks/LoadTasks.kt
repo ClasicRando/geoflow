@@ -7,7 +7,6 @@ import me.geoflow.core.loading.analyzeFile
 import me.geoflow.core.loading.checkTableExists
 import me.geoflow.core.loading.loadFile
 import me.geoflow.core.database.extensions.runBatchUpdate
-import me.geoflow.core.database.tables.PipelineRunTasks
 import me.geoflow.core.database.tables.PipelineRuns
 import me.geoflow.core.database.tables.SourceTableColumns
 import me.geoflow.core.database.tables.SourceTables
@@ -15,6 +14,7 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.buffer
 import kotlinx.coroutines.flow.collect
 import kotlinx.coroutines.flow.flowOn
+import me.geoflow.core.database.tables.records.PipelineRunTask
 import java.io.File
 import java.sql.Connection
 
@@ -27,7 +27,7 @@ import java.sql.Connection
  * table and the [SourceTables] record is updated to show it has been analyzed.
  */
 @SystemTask(taskId = 12, taskName = "Analyze Files")
-suspend fun analyzeFiles(connection: Connection, prTask: PipelineRunTasks.PipelineRunTask) {
+suspend fun analyzeFiles(connection: Connection, prTask: PipelineRunTask) {
     val pipelineRun = PipelineRuns.getRun(connection, prTask.runId)
         ?: throw IllegalArgumentException("Run ID must not be null")
     val results = mutableMapOf<Long, AnalyzeResult>()
@@ -52,7 +52,7 @@ suspend fun analyzeFiles(connection: Connection, prTask: PipelineRunTasks.Pipeli
  * loaded, the [SourceTables] record is updated to show it has been loaded.
  */
 @SystemTask(taskId = 13, taskName = "Load Files")
-suspend fun loadFiles(connection: Connection, prTask: PipelineRunTasks.PipelineRunTask) {
+suspend fun loadFiles(connection: Connection, prTask: PipelineRunTask) {
     val pipelineRun = PipelineRuns.getRun(connection, prTask.runId)
         ?: throw IllegalArgumentException("Run ID must not be null")
     val updateSql = "UPDATE ${SourceTables.tableName} SET load = false WHERE st_oid = ?"

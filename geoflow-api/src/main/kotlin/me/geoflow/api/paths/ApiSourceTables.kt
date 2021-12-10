@@ -9,6 +9,7 @@ import io.ktor.routing.Route
 import io.ktor.util.getOrFail
 import me.geoflow.api.utils.ApiResponse
 import me.geoflow.core.database.Database
+import me.geoflow.core.database.tables.records.SourceTable
 
 /** Source tables API route */
 object ApiSourceTables : ApiPath(path = "/source-tables") {
@@ -37,7 +38,7 @@ object ApiSourceTables : ApiPath(path = "/source-tables") {
      */
     private fun updateSourceTable(parent: Route) {
         parent.apiCall(httpMethod = HttpMethod.Put) { userOid ->
-            val sourceTable = call.receive<SourceTables.Record>()
+            val sourceTable = call.receive<SourceTable>()
             val payload = Database.useTransaction {
                 SourceTables.updateSourceTable(it, userOid, sourceTable)
             }
@@ -51,7 +52,7 @@ object ApiSourceTables : ApiPath(path = "/source-tables") {
      */
     private fun createSourceTable(parent: Route) {
         parent.apiCall(httpMethod = HttpMethod.Post, path = "/{runId}") { userOid ->
-            val sourceTable = call.receive<SourceTables.Record>()
+            val sourceTable = call.receive<SourceTable>()
             val runId = call.parameters.getOrFail("runId").toLong()
             val payload = Database.runWithConnection {
                 SourceTables.insertSourceTable(it, runId, userOid, sourceTable)

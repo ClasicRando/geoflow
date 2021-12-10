@@ -2,7 +2,7 @@ package me.geoflow.core.database.tables
 
 import me.geoflow.core.database.extensions.submitQuery
 import me.geoflow.core.database.functions.GetUserOperations
-import kotlinx.serialization.Serializable
+import me.geoflow.core.database.tables.records.WorkflowOperation
 import java.sql.Connection
 
 /**
@@ -29,15 +29,6 @@ object WorkflowOperations : DbTable("workflow_operations"), DefaultData, ApiExpo
             OIDS = FALSE
         );
     """.trimIndent()
-
-    /** API response data class for JSON serialization */
-    @Serializable
-    data class WorkflowOperation(
-        /** workflow operation name */
-        val name: String,
-        /** endpoint of workflow operation on server */
-        val href: String,
-    )
 
     /**
      * Returns a JSON serializable response of operations available to a user
