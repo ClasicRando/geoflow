@@ -9,9 +9,10 @@ import io.ktor.routing.Route
 import kotlinx.coroutines.flow.toList
 import me.geoflow.core.mongo.MongoDb
 import me.geoflow.api.utils.ApiResponse
+import me.geoflow.core.database.Database
 
 /** All KJob data API route */
-object ApiJobs : ApiPath(path = "/me/geoflow/jobs") {
+object ApiJobs : ApiPath(path = "/jobs") {
 
     override fun Route.registerEndpoints() {
         getKjobTasks(this)
@@ -19,8 +20,8 @@ object ApiJobs : ApiPath(path = "/me/geoflow/jobs") {
 
     /** KJob pipeline run tasks API route */
     private fun getKjobTasks(parent: Route) {
-        parent.apiCall(httpMethod = HttpMethod.Get, path = "/me/geoflow/tasks") { userOid ->
-            me.geoflow.core.database.Database.runWithConnection { InternalUsers.requireAdmin(it, userOid) }
+        parent.apiCall(httpMethod = HttpMethod.Get, path = "/tasks") { userOid ->
+            Database.runWithConnection { InternalUsers.requireAdmin(it, userOid) }
             val request = call.receive<MongoDb.TaskApiRequest>()
             val payload = MongoDb.getTasks(request).toList()
             ApiResponse.KJobTasksResponse(payload)
