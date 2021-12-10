@@ -7,20 +7,32 @@ import io.ktor.http.HttpMethod
 import io.ktor.request.receive
 import io.ktor.routing.Route
 import me.geoflow.api.utils.ApiResponse
+import me.geoflow.core.database.Database
 
 /** Internal Users API route */
 object ApiUsers : ApiPath(path = "/users") {
 
     override fun Route.registerEndpoints() {
+        getUser(this)
         getUsers(this)
         createUser(this)
         updateUser(this)
     }
 
+    /** Returns a single user record if the caller is the user */
+    private fun getUser(parent: Route) {
+        parent.apiCall(httpMethod = HttpMethod.Get, path = "/self") { userOid ->
+            val payload = Database.runWithConnection {
+                InternalUsers.getSelf(it, userOid)
+            }
+            ApiResponse.UserResponse(payload)
+        }
+    }
+
     /** Returns list of user records */
     private fun getUsers(parent: Route) {
         parent.apiCall(httpMethod = HttpMethod.Get) { userOid ->
-            val payload = me.geoflow.core.database.Database.runWithConnection {
+            val payload = Database.runWithConnection {
                 InternalUsers.getUsers(it, userOid)
             }
             ApiResponse.UsersResponse(payload)
@@ -34,7 +46,7 @@ object ApiUsers : ApiPath(path = "/users") {
     private fun createUser(parent: Route) {
         parent.apiCall(httpMethod = HttpMethod.Post) { userOid ->
             val requestUser = call.receive<InternalUsers.RequestUser>()
-            val newUserOid = me.geoflow.core.database.Database.runWithConnection {
+            val newUserOid = Database.runWithConnection {
                 InternalUsers.createUser(it, requestUser, userOid)
             }
             ApiResponse.InsertIdResponse(newUserOid)
@@ -48,7 +60,7 @@ object ApiUsers : ApiPath(path = "/users") {
     private fun updateUser(parent: Route) {
         parent.apiCall(httpMethod = HttpMethod.Put) { userOid ->
             val requestUser = call.receive<InternalUsers.RequestUser>()
-            val payload = me.geoflow.core.database.Database.runWithConnection {
+            val payload = Database.runWithConnection {
                 InternalUsers.updateUser(it, requestUser, userOid)
             }
             ApiResponse.UserResponse(payload)
