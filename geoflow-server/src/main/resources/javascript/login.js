@@ -34,18 +34,24 @@ $(document).ready(() => {
                 if ('success' in json) {
                     redirect('/index');
                 } else {
-                    $button.empty();
+                    resetButton($button);
                     $('#message').text(json.error);
                 }
             } else {
-                $button.empty();
+                resetButton($button);
                 console.log(await response.text());
                 $('#message').text('Response content not json. See console for details');
             }
         } else {
-            $button.empty();
+            resetButton($button);
             console.log(await response.text());
             $('#message').text('Invalid Response');
         }
     });
 });
+
+function resetButton($button) {
+    $button.empty();
+    $button.text('Submit');
+    $button.prop('disabled', false);
+}
