@@ -55,7 +55,8 @@ suspend inline fun <reified B, reified T> makeApiCall(
 ): T {
     return HttpClient(CIO) {
         install(JsonFeature) {
-            serializer = KotlinxSerializer()
+            val json = kotlinx.serialization.json.Json { ignoreUnknownKeys = true }
+            serializer = KotlinxSerializer(json)
         }
     }.use { client ->
         client.request("http://localhost:8081$endPoint") {
@@ -186,7 +187,7 @@ inline fun <reified B> Route.apiCall(
                 call.receive()
             } else null
             makeApiCall<B, String>(
-                endPoint = "/api/${apiPath}",
+                endPoint = "/api/${apiPath.trimStart('/')}",
                 httpMethod = httpMethod,
                 content = content,
                 apiToken = session.apiToken
