@@ -1,11 +1,13 @@
 let tasksSubscriber;
 let runId = -1;
+let reworking = false;
 $(document).ready(() => {
     tasksSubscriber = subscriberTables[taskTableId];
+    tasksSubscriber.socket.addEventListener('message', (e) => { reworking = false; })
     runId = window.location.href.match(/(?<=\/)[^/]+$/g)[0];
     $('button[name="btnConnected"]').click(async (e) => {
         if (tasksSubscriber.isActive) {
-            return;
+            tasksSubscriber.handleEvent('open');
         } else {
             const isActive = await tasksSubscriber.attemptRestart();
             if (isActive) {
@@ -18,12 +20,11 @@ $(document).ready(() => {
 });
 
 async function clickRunTask() {
-    let $table = $(`#${taskTableId}`);
     if (!tasksSubscriber.isActive) {
         showToast('Error', 'Task change listener is not currently running. Refresh page to reconnect');
         return;
     }
-    let data = $table.bootstrapTable('getData');
+    let data = tasksSubscriber.$table.bootstrapTable('getData');
     if (data.filter(row => row.task_status === 'Running' || row.task_status === 'Scheduled').length > 1) {
         showToast('Error', 'Task already running');
         return;
@@ -42,12 +43,11 @@ async function clickRunTask() {
 }
 
 async function clickRunAllTasks() {
-    let $table = $(`#${taskTableId}`);
     if (!tasksSubscriber.isActive) {
         showToast('Error', 'Task change listener is not currently running. Refresh page to reconnect');
         return;
     }
-    let data = $table.bootstrapTable('getData');
+    let data = tasksSubscriber.$table.bootstrapTable('getData');
     if (data.find(row => row.task_status === 'Running' || row.task_status === 'Scheduled') !== undefined) {
         showToast('Error', 'Task already running');
         return;
@@ -98,7 +98,7 @@ function showTaskInfo(prTaskId) {
         showToast('Error', 'Task change listener is not currently running. Refresh page to reconnect');
         return;
     }
-    let data = $(`#${taskTableId}`).bootstrapTable('getData').find(row => row.pipeline_run_task_id === prTaskId);
+    let data = tasksSubscriber.$table.bootstrapTable('getData').find(row => row.pipeline_run_task_id === prTaskId);
     let $modalBody = $(`#${taskDataModalId}Body`);
     $modalBody.empty();
     const div = document.createElement('div');
@@ -118,14 +118,25 @@ function showTaskInfo(prTaskId) {
 }
 
 async function reworkTask(prTaskId) {
+    if (reworking) {
+        return;
+    }
+    reworking = true;
     if (!tasksSubscriber.isActive) {
         showToast('Error', 'Task change listener is not currently running. Refresh page to reconnect');
+        reworking = false;
+        return;
+    }
+    let data = tasksSubscriber.$table.bootstrapTable('getData');
+    if (data.filter(row => row.task_status === 'Running' || row.task_status === 'Scheduled').length > 1) {
+        showToast('Error', 'Cannot perform rework while task is active');
         return;
     }
     const response = await fetchPOST(`/data/pipeline-run-tasks/reset-task/${prTaskId}`);
     const json = await response.json();
     if ('errors' in json) {
         showToast('Error', formatErrors(json.errors));
+        reworking = false;
     } else {
         showToast('Task Reworked', `Successfully reworked ${prTaskId}`);
     }
