@@ -7,6 +7,7 @@ import io.ktor.http.HttpMethod
 import io.ktor.routing.Route
 import io.ktor.util.getOrFail
 import me.geoflow.api.utils.ApiResponse
+import me.geoflow.core.database.Database
 
 /** Pipeline runs API route */
 object ApiPipelineRuns : ApiPath(path = "/pipeline-runs")  {
@@ -19,7 +20,7 @@ object ApiPipelineRuns : ApiPath(path = "/pipeline-runs")  {
     /** Returns list of pipeline runs for the given workflow code based upon the current user. */
     private fun getRuns(parent: Route) {
         parent.apiCall(httpMethod = HttpMethod.Get, path = "/{code}") { userOid ->
-            val payload = me.geoflow.core.database.Database.runWithConnection {
+            val payload = Database.runWithConnection {
                 PipelineRuns.userRuns(it, userOid, call.parameters.getOrFail("code"))
             }
             ApiResponse.PipelineRunsResponse(payload)
@@ -33,7 +34,7 @@ object ApiPipelineRuns : ApiPath(path = "/pipeline-runs")  {
     private fun pickupRun(parent: Route) {
         parent.apiCall(httpMethod = HttpMethod.Post, path = "/pickup/{runId}") { userOid ->
             val runId = call.parameters.getOrFail("").toLong()
-            me.geoflow.core.database.Database.runWithConnection {
+            Database.runWithConnection {
                 PipelineRuns.pickupRun(it, runId, userOid)
             }
             ApiResponse.MessageResponse("Successfully picked up $runId to Active state under the current user")

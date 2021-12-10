@@ -8,6 +8,7 @@ import io.ktor.request.receive
 import io.ktor.routing.Route
 import io.ktor.util.getOrFail
 import me.geoflow.api.utils.ApiResponse
+import me.geoflow.core.database.Database
 
 /** Source tables API route */
 object ApiSourceTables : ApiPath(path = "/source-tables") {
@@ -23,7 +24,7 @@ object ApiSourceTables : ApiPath(path = "/source-tables") {
     private fun getSourceTables(parent: Route) {
         parent.apiCall(httpMethod = HttpMethod.Get, path = "/{runId}") {
             val runId = call.parameters.getOrFail("runId").toLong()
-            val payload = me.geoflow.core.database.Database.runWithConnection {
+            val payload = Database.runWithConnection {
                 SourceTables.getRunSourceTables(it, runId)
             }
             ApiResponse.SourceTablesResponse(payload)
@@ -37,7 +38,7 @@ object ApiSourceTables : ApiPath(path = "/source-tables") {
     private fun updateSourceTable(parent: Route) {
         parent.apiCall(httpMethod = HttpMethod.Put) { userOid ->
             val sourceTable = call.receive<SourceTables.Record>()
-            val payload = me.geoflow.core.database.Database.useTransaction {
+            val payload = Database.useTransaction {
                 SourceTables.updateSourceTable(it, userOid, sourceTable)
             }
             ApiResponse.SourceTableResponse(payload)
@@ -52,7 +53,7 @@ object ApiSourceTables : ApiPath(path = "/source-tables") {
         parent.apiCall(httpMethod = HttpMethod.Post, path = "/{runId}") { userOid ->
             val sourceTable = call.receive<SourceTables.Record>()
             val runId = call.parameters.getOrFail("runId").toLong()
-            val payload = me.geoflow.core.database.Database.runWithConnection {
+            val payload = Database.runWithConnection {
                 SourceTables.insertSourceTable(it, runId, userOid, sourceTable)
             }
             ApiResponse.InsertIdResponse(payload)
@@ -66,7 +67,7 @@ object ApiSourceTables : ApiPath(path = "/source-tables") {
     private fun deleteSourceTable(parent: Route) {
         parent.apiCall(httpMethod = HttpMethod.Delete, path = "/{stOid}") { userOid ->
             val stOid = call.parameters.getOrFail("stOid").toLong()
-            me.geoflow.core.database.Database.runWithConnection {
+            Database.runWithConnection {
                 SourceTables.deleteSourceTable(it, stOid, userOid)
             }
             ApiResponse.MessageResponse("Deleted source table record ($stOid)")

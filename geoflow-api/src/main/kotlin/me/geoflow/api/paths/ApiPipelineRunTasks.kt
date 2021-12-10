@@ -11,6 +11,7 @@ import me.geoflow.core.jobs.SystemJob
 import me.geoflow.api.sockets.publisher
 import scheduleJob
 import me.geoflow.api.utils.ApiResponse
+import me.geoflow.core.database.Database
 
 /** Pipeline run tasks API route */
 object ApiPipelineRunTasks : ApiPath(path = "/pipeline-run-tasks") {
@@ -25,7 +26,7 @@ object ApiPipelineRunTasks : ApiPath(path = "/pipeline-run-tasks") {
     /** Publisher method using a websocket to provided updates to the user about the provided table and listenId */
     private fun getTasks(parent: Route) {
         parent.publisher(channelName = "pipelineRunTasks", listenId = "runId") { message ->
-            me.geoflow.core.database.Database.runWithConnection {
+            Database.runWithConnection {
                 PipelineRunTasks.getOrderedTasks(it, message.toLong())
             }
         }
@@ -38,7 +39,7 @@ object ApiPipelineRunTasks : ApiPath(path = "/pipeline-run-tasks") {
     private fun resetTask(parent: Route) {
         parent.apiCall(httpMethod = HttpMethod.Post, path = "/reset-task/{prTaskId}") { userOid ->
             val pipelineRunTaskId = call.parameters.getOrFail("prTaskId").toLong()
-            me.geoflow.core.database.Database.runWithConnection {
+            Database.runWithConnection {
                 PipelineRunTasks.resetRecord(it, userOid, pipelineRunTaskId)
             }
             ApiResponse.MessageResponse("Successfully reset task $pipelineRunTaskId")
@@ -52,7 +53,7 @@ object ApiPipelineRunTasks : ApiPath(path = "/pipeline-run-tasks") {
     private fun runNext(parent: Route) {
         parent.apiCall(httpMethod = HttpMethod.Post, path = "/run-next/{runId}") { userOid ->
             val runId = call.parameters.getOrFail("runId").toLong()
-            val payload = me.geoflow.core.database.Database.runWithConnection {
+            val payload = Database.runWithConnection {
                 PipelineRunTasks.getRecordForRun(it, userOid, runId)
             }.also { nextTask ->
                 scheduleJob(SystemJob) {
@@ -60,7 +61,7 @@ object ApiPipelineRunTasks : ApiPath(path = "/pipeline-run-tasks") {
                     props[it.runId] = runId
                     props[it.runNext] = false
                 }
-                me.geoflow.core.database.Database.runWithConnection {
+                Database.runWithConnection {
                     PipelineRunTasks.setStatus(it, nextTask.pipelineRunTaskId, TaskStatus.Scheduled)
                 }
             }
@@ -76,7 +77,7 @@ object ApiPipelineRunTasks : ApiPath(path = "/pipeline-run-tasks") {
     private fun runAll(parent: Route) {
         parent.apiCall(httpMethod = HttpMethod.Post, path = "/run-all/{runId}") { userOid ->
             val runId = call.parameters.getOrFail("runId").toLong()
-            val payload = me.geoflow.core.database.Database.runWithConnection {
+            val payload = Database.runWithConnection {
                 PipelineRunTasks.getRecordForRun(it, userOid, runId)
             }.also { nextTask ->
                 scheduleJob(SystemJob) {
@@ -84,7 +85,7 @@ object ApiPipelineRunTasks : ApiPath(path = "/pipeline-run-tasks") {
                     props[it.runId] = runId
                     props[it.runNext] = true
                 }
-                me.geoflow.core.database.Database.runWithConnection {
+                Database.runWithConnection {
                     PipelineRunTasks.setStatus(it, nextTask.pipelineRunTaskId, TaskStatus.Scheduled)
                 }
             }
