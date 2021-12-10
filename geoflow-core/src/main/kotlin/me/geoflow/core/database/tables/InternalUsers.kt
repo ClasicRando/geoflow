@@ -7,6 +7,7 @@ import me.geoflow.core.database.extensions.runReturningFirstOrNull
 import me.geoflow.core.database.extensions.submitQuery
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
+import me.geoflow.core.database.errors.NoRecordFound
 import java.sql.Connection
 
 /**
@@ -92,14 +93,14 @@ object InternalUsers : DbTable("internal_users"), ApiExposed {
     /**
      * Returns the [InternalUser] entity if the username can be found.
      *
-     * @throws IllegalArgumentException when the query returns an empty result
+     * @throws NoRecordFound when the query returns an empty result
      * @throws [java.sql.SQLException] when the connection throws an error
      */
     fun getUser(connection: Connection, username: String): InternalUser {
         return connection.queryFirstOrNull(
             sql = InternalUser.sql,
             username
-        ) ?: throw IllegalArgumentException("User cannot be found")
+        ) ?: throw NoRecordFound(tableName, "User cannot be found")
     }
 
     /** API request to [InternalUsers] table */
@@ -121,6 +122,19 @@ object InternalUsers : DbTable("internal_users"), ApiExposed {
         @SerialName("password")
         val password: String? = null,
     )
+
+    /**
+     * Returns the [InternalUser] entity if the username can be found.
+     *
+     * @throws NoRecordFound when the query returns an empty result
+     * @throws [java.sql.SQLException] when the connection throws an error
+     */
+    fun getSelf(connection: Connection, userOid: Long): RequestUser {
+        return connection.queryFirstOrNull(
+            sql = "SELECT user_oid, name, username, roles, null FROM $tableName WHERE user_oid = ?",
+            userOid
+        ) ?: throw NoRecordFound(tableName, "User cannot be found")
+    }
 
     /**
      * Attempts to create a new user from the provided [user], returning the new user_oid if successful
