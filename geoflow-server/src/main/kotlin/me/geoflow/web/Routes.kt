@@ -5,12 +5,13 @@ import me.geoflow.web.api.makeApiCall
 import me.geoflow.web.auth.User
 import me.geoflow.web.auth.UserSession
 import me.geoflow.web.auth.requireUserRole
-import me.geoflow.core.database.tables.InternalUsers
 import me.geoflow.web.pages.adminDashboard
 import me.geoflow.web.pages.index
 import me.geoflow.web.pages.login
 import me.geoflow.web.pages.pipelineStatus
 import me.geoflow.web.pages.pipelineTasks
+import me.geoflow.web.api.NoBody
+import me.geoflow.web.api.UserResponse
 import io.ktor.application.ApplicationCall
 import io.ktor.application.call
 import io.ktor.application.log
@@ -32,7 +33,6 @@ import io.ktor.sessions.sessions
 import io.ktor.sessions.set
 import io.ktor.util.getOrFail
 import io.ktor.util.pipeline.PipelineContext
-import java.sql.Connection
 
 /** Utility to get the [UserSession] for a call */
 val ApplicationCall.session: UserSession? get() = this.sessions.get<UserSession>()
@@ -55,41 +55,33 @@ private fun Route.getLogin() {
     }
 }
 
-/** Handles user request once the user credentials have been validated. Calls API to get a token for future API calls */
-private suspend fun PipelineContext<Unit, ApplicationCall>.handleUserPostValidate(
-    connection: Connection,
-    user: User,
-) {
-    val internalUser = InternalUsers.getUser(connection, user.username)
+/**
+ * Validates the user through the API and returns a [Map] to be serialized as a JSON response.
+ *
+ * If the API validates the user credentials, the user details are requested and a session is created.
+ */
+private suspend fun PipelineContext<Unit, ApplicationCall>.validateUser(user: User): Map<String, String> {
     val response: Map<String, String> = makeApiCall(
         endPoint = "/login",
         httpMethod = HttpMethod.Post,
         content = user,
     )
-    val session = UserSession(
-        userId = internalUser.userOid,
-        username = internalUser.username,
-        name = internalUser.name,
-        roles = internalUser.roles,
-        apiToken = response["token"] ?: throw IllegalStateException("Token from api must not be null")
-    )
-    call.sessions.set(session)
-}
-
-/** Validates the user and returns a [Map] to be serialized as a JSON response */
-private suspend fun PipelineContext<Unit, ApplicationCall>.validateUser(user: User): Map<String, String> {
-    return me.geoflow.core.database.Database.runWithConnectionAsync {
-        when (val validateResult = InternalUsers.validateUser(it, user.username, user.password)) {
-            is InternalUsers.ValidationResponse.Success -> {
-                handleUserPostValidate(it, user)
-                mapOf("success" to "true")
-            }
-            is InternalUsers.ValidationResponse.Failure -> {
-                call.application.log.info(validateResult.ERROR_MESSAGE)
-                mapOf("error" to validateResult.ERROR_MESSAGE)
-            }
-        }
-    }
+    return response["token"]?.let { token ->
+        val userResponse = makeApiCall<NoBody, UserResponse>(
+            endPoint = "/api/users/self",
+            httpMethod = HttpMethod.Get,
+            apiToken = token,
+        )
+        val session = UserSession(
+            userId = userResponse.payload.userOid,
+            username = userResponse.payload.username,
+            name = userResponse.payload.name,
+            roles = userResponse.payload.roles,
+            apiToken = token,
+        )
+        call.sessions.set(session)
+        mapOf("success" to "true")
+    } ?: mapOf("error" to "Incorrect username or password")
 }
 
 /**
@@ -155,7 +147,7 @@ fun Route.pipelineStatus() {
 
 /** Pipeline tasks route that handles request to view a specific run's task list. */
 fun Route.pipelineTasks() {
-    get(path = "/me/geoflow/tasks/{runId}") {
+    get(path = "/tasks/{runId}") {
         call.respondHtml {
             pipelineTasks(call.parameters.getOrFail("runId").toLong())
         }
