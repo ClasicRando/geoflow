@@ -46,7 +46,7 @@ val tasks: Map<Long, TaskInfo> by lazy {
     val nullableStringType = typeOf<String>().withNullability(true)
     val unitType = typeOf<Unit>()
     val config = ConfigurationBuilder()
-        .forPackage("me/geoflow/tasks")
+        .forPackage("me.geoflow.core.tasks")
         .setScanners(Scanners.MethodsAnnotated)
     val systemTasksList = Reflections(config)
         .getMethodsAnnotatedWith(SystemTask::class.java)

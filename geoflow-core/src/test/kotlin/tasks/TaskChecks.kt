@@ -38,7 +38,7 @@ class TaskChecks {
 
     private val userTasks: List<UserTaskField> by lazy {
         val config = ConfigurationBuilder()
-            .forPackage("me/geoflow/tasks")
+            .forPackage("me.geoflow.core.tasks")
             .setScanners(Scanners.MethodsAnnotated)
         Reflections(config)
             .getFieldsAnnotatedWith(UserTask::class.java)
@@ -55,7 +55,7 @@ class TaskChecks {
     }
     private val systemTasks: List<SystemTaskMethod> by lazy {
         val config = ConfigurationBuilder()
-            .forPackage("me/geoflow/tasks")
+            .forPackage("me.geoflow.core.tasks")
             .setScanners(Scanners.MethodsAnnotated)
         Reflections(config)
             .getMethodsAnnotatedWith(SystemTask::class.java)
