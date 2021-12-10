@@ -119,14 +119,14 @@ private fun Route.users() {
 
 /** All KJob data API route */
 private fun Route.jobs() {
-    route(path = "/me/geoflow/jobs") {
+    route(path = "/jobs") {
         kjobTasks()
     }
 }
 
 /** KJob pipeline run tasks API route */
 private fun Route.kjobTasks() {
-    route(path = "/me/geoflow/tasks") {
-        apiCall<MongoDb.TaskApiRequest>(apiEndPoint = "/me/geoflow/jobs/tasks", httpMethod = HttpMethod.Get)
+    route(path = "/tasks") {
+        apiCall<MongoDb.TaskApiRequest>(apiEndPoint = "/jobs/tasks", httpMethod = HttpMethod.Get)
     }
 }
