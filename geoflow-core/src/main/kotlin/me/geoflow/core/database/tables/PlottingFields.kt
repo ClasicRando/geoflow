@@ -5,6 +5,7 @@ package me.geoflow.core.database.tables
  */
 object PlottingFields : DbTable("plotting_fields") {
 
+    @Suppress("MaxLineLength")
     override val createStatement: String = """
         CREATE TABLE IF NOT EXISTS public.plotting_fields
         (
