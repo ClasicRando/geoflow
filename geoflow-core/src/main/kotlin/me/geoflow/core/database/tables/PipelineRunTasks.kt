@@ -12,6 +12,7 @@ import me.geoflow.core.database.extensions.runUpdate
 import me.geoflow.core.database.functions.UserHasRun
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
+import me.geoflow.core.database.errors.TaskRunningException
 import java.sql.Connection
 import java.sql.ResultSet
 import java.sql.Timestamp
@@ -22,6 +23,7 @@ import java.time.Instant
  *
  * Records contain metadata about the task, and it's run status/outcome.
  */
+@Suppress("TooManyFunctions")
 object PipelineRunTasks: DbTable("pipeline_run_tasks"), ApiExposed, Triggers {
 
     override val tableDisplayFields: Map<String, Map<String, String>> = mapOf(
@@ -87,6 +89,38 @@ object PipelineRunTasks: DbTable("pipeline_run_tasks"), ApiExposed, Triggers {
             """.trimIndent()
         )
     )
+
+    private fun requireTaskNotRunning(connection: Connection, runId: Long) {
+        val runningId = connection.queryFirstOrNull<Long>(
+            sql = "SELECT pr_task_id FROM $tableName WHERE run_id = ? AND task_status in (?,?)",
+            runId,
+            TaskStatus.Running.pgObject,
+            TaskStatus.Scheduled.pgObject,
+        )
+        if (runningId != null) {
+            throw TaskRunningException(runningId)
+        }
+    }
+
+    private fun requireTaskNotRunningId(connection: Connection, pipelineRunTaskId: Long) {
+        val runningId = connection.queryFirstOrNull<Long>(
+            sql = """
+                SELECT t1.pr_task_id
+                FROM   $tableName t1
+                JOIN   $tableName t2
+                ON     t1.run_id = t2.run_id
+                WHERE  t2.pr_task_id = ?
+                AND    t1.task_status in (?,?)
+                LIMIT  1
+            """.trimIndent(),
+            pipelineRunTaskId,
+            TaskStatus.Running.pgObject,
+            TaskStatus.Scheduled.pgObject,
+        )
+        if (runningId != null) {
+            throw TaskRunningException(runningId)
+        }
+    }
 
     /** Table record for [PipelineRunTasks] */
     @Suppress("LongParameterList", "UNUSED")
@@ -209,6 +243,7 @@ object PipelineRunTasks: DbTable("pipeline_run_tasks"), ApiExposed, Triggers {
      * Returns [NextTask] instance representing the next runnable task for the given [runId]. Verifies that the
      * [userOid] has the ability to run tasks for this [runId].
      *
+     * @throws TaskRunningException when another task in the run is currently active or scheduled
      * @throws IllegalArgumentException when the user is not able to run tasks for the run or the next task to run
      * cannot be found
      */
@@ -222,28 +257,28 @@ object PipelineRunTasks: DbTable("pipeline_run_tasks"), ApiExposed, Triggers {
     /**
      * Reset task to waiting state and deletes all children tasks using a stored procedure
      *
+     * @throws TaskRunningException when another task in the run is currently active or scheduled
      * @throws NoRecordAffected various cases can throw this exception. These include:
      * - the user is not able to run tasks for the run
      * - there is no record with the [pipelineRunTaskId] specified
      * - the record obtained is waiting to be scheduled
      */
     fun resetRecord(connection: Connection, userOid: Long, pipelineRunTaskId: Long) {
+        requireTaskNotRunningId(connection, pipelineRunTaskId)
         val sql = """
             UPDATE $tableName
-            SET    task_status = ?,
+            SET    task_status = 'Waiting'::task_status,
                    task_completed = null,
                    task_start = null,
                    task_message = null,
                    task_stack_trace = null
             WHERE  pr_task_id = ?
-            AND    task_status != ?
+            AND    task_status != 'Waiting'::task_status
             AND    user_has_run(?, run_id)
         """.trimIndent()
         val updateCount = connection.runUpdate(
             sql = sql,
-            TaskStatus.Waiting.pgObject,
             pipelineRunTaskId,
-            TaskStatus.Waiting.pgObject,
             userOid,
         )
         if (updateCount == 1) {
@@ -251,7 +286,7 @@ object PipelineRunTasks: DbTable("pipeline_run_tasks"), ApiExposed, Triggers {
         } else {
             throw NoRecordAffected(
                 tableName,
-                "No records were reset. Make sure the provided run_id matches the task and the task is Waiting"
+                "No records were reset. Make sure the provided run_id matches the task"
             )
         }
     }
@@ -356,16 +391,11 @@ object PipelineRunTasks: DbTable("pipeline_run_tasks"), ApiExposed, Triggers {
     /**
      * Returns the next runnable task for the given [runId] as a [NextTask]
      *
+     * @throws TaskRunningException when another task in the run is currently active or scheduled
      * @throws IllegalArgumentException when a task in the run is currently running or scheduled
      */
     fun getNextTask(connection: Connection, runId: Long): NextTask? {
-        val running = connection.queryFirstOrNull<Long?>(
-            sql = "SELECT task_id FROM $tableName WHERE run_id = ? AND task_status in (?,?) LIMIT 1",
-            runId,
-            TaskStatus.Scheduled.pgObject,
-            TaskStatus.Running.pgObject,
-        )
-        require(running == null) { "Task currently scheduled/running (id = $running)" }
+        requireTaskNotRunning(connection, runId)
         return getOrderedTasks(connection, runId).firstOrNull {
             it.taskStatus == TaskStatus.Waiting.name
         }?.let { record ->
