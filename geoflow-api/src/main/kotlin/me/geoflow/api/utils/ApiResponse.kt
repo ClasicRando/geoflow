@@ -3,6 +3,7 @@ package me.geoflow.api.utils
 import me.geoflow.core.database.tables.Actions
 import me.geoflow.core.database.tables.InternalUsers
 import me.geoflow.core.database.tables.PipelineRuns
+import me.geoflow.core.database.tables.PlottingFields
 import me.geoflow.core.database.tables.SourceTables
 import me.geoflow.core.database.tables.WorkflowOperations
 import kotlinx.serialization.SerialName
@@ -10,6 +11,7 @@ import kotlinx.serialization.Serializable
 import me.geoflow.core.database.tables.records.Action
 import me.geoflow.core.database.tables.records.NextTask
 import me.geoflow.core.database.tables.records.PipelineRun
+import me.geoflow.core.database.tables.records.PlottingFieldBody
 import me.geoflow.core.database.tables.records.RequestUser
 import me.geoflow.core.database.tables.records.ResponseUser
 import me.geoflow.core.database.tables.records.SourceTable
@@ -106,6 +108,24 @@ sealed interface ApiResponse {
     ): Success<NextTask> {
         @SerialName("object")
         override val responseObject: String = "next_task"
+    }
+
+    /** API response for a list of records from [plotting_fields][PlottingFields] */
+    @Serializable
+    class PlottingFieldsResponse(
+        override val payload: List<PlottingFieldBody>,
+    ): Success<List<PlottingFieldBody>> {
+        @SerialName("object")
+        override val responseObject: String = "plotting_fields"
+    }
+
+    /** API response for a single record from [plotting_fields][PlottingFields] */
+    @Serializable
+    class PlottingFieldsSingle(
+        override val payload: PlottingFieldBody,
+    ): Success<PlottingFieldBody> {
+        @SerialName("object")
+        override val responseObject: String = "plotting_fields"
     }
 
     /** API response for an inserted record */
