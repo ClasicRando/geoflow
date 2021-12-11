@@ -33,6 +33,7 @@ import me.geoflow.api.paths.ApiJobs
 import me.geoflow.api.paths.ApiOperations
 import me.geoflow.api.paths.ApiPipelineRunTasks
 import me.geoflow.api.paths.ApiPipelineRuns
+import me.geoflow.api.paths.ApiPlottingFields
 import me.geoflow.api.paths.ApiSourceTables
 import me.geoflow.api.paths.ApiUsers
 import me.geoflow.core.database.Database
@@ -139,6 +140,7 @@ fun Application.module() {
                 ApiSourceTables.generatePath(this)
                 ApiUsers.generatePath(this)
                 ApiJobs.generatePath(this)
+                ApiPlottingFields.generatePath(this)
             }
         }
         post(path = "/login") {
