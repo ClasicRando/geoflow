@@ -5,6 +5,7 @@ import me.geoflow.core.database.errors.NoRecordFound
 import io.ktor.application.MissingApplicationFeatureException
 import io.ktor.http.HttpStatusCode
 import kotlinx.serialization.SerializationException
+import me.geoflow.core.database.errors.IllegalUserAction
 import me.geoflow.core.database.errors.UserNotAdmin
 import java.sql.SQLException
 
@@ -23,6 +24,7 @@ fun throwableToResponseErrors(t: Throwable): ApiErrors {
             is IllegalArgumentException -> "argument_error"
             is IllegalStateException -> "internal_state_error"
             is UserNotAdmin -> "admin_error"
+            is IllegalUserAction -> "illegal_user_action"
             else -> {
                 it::class.simpleName?.replace("([A-Z])([a-z])".toRegex()) { match ->
                     "${match.groupValues[1].lowercase()}_${match.groupValues[2]}"
