@@ -1,5 +1,6 @@
 package me.geoflow.core.database.functions
 
+import me.geoflow.core.database.errors.IllegalUserAction
 import java.sql.Connection
 import kotlin.reflect.typeOf
 
@@ -21,6 +22,15 @@ object UserHasRun: PlPgSqlFunction(
      */
     fun checkUserRun(connection: Connection, userOid: Long, runId: Long): Boolean {
         return call(connection, userOid, runId)
+    }
+
+    /** Require check for user privileges to perform an operation on a pipeline run */
+    fun requireUserRun(connection: Connection, userOid: Long, runId: Long) {
+        if(!call<Boolean>(connection, userOid, runId)) {
+            throw IllegalUserAction(
+                "User attempted to perform an action on a record linked to a run they do not have privileges to access"
+            )
+        }
     }
 
     override val functionCode: String = """
