@@ -24,7 +24,7 @@ object ApiSourceTables : ApiPath(path = "/source-tables") {
     /** Returns list of source table records for the given runId */
     private fun getSourceTables(parent: Route) {
         parent.apiCall(httpMethod = HttpMethod.Get, path = "/{runId}") {
-            val runId = call.parameters.getOrFail("runId").toLong()
+            val runId = call.parameters.getOrFail<Long>("runId")
             val payload = Database.runWithConnection {
                 SourceTables.getRunSourceTables(it, runId)
             }

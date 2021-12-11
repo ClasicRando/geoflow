@@ -38,7 +38,7 @@ object ApiPipelineRunTasks : ApiPath(path = "/pipeline-run-tasks") {
      */
     private fun resetTask(parent: Route) {
         parent.apiCall(httpMethod = HttpMethod.Post, path = "/reset-task/{prTaskId}") { userOid ->
-            val pipelineRunTaskId = call.parameters.getOrFail("prTaskId").toLong()
+            val pipelineRunTaskId = call.parameters.getOrFail<Long>("prTaskId")
             Database.runWithConnection {
                 PipelineRunTasks.resetRecord(it, userOid, pipelineRunTaskId)
             }
