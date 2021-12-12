@@ -8,7 +8,8 @@ import me.geoflow.core.utils.requireNotEmpty
 import java.sql.Connection
 
 /**
- * Table has yet to be finalized and should not be used until then
+ * Table used to store the ordered plotting methods for a given pipeline run. References a source table for plotting
+ * (using a file_id in [SourceTables]) and a plotting method (using method_id from [PlottingMethodTypes])
  */
 object PlottingMethods : DbTable("plotting_methods"), Triggers, ApiExposed {
 

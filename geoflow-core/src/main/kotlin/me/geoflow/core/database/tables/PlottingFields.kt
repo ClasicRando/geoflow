@@ -9,7 +9,8 @@ import me.geoflow.core.database.tables.records.PlottingFieldBody
 import java.sql.Connection
 
 /**
- * Table has yet to be finalized and should not be used until then
+ * Table used to store the plotting fields of source tables that will be used to store locations. Links to a pipeline
+ * run using run_id and a source table using file_id
  */
 object PlottingFields : DbTable("plotting_fields"), ApiExposed {
 

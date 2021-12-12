@@ -5,7 +5,7 @@ import me.geoflow.core.database.tables.records.PlottingMethodType
 import java.sql.Connection
 
 /**
- * Table has yet to be finalized and should not be used until then
+ * Table used to store the plotting methods allowed for geocoding a record
  */
 object PlottingMethodTypes : DbTable("plotting_method_types") {
 
