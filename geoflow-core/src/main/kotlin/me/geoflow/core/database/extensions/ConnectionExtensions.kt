@@ -166,7 +166,6 @@ fun Connection.executeNoReturn(
  * @throws IllegalArgumentException see [rowToClass]
  * @throws TypeCastException see [rowToClass]
  */
-@Suppress("UNCHECKED_CAST")
 inline fun <reified T> Connection.runReturning(
     sql: String,
     vararg parameters: Any?,
@@ -216,7 +215,7 @@ private fun getParams(param: Any?): Iterable<IndexedValue<Any?>> {
         param.withIndex()
     }
     else {
-        listOf(IndexedValue(1, param))
+        listOf(IndexedValue(0, param))
     }
 }
 
@@ -228,16 +227,16 @@ private fun getParams(param: Any?): Iterable<IndexedValue<Any?>> {
 fun Connection.runBatchUpdate(
     sql: String,
     parameters: Iterable<Any?>,
-) {
-    prepareStatement(sql).use { statement ->
+): Int {
+    return prepareStatement(sql).use { statement ->
         for (params in parameters) {
             for ((i, param) in getParams(params)) {
-                statement.setObject(i, param)
+                statement.setObject(i + 1, param)
             }
             statement.addBatch()
         }
         statement.executeBatch()
-    }
+    }.sum()
 }
 
 /** Flattens an iterable by passing each item to the sequence builder */
