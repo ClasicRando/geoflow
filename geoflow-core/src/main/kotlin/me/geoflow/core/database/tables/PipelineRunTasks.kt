@@ -42,8 +42,8 @@ object PipelineRunTasks: DbTable("pipeline_run_tasks"), ApiExposed, Triggers {
             run_id bigint NOT NULL REFERENCES public.pipeline_runs (run_id) MATCH SIMPLE
                 ON UPDATE CASCADE
                 ON DELETE CASCADE,
-            task_start timestamp without time zone,
-            task_completed timestamp without time zone,
+            task_start timestamp with time zone,
+            task_completed timestamp with time zone,
             task_id bigint NOT NULL REFERENCES public.tasks (task_id) MATCH SIMPLE
                 ON UPDATE CASCADE
                 ON DELETE RESTRICT,

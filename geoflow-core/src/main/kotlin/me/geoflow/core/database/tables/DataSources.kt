@@ -31,7 +31,7 @@ object DataSources : DbTable("data_sources") {
             created_by bigint NOT NULL REFERENCES public.internal_users (user_oid) MATCH SIMPLE
                 ON UPDATE CASCADE
                 ON DELETE RESTRICT,
-            last_updated timestamp without time zone,
+            last_updated timestamp with time zone,
             updated_by bigint REFERENCES public.internal_users (user_oid) MATCH SIMPLE
                 ON UPDATE CASCADE
                 ON DELETE RESTRICT,
@@ -40,7 +40,7 @@ object DataSources : DbTable("data_sources") {
                 ON UPDATE CASCADE
                 ON DELETE RESTRICT,
             reporting_type text COLLATE pg_catalog."default" NOT NULL CHECK (check_not_blank_or_empty(reporting_type)),
-            created timestamp without time zone NOT NULL DEFAULT timezone('utc'::text, now()),
+            created timestamp with time zone NOT NULL DEFAULT timezone('utc'::text, now()),
             collection_pipeline bigint NOT NULL REFERENCES public.pipelines (pipeline_id) MATCH SIMPLE
                 ON UPDATE CASCADE
                 ON DELETE RESTRICT,
