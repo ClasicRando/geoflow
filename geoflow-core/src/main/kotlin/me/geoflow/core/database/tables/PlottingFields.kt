@@ -11,7 +11,7 @@ import java.sql.Connection
 /**
  * Table has yet to be finalized and should not be used until then
  */
-object PlottingFields : DbTable("plotting_fields") {
+object PlottingFields : DbTable("plotting_fields"), ApiExposed {
 
     @Suppress("MaxLineLength")
     override val createStatement: String = """
@@ -38,6 +38,21 @@ object PlottingFields : DbTable("plotting_fields") {
             OIDS = FALSE
         );
     """.trimIndent()
+
+    override val tableDisplayFields: Map<String, Map<String, String>> = mapOf(
+        "file_id" to mapOf("name" to "File ID"),
+        "name" to mapOf("name" to "Company Name"),
+        "address_line1" to mapOf("name" to "Address Line 1"),
+        "address_line2" to mapOf("name" to "Address Line 2"),
+        "city" to mapOf(),
+        "alternate_cites" to mapOf("formatter" to "alternateCitiesFormatter"),
+        "mail_code" to mapOf(),
+        "latitude" to mapOf(),
+        "longitude" to mapOf(),
+        "prov" to mapOf("name" to "Prov/State"),
+        "clean_address" to mapOf("name" to "Cleaned Address"),
+        "clean_city" to mapOf("name" to "Cleaned City"),
+    )
 
     /** Returns a list of API response objects representing DB records for the provided [runId] */
     fun getRecords(connection: Connection, runId: Long): List<PlottingFieldBody> {

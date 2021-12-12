@@ -10,7 +10,7 @@ import java.sql.Connection
 /**
  * Table has yet to be finalized and should not be used until then
  */
-object PlottingMethods : DbTable("plotting_methods"), Triggers {
+object PlottingMethods : DbTable("plotting_methods"), Triggers, ApiExposed {
 
     override val createStatement: String = """
 		CREATE TABLE IF NOT EXISTS public.plotting_methods
@@ -33,6 +33,12 @@ object PlottingMethods : DbTable("plotting_methods"), Triggers {
             OIDS = FALSE
         );
     """.trimIndent()
+
+    override val tableDisplayFields: Map<String, Map<String, String>> = mapOf(
+        "order" to mapOf(),
+        "method_type" to mapOf("name" to "Name", "formatter" to "methodTypeFormatter"),
+        "file_id" to mapOf("name" to "File ID"),
+    )
 
     override val triggers: List<Trigger> = listOf(
         Trigger(
