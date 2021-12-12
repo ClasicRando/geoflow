@@ -1,5 +1,9 @@
 package me.geoflow.core.database.tables
 
+import me.geoflow.core.database.extensions.submitQuery
+import me.geoflow.core.database.tables.records.PlottingMethodType
+import java.sql.Connection
+
 /**
  * Table has yet to be finalized and should not be used until then
  */
@@ -15,4 +19,10 @@ object PlottingMethodTypes : DbTable("plotting_method_types") {
             OIDS = FALSE
         );
     """.trimIndent()
+
+    /** */
+    fun getRecords(connection: Connection): List<PlottingMethodType> {
+        return connection.submitQuery(sql = "SELECT * FROM $tableName ORDER BY method_id")
+    }
+
 }
