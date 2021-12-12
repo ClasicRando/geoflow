@@ -24,7 +24,11 @@ object UserHasRun: PlPgSqlFunction(
         return call(connection, userOid, runId)
     }
 
-    /** Require check for user privileges to perform an operation on a pipeline run */
+    /**
+     * Require check for user privileges to perform an operation on a pipeline run
+     *
+     * @throws IllegalUserAction when the user does not have the ability to perform actions on the provided [runId]
+     */
     fun requireUserRun(connection: Connection, userOid: Long, runId: Long) {
         if(!call<Boolean>(connection, userOid, runId)) {
             throw IllegalUserAction(
