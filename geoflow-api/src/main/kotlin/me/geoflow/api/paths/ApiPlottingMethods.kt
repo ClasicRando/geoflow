@@ -38,10 +38,10 @@ object ApiPlottingMethods : ApiPath(path = "/plotting-methods") {
     private fun setPlottingMethods(parent: Route) {
         parent.apiCall(httpMethod = HttpMethod.Post, path = "/{runId}") { userOid ->
             val body = call.receive<List<PlottingMethod>>()
-            val affectedCount = Database.useTransaction {
+            val (delete, insert) = Database.useTransaction {
                 PlottingMethods.setRecords(it, userOid, call.parameters.getOrFail<Long>("runId"), body)
             }
-            ApiResponse.MessageResponse("Successful update, $affectedCount records affected")
+            ApiResponse.MessageResponse("Successful set! Deleted $delete record(s), inserted $insert record(s)")
         }
     }
 
