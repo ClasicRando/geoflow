@@ -102,8 +102,7 @@ data class PipelineRun(
     companion object {
         /** SQL query used to generate the parent class */
         val sql: String = """
-                SELECT t1.run_id, t1.ds_id, t2.code, t2.files_location,
-                       to_char(t1.record_date,'YYYY-MM-DD') record_date, t1.workflow_operation,
+                SELECT t1.run_id, t1.ds_id, t2.code, t2.files_location, t1.record_date, t1.workflow_operation,
                        t1.operation_state, t3.name, t4.name, t5.name, t6.name, t1.production_count, t1.staging_count,
                        t1.match_count, t1.new_count, t1.plotting_stats, t1.has_child_tables, t1.merge_type
                 FROM   ${PipelineRuns.tableName} t1
