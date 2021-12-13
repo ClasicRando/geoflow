@@ -1,6 +1,5 @@
 package me.geoflow.api.paths
 
-import me.geoflow.api.utils.apiCall
 import me.geoflow.core.database.enums.TaskStatus
 import me.geoflow.core.database.tables.PipelineRunTasks
 import io.ktor.application.call
@@ -11,6 +10,7 @@ import me.geoflow.core.jobs.SystemJob
 import me.geoflow.api.sockets.publisher
 import me.geoflow.api.scheduleJob
 import me.geoflow.api.utils.ApiResponse
+import me.geoflow.api.utils.apiCallPostgres
 import me.geoflow.core.database.Database
 
 /** Pipeline run tasks API route */
@@ -38,11 +38,9 @@ object ApiPipelineRunTasks : ApiPath(path = "/pipeline-run-tasks") {
      * response indicating if the specified task was successfully reset
      */
     private fun resetTask(parent: Route) {
-        parent.apiCall(httpMethod = HttpMethod.Post, path = "/reset-task/{prTaskId}") { userOid ->
+        parent.apiCallPostgres(httpMethod = HttpMethod.Post, path = "/reset-task/{prTaskId}") { userOid, connection ->
             val pipelineRunTaskId = call.parameters.getOrFail<Long>("prTaskId")
-            Database.runWithConnection {
-                PipelineRunTasks.resetRecord(it, userOid, pipelineRunTaskId)
-            }
+            PipelineRunTasks.resetRecord(connection, userOid, pipelineRunTaskId)
             ApiResponse.MessageResponse("Successfully reset task $pipelineRunTaskId")
         }
     }
@@ -52,21 +50,16 @@ object ApiPipelineRunTasks : ApiPath(path = "/pipeline-run-tasks") {
      * to run
      */
     private fun runNext(parent: Route) {
-        parent.apiCall(httpMethod = HttpMethod.Post, path = "/run-next/{runId}") { userOid ->
-            val runId = call.parameters.getOrFail("runId").toLong()
-            val payload = Database.runWithConnection {
-                PipelineRunTasks.getRecordForRun(it, userOid, runId)
-            }.also { nextTask ->
-                scheduleJob(SystemJob) {
-                    props[it.pipelineRunTaskId] = nextTask.pipelineRunTaskId
-                    props[it.runId] = runId
-                    props[it.runNext] = false
-                }
-                Database.runWithConnection {
-                    PipelineRunTasks.setStatus(it, nextTask.pipelineRunTaskId, TaskStatus.Scheduled)
-                }
+        parent.apiCallPostgres(httpMethod = HttpMethod.Post, path = "/run-next/{runId}") { userOid, connection ->
+            val runId = call.parameters.getOrFail<Long>("runId")
+            val nextTask = PipelineRunTasks.getRecordForRun(connection, userOid, runId)
+            scheduleJob(SystemJob) {
+                props[it.pipelineRunTaskId] = nextTask.pipelineRunTaskId
+                props[it.runId] = runId
+                props[it.runNext] = false
             }
-            ApiResponse.NextTaskResponse(payload)
+            PipelineRunTasks.setStatus(connection, nextTask.pipelineRunTaskId, TaskStatus.Scheduled)
+            ApiResponse.NextTaskResponse(nextTask)
         }
     }
 
@@ -76,21 +69,16 @@ object ApiPipelineRunTasks : ApiPath(path = "/pipeline-run-tasks") {
      * data about the NextTask schedule to run
      */
     private fun runAll(parent: Route) {
-        parent.apiCall(httpMethod = HttpMethod.Post, path = "/run-all/{runId}") { userOid ->
-            val runId = call.parameters.getOrFail("runId").toLong()
-            val payload = Database.runWithConnection {
-                PipelineRunTasks.getRecordForRun(it, userOid, runId)
-            }.also { nextTask ->
-                scheduleJob(SystemJob) {
-                    props[it.pipelineRunTaskId] = nextTask.pipelineRunTaskId
-                    props[it.runId] = runId
-                    props[it.runNext] = true
-                }
-                Database.runWithConnection {
-                    PipelineRunTasks.setStatus(it, nextTask.pipelineRunTaskId, TaskStatus.Scheduled)
-                }
+        parent.apiCallPostgres(httpMethod = HttpMethod.Post, path = "/run-all/{runId}") { userOid, connection ->
+            val runId = call.parameters.getOrFail<Long>("runId")
+            val nextTask = PipelineRunTasks.getRecordForRun(connection, userOid, runId)
+            scheduleJob(SystemJob) {
+                props[it.pipelineRunTaskId] = nextTask.pipelineRunTaskId
+                props[it.runId] = runId
+                props[it.runNext] = true
             }
-            ApiResponse.NextTaskResponse(payload)
+            PipelineRunTasks.setStatus(connection, nextTask.pipelineRunTaskId, TaskStatus.Scheduled)
+            ApiResponse.NextTaskResponse(nextTask)
         }
     }
 }

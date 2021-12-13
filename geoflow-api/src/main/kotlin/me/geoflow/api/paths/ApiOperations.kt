@@ -1,11 +1,10 @@
 package me.geoflow.api.paths
 
-import me.geoflow.api.utils.apiCall
 import me.geoflow.core.database.tables.WorkflowOperations
 import io.ktor.http.HttpMethod
 import io.ktor.routing.Route
 import me.geoflow.api.utils.ApiResponse
-import me.geoflow.core.database.Database
+import me.geoflow.api.utils.apiCallPostgres
 
 /** User operations API route */
 @Suppress("unused")
@@ -17,10 +16,8 @@ object ApiOperations : ApiPath(path = "/operations") {
 
     /** Returns list of operations based upon the current user's roles. */
     private fun getOperations(parent: Route) {
-        parent.apiCall(httpMethod = HttpMethod.Get) { userOid ->
-            val payload = Database.runWithConnection {
-                WorkflowOperations.userOperations(it, userOid)
-            }
+        parent.apiCallPostgres(httpMethod = HttpMethod.Get) { userOid, connection ->
+            val payload = WorkflowOperations.userOperations(connection, userOid)
             ApiResponse.OperationsResponse(payload)
         }
     }

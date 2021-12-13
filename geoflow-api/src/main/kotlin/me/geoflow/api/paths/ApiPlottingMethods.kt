@@ -6,7 +6,7 @@ import io.ktor.request.receive
 import io.ktor.routing.Route
 import io.ktor.util.getOrFail
 import me.geoflow.api.utils.ApiResponse
-import me.geoflow.api.utils.apiCall
+import me.geoflow.api.utils.apiCallPostgres
 import me.geoflow.core.database.Database
 import me.geoflow.core.database.tables.PlottingMethods
 import me.geoflow.core.database.tables.records.PlottingMethod
@@ -22,9 +22,9 @@ object ApiPlottingMethods : ApiPath(path = "/plotting-methods") {
 
     /** Returns a list of plotting method records for the given runId */
     private fun getPlottingMethods(parent: Route) {
-        parent.apiCall(httpMethod = HttpMethod.Get, path = "/{runId}") {
+        parent.apiCallPostgres(httpMethod = HttpMethod.Get, path = "/{runId}") { _, connection ->
             val payload = Database.runWithConnection {
-                PlottingMethods.getRecords(it, call.parameters.getOrFail<Long>("runId"))
+                PlottingMethods.getRecords(connection, call.parameters.getOrFail<Long>("runId"))
             }
             ApiResponse.PlottingMethodsResponse(payload)
         }
@@ -37,12 +37,16 @@ object ApiPlottingMethods : ApiPath(path = "/plotting-methods") {
      * body. If the insert fails, the changes are rolled back to preserve the current state of the runId.
      */
     private fun setPlottingMethods(parent: Route) {
-        parent.apiCall(httpMethod = HttpMethod.Post, path = "/{runId}") { userOid ->
+        parent.apiCallPostgres(httpMethod = HttpMethod.Post, path = "/{runId}") { userOid, connection ->
             val body = call.receive<List<PlottingMethod>>()
-            val (delete, insert) = Database.useTransaction {
-                PlottingMethods.setRecords(it, userOid, call.parameters.getOrFail<Long>("runId"), body)
-            }
-            ApiResponse.MessageResponse("Successful set! Deleted $delete record(s), inserted $insert record(s)")
+            val (delete, insert) = PlottingMethods.setRecords(
+                connection,
+                userOid,
+                call.parameters.getOrFail<Long>("runId"),
+                body,
+            )
+            val payload = "Successful set! Deleted $delete record(s), inserted $insert record(s)"
+            ApiResponse.MessageResponse(payload)
         }
     }
 

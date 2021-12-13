@@ -1,13 +1,12 @@
 package me.geoflow.api.paths
 
-import me.geoflow.api.utils.apiCall
 import me.geoflow.core.database.tables.InternalUsers
 import io.ktor.application.call
 import io.ktor.http.HttpMethod
 import io.ktor.request.receive
 import io.ktor.routing.Route
 import me.geoflow.api.utils.ApiResponse
-import me.geoflow.core.database.Database
+import me.geoflow.api.utils.apiCallPostgres
 import me.geoflow.core.database.tables.records.RequestUser
 
 /** Internal Users API route */
@@ -23,20 +22,16 @@ object ApiUsers : ApiPath(path = "/users") {
 
     /** Returns a single user record if the caller is the user */
     private fun getUser(parent: Route) {
-        parent.apiCall(httpMethod = HttpMethod.Get, path = "/self") { userOid ->
-            val payload = Database.runWithConnection {
-                InternalUsers.getSelf(it, userOid)
-            }
+        parent.apiCallPostgres(httpMethod = HttpMethod.Get, path = "/self") { userOid, connection ->
+            val payload = InternalUsers.getSelf(connection, userOid)
             ApiResponse.UserResponse(payload)
         }
     }
 
     /** Returns list of user records */
     private fun getUsers(parent: Route) {
-        parent.apiCall(httpMethod = HttpMethod.Get) { userOid ->
-            val payload = Database.runWithConnection {
-                InternalUsers.getUsers(it, userOid)
-            }
+        parent.apiCallPostgres(httpMethod = HttpMethod.Get) { userOid, connection ->
+            val payload = InternalUsers.getUsers(connection, userOid)
             ApiResponse.UsersResponse(payload)
         }
     }
@@ -46,11 +41,9 @@ object ApiUsers : ApiPath(path = "/users") {
      * requesting user has privileges to create a new user
      */
     private fun createUser(parent: Route) {
-        parent.apiCall(httpMethod = HttpMethod.Post) { userOid ->
+        parent.apiCallPostgres(httpMethod = HttpMethod.Post) { userOid, connection ->
             val requestUser = call.receive<RequestUser>()
-            val newUserOid = Database.runWithConnection {
-                InternalUsers.createUser(it, requestUser, userOid)
-            }
+            val newUserOid = InternalUsers.createUser(connection, requestUser, userOid)
             ApiResponse.InsertIdResponse(newUserOid)
         }
     }
@@ -60,11 +53,9 @@ object ApiUsers : ApiPath(path = "/users") {
      * the requesting user has privileges to update users
      */
     private fun updateUser(parent: Route) {
-        parent.apiCall(httpMethod = HttpMethod.Put) { userOid ->
+        parent.apiCallPostgres(httpMethod = HttpMethod.Put) { userOid, connection ->
             val requestUser = call.receive<RequestUser>()
-            val payload = Database.runWithConnection {
-                InternalUsers.updateUser(it, requestUser, userOid)
-            }
+            val payload = InternalUsers.updateUser(connection, requestUser, userOid)
             ApiResponse.UserResponse(payload)
         }
     }

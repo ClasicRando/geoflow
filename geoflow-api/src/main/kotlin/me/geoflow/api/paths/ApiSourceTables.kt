@@ -1,6 +1,5 @@
 package me.geoflow.api.paths
 
-import me.geoflow.api.utils.apiCall
 import me.geoflow.core.database.tables.SourceTables
 import io.ktor.application.call
 import io.ktor.http.HttpMethod
@@ -8,7 +7,7 @@ import io.ktor.request.receive
 import io.ktor.routing.Route
 import io.ktor.util.getOrFail
 import me.geoflow.api.utils.ApiResponse
-import me.geoflow.core.database.Database
+import me.geoflow.api.utils.apiCallPostgres
 import me.geoflow.core.database.tables.records.SourceTable
 
 /** Source tables API route */
@@ -24,11 +23,9 @@ object ApiSourceTables : ApiPath(path = "/source-tables") {
 
     /** Returns list of source table records for the given runId */
     private fun getSourceTables(parent: Route) {
-        parent.apiCall(httpMethod = HttpMethod.Get, path = "/{runId}") {
+        parent.apiCallPostgres(httpMethod = HttpMethod.Get, path = "/{runId}") { _, connection ->
             val runId = call.parameters.getOrFail<Long>("runId")
-            val payload = Database.runWithConnection {
-                SourceTables.getRunSourceTables(it, runId)
-            }
+            val payload = SourceTables.getRunSourceTables(connection, runId)
             ApiResponse.SourceTablesResponse(payload)
         }
     }
@@ -38,11 +35,9 @@ object ApiSourceTables : ApiPath(path = "/source-tables") {
      * to ensure the requesting user has privileges to update the record in question
      */
     private fun updateSourceTable(parent: Route) {
-        parent.apiCall(httpMethod = HttpMethod.Put) { userOid ->
+        parent.apiCallPostgres(httpMethod = HttpMethod.Put) { userOid, connection ->
             val sourceTable = call.receive<SourceTable>()
-            val payload = Database.useTransaction {
-                SourceTables.updateSourceTable(it, userOid, sourceTable)
-            }
+            val payload = SourceTables.updateSourceTable(connection, userOid, sourceTable)
             ApiResponse.SourceTableResponse(payload)
         }
     }
@@ -52,12 +47,10 @@ object ApiSourceTables : ApiPath(path = "/source-tables") {
      * runId. Checks to ensure the requesting user has privileges to create a record for the run
      */
     private fun createSourceTable(parent: Route) {
-        parent.apiCall(httpMethod = HttpMethod.Post, path = "/{runId}") { userOid ->
+        parent.apiCallPostgres(httpMethod = HttpMethod.Post, path = "/{runId}") { userOid, connection ->
             val sourceTable = call.receive<SourceTable>()
-            val runId = call.parameters.getOrFail("runId").toLong()
-            val payload = Database.runWithConnection {
-                SourceTables.insertSourceTable(it, runId, userOid, sourceTable)
-            }
+            val runId = call.parameters.getOrFail<Long>("runId")
+            val payload = SourceTables.insertSourceTable(connection, runId, userOid, sourceTable)
             ApiResponse.InsertIdResponse(payload)
         }
     }
@@ -67,11 +60,9 @@ object ApiSourceTables : ApiPath(path = "/source-tables") {
      * delete the record in question
      */
     private fun deleteSourceTable(parent: Route) {
-        parent.apiCall(httpMethod = HttpMethod.Delete, path = "/{stOid}") { userOid ->
-            val stOid = call.parameters.getOrFail("stOid").toLong()
-            Database.runWithConnection {
-                SourceTables.deleteSourceTable(it, stOid, userOid)
-            }
+        parent.apiCallPostgres(httpMethod = HttpMethod.Delete, path = "/{stOid}") { userOid, connection ->
+            val stOid = call.parameters.getOrFail<Long>("stOid")
+            SourceTables.deleteSourceTable(connection, stOid, userOid)
             ApiResponse.MessageResponse("Deleted source table record ($stOid)")
         }
     }

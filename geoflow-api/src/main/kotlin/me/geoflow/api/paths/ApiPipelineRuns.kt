@@ -1,13 +1,12 @@
 package me.geoflow.api.paths
 
-import me.geoflow.api.utils.apiCall
 import me.geoflow.core.database.tables.PipelineRuns
 import io.ktor.application.call
 import io.ktor.http.HttpMethod
 import io.ktor.routing.Route
 import io.ktor.util.getOrFail
 import me.geoflow.api.utils.ApiResponse
-import me.geoflow.core.database.Database
+import me.geoflow.api.utils.apiCallPostgres
 
 /** Pipeline runs API route */
 @Suppress("unused")
@@ -20,10 +19,8 @@ object ApiPipelineRuns : ApiPath(path = "/pipeline-runs")  {
 
     /** Returns list of pipeline runs for the given workflow code based upon the current user. */
     private fun getRuns(parent: Route) {
-        parent.apiCall(httpMethod = HttpMethod.Get, path = "/{code}") { userOid ->
-            val payload = Database.runWithConnection {
-                PipelineRuns.userRuns(it, userOid, call.parameters.getOrFail("code"))
-            }
+        parent.apiCallPostgres(httpMethod = HttpMethod.Get, path = "/{code}") { userOid, connection ->
+            val payload = PipelineRuns.userRuns(connection, userOid, call.parameters.getOrFail("code"))
             ApiResponse.PipelineRunsResponse(payload)
         }
     }
@@ -33,11 +30,9 @@ object ApiPipelineRuns : ApiPath(path = "/pipeline-runs")  {
      * if the provided runId was successfully picked up
      */
     private fun pickupRun(parent: Route) {
-        parent.apiCall(httpMethod = HttpMethod.Post, path = "/pickup/{runId}") { userOid ->
+        parent.apiCallPostgres(httpMethod = HttpMethod.Post, path = "/pickup/{runId}") { userOid, connection ->
             val runId = call.parameters.getOrFail("").toLong()
-            Database.runWithConnection {
-                PipelineRuns.pickupRun(it, runId, userOid)
-            }
+            PipelineRuns.pickupRun(connection, runId, userOid)
             ApiResponse.MessageResponse("Successfully picked up $runId to Active state under the current user")
         }
     }

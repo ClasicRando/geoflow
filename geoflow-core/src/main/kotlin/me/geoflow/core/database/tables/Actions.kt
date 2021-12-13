@@ -46,13 +46,13 @@ object Actions : DbTable("actions"), ApiExposed, DefaultData {
     override val defaultRecordsFileName: String = "actions.csv"
 
     /**
-     * API function to get a list of all user actions based upon the [userOid] of the current user
+     * API function to get a list of all user actions based upon the [userId] of the current user
      */
-    fun userActions(connection: Connection, userOid: Long): List<Action> {
+    fun userActions(connection: Connection, userId: Long): List<Action> {
         val sql = """
             SELECT name, description, href
             FROM   ${GetUserActions.name}(?)
         """.trimIndent()
-        return connection.submitQuery(sql = sql, userOid)
+        return connection.submitQuery(sql = sql, userId)
     }
 }
