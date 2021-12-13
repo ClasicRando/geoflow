@@ -12,6 +12,7 @@ import me.geoflow.core.database.Database
 import me.geoflow.core.database.tables.records.SourceTable
 
 /** Source tables API route */
+@Suppress("unused")
 object ApiSourceTables : ApiPath(path = "/source-tables") {
 
     override fun Route.registerEndpoints() {

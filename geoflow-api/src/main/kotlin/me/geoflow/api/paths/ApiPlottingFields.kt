@@ -12,6 +12,7 @@ import me.geoflow.core.database.tables.PlottingFields
 import me.geoflow.core.database.tables.records.PlottingFieldBody
 
 /** Plotting fields API route */
+@Suppress("unused")
 object ApiPlottingFields : ApiPath("/plotting-fields") {
 
     override fun Route.registerEndpoints() {

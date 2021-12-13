@@ -11,6 +11,7 @@ import me.geoflow.core.database.Database
 import me.geoflow.core.database.tables.records.RequestUser
 
 /** Internal Users API route */
+@Suppress("unused")
 object ApiUsers : ApiPath(path = "/users") {
 
     override fun Route.registerEndpoints() {

@@ -10,6 +10,7 @@ import me.geoflow.api.utils.ApiResponse
 import me.geoflow.core.database.Database
 
 /** Pipeline runs API route */
+@Suppress("unused")
 object ApiPipelineRuns : ApiPath(path = "/pipeline-runs")  {
 
     override fun Route.registerEndpoints() {

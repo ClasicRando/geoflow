@@ -8,6 +8,7 @@ import me.geoflow.api.utils.ApiResponse
 import me.geoflow.core.database.Database
 
 /** User actions API route */
+@Suppress("unused")
 object ApiActions : ApiPath(path = "/actions") {
 
     override fun Route.registerEndpoints() {

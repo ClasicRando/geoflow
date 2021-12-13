@@ -12,6 +12,7 @@ import me.geoflow.api.utils.ApiResponse
 import me.geoflow.core.database.Database
 
 /** All KJob data API route */
+@Suppress("unused")
 object ApiJobs : ApiPath(path = "/jobs") {
 
     override fun Route.registerEndpoints() {
