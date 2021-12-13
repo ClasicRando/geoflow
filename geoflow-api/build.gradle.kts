@@ -13,6 +13,7 @@ val htmlJvmVersion: String by project
 val slf4Version: String by project
 val postgresqlVersion: String by project
 val kotlinLoggingVersion: String by project
+val reflectionsVersion: String by project
 
 repositories {
     mavenCentral()
@@ -41,6 +42,7 @@ dependencies {
     // https://mvnrepository.com/artifact/org.slf4j/slf4j-simple
     implementation("org.slf4j:slf4j-simple:$slf4Version")
     implementation("io.github.microutils:kotlin-logging-jvm:$kotlinLoggingVersion")
+    implementation("org.reflections:reflections:$reflectionsVersion")
 }
 
 application {
