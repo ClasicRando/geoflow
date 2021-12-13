@@ -1,6 +1,8 @@
 package me.geoflow.api.utils
 
 import me.geoflow.core.database.tables.Actions
+import me.geoflow.core.database.tables.DataSourceContacts
+import me.geoflow.core.database.tables.DataSources
 import me.geoflow.core.database.tables.InternalUsers
 import me.geoflow.core.database.tables.PipelineRuns
 import me.geoflow.core.database.tables.PlottingFields
@@ -11,6 +13,8 @@ import me.geoflow.core.database.tables.WorkflowOperations
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 import me.geoflow.core.database.tables.records.Action
+import me.geoflow.core.database.tables.records.DataSource
+import me.geoflow.core.database.tables.records.DataSourceContact
 import me.geoflow.core.database.tables.records.NextTask
 import me.geoflow.core.database.tables.records.PipelineRun
 import me.geoflow.core.database.tables.records.PlottingFieldBody
@@ -148,6 +152,42 @@ sealed interface ApiResponse {
     ): Success<List<PlottingMethodType>> {
         @SerialName("object")
         override val responseObject: String = "plotting_method_type"
+    }
+
+    /** API response for a list of records from [data_sources][DataSources] */
+    @Serializable
+    class DataSourcesResponse(
+        override val payload: List<DataSource>,
+    ): Success<List<DataSource>> {
+        @SerialName("object")
+        override val responseObject: String = "data_source"
+    }
+
+    /** API response for a single record from [data_sources][DataSources] */
+    @Serializable
+    class DataSourceResponse(
+        override val payload: DataSource,
+    ): Success<DataSource> {
+        @SerialName("object")
+        override val responseObject: String = "data_source"
+    }
+
+    /** API response for a list of records from [data_source_contacts][DataSourceContacts] */
+    @Serializable
+    class DataSourceContactsResponse(
+        override val payload: List<DataSourceContact>,
+    ): Success<List<DataSourceContact>> {
+        @SerialName("object")
+        override val responseObject: String = "data_source_contact"
+    }
+
+    /** API response for a single record from [data_source_contacts][DataSourceContacts] */
+    @Serializable
+    class DataSourceContactResponse(
+        override val payload: DataSourceContact,
+    ): Success<DataSourceContact> {
+        @SerialName("object")
+        override val responseObject: String = "data_source_contact"
     }
 
     /** API response for an inserted record */
