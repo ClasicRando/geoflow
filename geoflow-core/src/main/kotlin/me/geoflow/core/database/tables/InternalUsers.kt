@@ -6,6 +6,7 @@ import me.geoflow.core.database.extensions.queryHasResult
 import me.geoflow.core.database.extensions.runReturningFirstOrNull
 import me.geoflow.core.database.extensions.submitQuery
 import me.geoflow.core.database.errors.NoRecordFound
+import me.geoflow.core.database.errors.UserMissingRole
 import me.geoflow.core.database.errors.UserNotAdmin
 import me.geoflow.core.database.tables.records.InternalUser
 import me.geoflow.core.database.tables.records.RequestUser
@@ -175,4 +176,21 @@ object InternalUsers : DbTable("internal_users"), ApiExposed {
             throw UserNotAdmin()
         }
     }
+
+    /**
+     * Utility function that checks to make sure the specified [userId] has a [role] or the user is an admin
+     *
+     * @throws UserMissingRole when the user does not have the required role
+     */
+    fun requireRole(connection: Connection, userId: Long, role: String) {
+        val hasRole = connection.queryHasResult(
+            sql = "SELECT 1 FROM $tableName WHERE user_oid = ? AND ARRAY['admin',?] && roles",
+            userId,
+            role,
+        )
+        if (!hasRole) {
+            throw UserMissingRole(role)
+        }
+    }
+
 }
