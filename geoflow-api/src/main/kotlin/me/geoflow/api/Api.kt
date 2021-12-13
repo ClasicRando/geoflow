@@ -1,3 +1,5 @@
+package me.geoflow.api
+
 import com.auth0.jwk.JwkProviderBuilder
 import com.auth0.jwt.JWT
 import com.auth0.jwt.algorithms.Algorithm
@@ -28,17 +30,11 @@ import it.justwrote.kjob.job.JobExecutionType
 import it.justwrote.kjob.kjob
 import mu.KLogger
 import mu.KotlinLogging
-import me.geoflow.api.paths.ApiActions
-import me.geoflow.api.paths.ApiJobs
-import me.geoflow.api.paths.ApiOperations
-import me.geoflow.api.paths.ApiPipelineRunTasks
-import me.geoflow.api.paths.ApiPipelineRuns
-import me.geoflow.api.paths.ApiPlottingFields
-import me.geoflow.api.paths.ApiPlottingMethodTypes
-import me.geoflow.api.paths.ApiPlottingMethods
-import me.geoflow.api.paths.ApiSourceTables
-import me.geoflow.api.paths.ApiUsers
+import me.geoflow.api.paths.ApiPath
 import me.geoflow.core.database.Database
+import org.reflections.Reflections
+import org.reflections.scanners.Scanners
+import org.reflections.util.ConfigurationBuilder
 import java.security.KeyFactory
 import java.security.interfaces.RSAPrivateKey
 import java.security.interfaces.RSAPublicKey
@@ -135,16 +131,14 @@ fun Application.module() {
     routing {
         authenticate("auth-jwt") {
             route("/api") {
-                ApiOperations.generatePath(this)
-                ApiActions.generatePath(this)
-                ApiPipelineRuns.generatePath(this)
-                ApiPipelineRunTasks.generatePath(this)
-                ApiSourceTables.generatePath(this)
-                ApiUsers.generatePath(this)
-                ApiJobs.generatePath(this)
-                ApiPlottingFields.generatePath(this)
-                ApiPlottingMethods.generatePath(this)
-                ApiPlottingMethodTypes.generatePath(this)
+                val config = ConfigurationBuilder()
+                    .forPackage("me.geoflow.api.paths")
+                    .setScanners(Scanners.SubTypes)
+                for (path in Reflections(config).getSubTypesOf(ApiPath::class.java)) {
+                    val instance = path.kotlin.objectInstance
+                        ?: path.getDeclaredField("INSTANCE").get(null) as ApiPath
+                    instance.generatePath(this)
+                }
             }
         }
         post(path = "/login") {
