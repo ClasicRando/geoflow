@@ -3,11 +3,13 @@ package me.geoflow.core.database.extensions
 import me.geoflow.core.database.tables.QueryResultRecord
 import me.geoflow.core.utils.formatInstantDateTime
 import kotlinx.serialization.Serializable
+import me.geoflow.core.utils.formatLocalDateDefault
 import org.postgresql.util.PGobject
 import org.reflections.Reflections
 import org.reflections.util.ConfigurationBuilder
 import org.reflections.scanners.Scanners.TypesAnnotated
 import me.geoflow.core.utils.requireState
+import java.sql.Date
 import java.sql.ResultSet
 import java.sql.Timestamp
 import kotlin.reflect.KClass
@@ -70,6 +72,7 @@ inline fun <reified T> ResultSet.rowToClass(): T {
             when (val current = getObject(i + 1)) {
                 null -> current
                 is Timestamp -> formatInstantDateTime(current.toInstant())
+                is Date -> formatLocalDateDefault(current.toLocalDate())
                 is java.sql.Array -> current.getList<String>()
                 is PGobject -> current.value ?: if (current.type == "jsonb") null else ""
                 else -> current
