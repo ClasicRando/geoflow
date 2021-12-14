@@ -26,7 +26,7 @@ import kotlin.reflect.full.isSubtypeOf
  */
 val resultSetTransformers: Map<KClass<out Any>, KFunction<*>> by lazy {
     val config = ConfigurationBuilder()
-        .forPackage("database.tables")
+        .forPackage("me.geoflow.core.database.tables.records")
         .setScanners(TypesAnnotated)
     Reflections(config)
         .getTypesAnnotatedWith(QueryResultRecord::class.java)
