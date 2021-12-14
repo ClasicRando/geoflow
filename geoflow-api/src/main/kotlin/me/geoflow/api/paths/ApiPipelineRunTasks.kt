@@ -7,11 +7,10 @@ import io.ktor.http.HttpMethod
 import io.ktor.routing.Route
 import io.ktor.util.getOrFail
 import me.geoflow.core.jobs.SystemJob
-import me.geoflow.api.sockets.publisher
 import me.geoflow.api.scheduleJob
+import me.geoflow.api.sockets.postgresPublisher
 import me.geoflow.api.utils.ApiResponse
 import me.geoflow.api.utils.apiCallPostgres
-import me.geoflow.core.database.Database
 
 /** Pipeline run tasks API route */
 @Suppress("unused")
@@ -26,10 +25,8 @@ object ApiPipelineRunTasks : ApiPath(path = "/pipeline-run-tasks") {
 
     /** Publisher method using a websocket to provided updates to the user about the provided table and listenId */
     private fun getTasks(parent: Route) {
-        parent.publisher(channelName = "pipelineRunTasks", listenId = "runId") { message ->
-            Database.runWithConnection {
-                PipelineRunTasks.getOrderedTasks(it, message.toLong())
-            }
+        parent.postgresPublisher(channelName = "pipelineRunTasks", listenId = "runId") { message, connection ->
+            PipelineRunTasks.getOrderedTasks(connection, message.toLong())
         }
     }
 
