@@ -1,5 +1,9 @@
 package me.geoflow.core.database.tables
 
+import me.geoflow.core.database.extensions.submitQuery
+import me.geoflow.core.database.tables.records.Prov
+import java.sql.Connection
+
 /**
  * Table used to store the province/state codes that can be used to define prov/state level [DataSources]
  */
@@ -19,4 +23,10 @@ object Provs : DbTable("provs"), DefaultData {
     """.trimIndent()
 
     override val defaultRecordsFileName: String = "provs.csv"
+
+    /** Returns the full list of [Prov] records */
+    fun getRecords(connection: Connection): List<Prov> {
+        return connection.submitQuery(sql = "SELECT * FROM $tableName")
+    }
+
 }
