@@ -4,6 +4,7 @@ pluginManagement {
     plugins {
         kotlin("jvm") version kotlinVersion
         id("com.github.johnrengelman.shadow") version shadowJarVersion
+        kotlin("plugin.serialization") version kotlinVersion
     }
     repositories {
         gradlePluginPortal()

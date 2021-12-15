@@ -1,4 +1,4 @@
-@file:kotlin.Suppress("KDocMissingDocumentation")
+@file:Suppress("KDocMissingDocumentation")
 plugins {
     application
 }
@@ -28,6 +28,22 @@ dependencies {
     // https://mvnrepository.com/artifact/org.slf4j/slf4j-simple
     implementation("org.slf4j:slf4j-simple:$slf4Version")
     implementation("io.github.microutils:kotlin-logging-jvm:$kotlinLoggingVersion")
+    constraints {
+        add("implementation", "org.apache.logging.log4j:log4j-core") {
+            version {
+                strictly("[2.16, 3[")
+                prefer("2.16.0")
+            }
+            because("CVE-2021-44228: Log4j vulnerable to remote code execution")
+        }
+        add("implementation", "org.apache.logging.log4j:log4j-api") {
+            version {
+                strictly("[2.16, 3[")
+                prefer("2.16.0")
+            }
+            because("CVE-2021-44228: Log4j vulnerable to remote code execution")
+        }
+    }
 }
 
 tasks.test {

@@ -1,6 +1,6 @@
-@file:kotlin.Suppress("KDocMissingDocumentation")
+@file:Suppress("KDocMissingDocumentation")
 plugins {
-    kotlin("plugin.serialization") version "1.5.30"
+    kotlin("plugin.serialization")
 }
 
 version = "0.1"
@@ -24,7 +24,7 @@ val coroutinesJdbc: String by project
 val kMongoVersion: String by project
 
 dependencies {
-    testImplementation(kotlin("test"))
+    testImplementation("org.jetbrains.kotlin:kotlin-test:$kotlinVersion")
     testImplementation("org.junit.jupiter:junit-jupiter-api:$junitVersion")
     testImplementation("org.junit.jupiter:junit-jupiter-params:$junitVersion")
     testRuntimeOnly("org.junit.jupiter:junit-jupiter-engine:$junitVersion")
@@ -62,6 +62,22 @@ dependencies {
     implementation("org.litote.kmongo:kmongo-coroutine:$kMongoVersion")
     implementation("org.litote.kmongo:kmongo-coroutine-serialization:$kMongoVersion")
     implementation("org.litote.kmongo:kmongo-id-serialization:$kMongoVersion")
+    constraints {
+        add("implementation", "org.apache.logging.log4j:log4j-core") {
+            version {
+                strictly("[2.16, 3[")
+                prefer("2.16.0")
+            }
+            because("CVE-2021-44228: Log4j vulnerable to remote code execution")
+        }
+        add("implementation", "org.apache.logging.log4j:log4j-api") {
+            version {
+                strictly("[2.16, 3[")
+                prefer("2.16.0")
+            }
+            because("CVE-2021-44228: Log4j vulnerable to remote code execution")
+        }
+    }
 }
 
 tasks.test {

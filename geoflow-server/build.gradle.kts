@@ -1,7 +1,7 @@
 @file:Suppress("KDocMissingDocumentation")
 plugins {
     application
-    kotlin("plugin.serialization") version "1.5.30"
+    kotlin("plugin.serialization")
 }
 
 version = "0.1"
@@ -40,6 +40,22 @@ dependencies {
     implementation("org.slf4j:slf4j-simple:$slf4Version")
     implementation("io.github.microutils:kotlin-logging-jvm:$kotlinLoggingVersion")
     implementation("io.ktor:ktor-client-websockets:$ktorVersion")
+    constraints {
+        add("implementation", "org.apache.logging.log4j:log4j-core") {
+            version {
+                strictly("[2.16, 3[")
+                prefer("2.16.0")
+            }
+            because("CVE-2021-44228: Log4j vulnerable to remote code execution")
+        }
+        add("implementation", "org.apache.logging.log4j:log4j-api") {
+            version {
+                strictly("[2.16, 3[")
+                prefer("2.16.0")
+            }
+            because("CVE-2021-44228: Log4j vulnerable to remote code execution")
+        }
+    }
 }
 
 tasks.test {
