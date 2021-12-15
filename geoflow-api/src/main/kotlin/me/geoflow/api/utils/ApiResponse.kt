@@ -9,6 +9,7 @@ import me.geoflow.core.database.tables.PlottingFields
 import me.geoflow.core.database.tables.PlottingMethods
 import me.geoflow.core.database.tables.PlottingMethodTypes
 import me.geoflow.core.database.tables.Provs
+import me.geoflow.core.database.tables.Roles
 import me.geoflow.core.database.tables.SourceTables
 import me.geoflow.core.database.tables.WorkflowOperations
 import kotlinx.serialization.SerialName
@@ -24,6 +25,7 @@ import me.geoflow.core.database.tables.records.PlottingMethodType
 import me.geoflow.core.database.tables.records.Prov
 import me.geoflow.core.database.tables.records.RequestUser
 import me.geoflow.core.database.tables.records.ResponseUser
+import me.geoflow.core.database.tables.records.Role
 import me.geoflow.core.database.tables.records.SourceTable
 import me.geoflow.core.database.tables.records.WorkflowOperation
 import me.geoflow.core.mongo.MongoDb
@@ -199,6 +201,15 @@ sealed interface ApiResponse {
     ): Success<List<Prov>> {
         @SerialName("object")
         override val responseObject: String = "prov"
+    }
+
+    /** API response for a single record from [roles][Roles] */
+    @Serializable
+    class RolesResponse(
+        override val payload: List<Role>,
+    ): Success<List<Role>> {
+        @SerialName("object")
+        override val responseObject: String = "role"
     }
 
     /** API response for an inserted record */
