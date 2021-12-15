@@ -19,6 +19,8 @@ fun Route.data() {
         sourceTables()
         users()
         jobs()
+        provs()
+        roles()
     }
 }
 
@@ -35,6 +37,22 @@ private fun Route.actions() {
     route(path = "/actions") {
         /** Returns list of actions based upon the current user's roles. */
         apiCall<NoBody>(apiEndPoint = "/actions", httpMethod = HttpMethod.Get)
+    }
+}
+
+/** Roles API route */
+private fun Route.roles() {
+    route(path = "/roles") {
+        /** Returns list of available roles */
+        apiCall<NoBody>(apiEndPoint = "/roles", httpMethod = HttpMethod.Get)
+    }
+}
+
+/** Provs API route */
+private fun Route.provs() {
+    route(path = "/provs") {
+        /** Returns list of available provs */
+        apiCall<NoBody>(apiEndPoint = "/provs", httpMethod = HttpMethod.Get)
     }
 }
 
