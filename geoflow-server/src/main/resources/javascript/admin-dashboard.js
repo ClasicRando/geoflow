@@ -51,7 +51,26 @@ const editValidationMessages = {
 let editValidator = null;
 let updateUserOid = -1;
 
-$(document).ready(() => {
+$(document).ready(async () => {
+    const response = await fetch('/data/roles')
+    if (response.status === 200) {
+        const json = await response.json();
+        if ('payload' in json) {
+            const roles = json.payload;
+            for (const select of document.getElementsByName('roles')) {
+                roles.forEach(role => {
+                    const option = document.createElement('option');
+                    option.value = role.name;
+                    option.innerText = role.description;
+                    select.appendChild(option);
+                });
+            }
+        } else {
+            console.log(json);
+        }
+    } else {
+        console.log(response);
+    }
     $('#isAdmin').change((e) => {
         const $form = $(e.target).parent().parent();
         const $select = $('.custom-select');

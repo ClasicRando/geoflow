@@ -1,8 +1,6 @@
 package me.geoflow.web.pages
 
-import me.geoflow.core.database.Database
 import me.geoflow.core.database.tables.InternalUsers
-import me.geoflow.core.database.tables.Roles
 import me.geoflow.web.html.addParamsAsJsGlobalVariables
 import me.geoflow.web.html.basicTable
 import me.geoflow.web.html.formModal
@@ -13,7 +11,6 @@ import kotlinx.html.checkBoxInput
 import kotlinx.html.div
 import kotlinx.html.id
 import kotlinx.html.label
-import kotlinx.html.option
 import kotlinx.html.passwordInput
 import kotlinx.html.script
 import kotlinx.html.select
@@ -81,15 +78,6 @@ object AdminDashboard : BasePage() {
                             id = ROLES_SELECT
                             name = ROLES_SELECT
                             multiple = true
-                            for (role in Database.runWithConnectionBlocking { Roles.getRecords(it) }) {
-                                if (role.name == "admin") {
-                                    continue
-                                }
-                                option {
-                                    value = role.name
-                                    +role.description
-                                }
-                            }
                         }
                     }
                     div(classes = "form-group") {
@@ -160,15 +148,6 @@ object AdminDashboard : BasePage() {
                             id = ROLES_SELECT
                             name = ROLES_SELECT
                             multiple = true
-                            for (role in Database.runWithConnectionBlocking { Roles.getRecords(it) }) {
-                                if (role.name == "admin") {
-                                    continue
-                                }
-                                option {
-                                    value = role.name
-                                    +role.description
-                                }
-                            }
                         }
                     }
                     div(classes = "form-group") {
