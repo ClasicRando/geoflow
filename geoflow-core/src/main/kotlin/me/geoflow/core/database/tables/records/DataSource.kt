@@ -67,7 +67,7 @@ data class DataSource(
         /** Generic sql to obtain a [DataSource] */
         val sql: String = """
             SELECT t1.ds_id, t1.code, t1.prov, t1.description, t1.files_location, t1.prov_level, t1.comments,
-                   t2.name, t3.name, t1.created, t1.last_updated, t4.name, t1.searchRadius, t1.name, t1.reporting_type,
+                   t2.name, t3.name, t1.created, t1.last_updated, t4.name, t1.searchRadius, t5.name, t1.reporting_type,
                    t6.name, t7.name, t8.name, t9.name
             FROM   ${DataSources.tableName} t1
             LEFT JOIN ${InternalUsers.tableName} t2
