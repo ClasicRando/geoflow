@@ -32,7 +32,7 @@ data class DataSourceRequest(
     val searchRadius: Double,
     /** Warehousing type for the records in this data source */
     @SerialName("record_warehouse_type")
-    val recordWarehouseType: Long,
+    val recordWarehouseType: Int,
     /** Reporting type for this data source */
     @SerialName("reporting_type")
     val reportingType: String,
