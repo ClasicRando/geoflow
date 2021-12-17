@@ -6,3 +6,4 @@
 "ds_create","Ability to create a new data source"
 "load","Process data loads"
 "qa","Perform Quality Assurance on a data load"
+"pipeline_edit","Ability to create/edit pipelines & pipeline tasks"
