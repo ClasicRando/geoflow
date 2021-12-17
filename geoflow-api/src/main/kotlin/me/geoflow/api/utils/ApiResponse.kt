@@ -4,11 +4,14 @@ import me.geoflow.core.database.tables.Actions
 import me.geoflow.core.database.tables.DataSourceContacts
 import me.geoflow.core.database.tables.DataSources
 import me.geoflow.core.database.tables.InternalUsers
+import me.geoflow.core.database.tables.Pipelines
 import me.geoflow.core.database.tables.PipelineRuns
+import me.geoflow.core.database.tables.PipelineTasks
 import me.geoflow.core.database.tables.PlottingFields
 import me.geoflow.core.database.tables.PlottingMethods
 import me.geoflow.core.database.tables.PlottingMethodTypes
 import me.geoflow.core.database.tables.Provs
+import me.geoflow.core.database.tables.RecordWarehouseTypes
 import me.geoflow.core.database.tables.Roles
 import me.geoflow.core.database.tables.SourceTables
 import me.geoflow.core.database.tables.WorkflowOperations
@@ -18,11 +21,14 @@ import me.geoflow.core.database.tables.records.Action
 import me.geoflow.core.database.tables.records.DataSource
 import me.geoflow.core.database.tables.records.DataSourceContact
 import me.geoflow.core.database.tables.records.NextTask
+import me.geoflow.core.database.tables.records.Pipeline
 import me.geoflow.core.database.tables.records.PipelineRun
+import me.geoflow.core.database.tables.records.PipelineTask
 import me.geoflow.core.database.tables.records.PlottingFieldBody
 import me.geoflow.core.database.tables.records.PlottingMethod
 import me.geoflow.core.database.tables.records.PlottingMethodType
 import me.geoflow.core.database.tables.records.Prov
+import me.geoflow.core.database.tables.records.RecordWarehouseType
 import me.geoflow.core.database.tables.records.RequestUser
 import me.geoflow.core.database.tables.records.ResponseUser
 import me.geoflow.core.database.tables.records.Role
@@ -194,7 +200,7 @@ sealed interface ApiResponse {
         override val responseObject: String = "data_source_contact"
     }
 
-    /** API response for a single record from [provs][Provs] */
+    /** API response for a list of records from [provs][Provs] */
     @Serializable
     class ProvsResponse(
         override val payload: List<Prov>,
@@ -203,13 +209,49 @@ sealed interface ApiResponse {
         override val responseObject: String = "prov"
     }
 
-    /** API response for a single record from [roles][Roles] */
+    /** API response for a list of records from [roles][Roles] */
     @Serializable
     class RolesResponse(
         override val payload: List<Role>,
     ): Success<List<Role>> {
         @SerialName("object")
         override val responseObject: String = "role"
+    }
+
+    /** API response for a list of records from [record_warehouse_types][RecordWarehouseTypes] */
+    @Serializable
+    class RecordWarehouseTypesResponse(
+        override val payload: List<RecordWarehouseType>,
+    ): Success<List<RecordWarehouseType>> {
+        @SerialName("object")
+        override val responseObject: String = "record_warehouse_type"
+    }
+
+    /** API response for a single record from [pipelines][Pipelines] */
+    @Serializable
+    class PipelineResponse(
+        override val payload: Pipeline,
+    ): Success<Pipeline> {
+        @SerialName("object")
+        override val responseObject: String = "pipeline"
+    }
+
+    /** API response for a list of records from [pipelines][Pipelines] */
+    @Serializable
+    class PipelinesResponse(
+        override val payload: List<Pipeline>,
+    ): Success<List<Pipeline>> {
+        @SerialName("object")
+        override val responseObject: String = "pipeline"
+    }
+
+    /** API response for a list of records from [pipeline_tasks][PipelineTasks] */
+    @Serializable
+    class PipelineTasksResponse(
+        override val payload: List<PipelineTask>,
+    ): Success<List<PipelineTask>> {
+        @SerialName("object")
+        override val responseObject: String = "pipeline_task"
     }
 
     /** API response for an inserted record */
