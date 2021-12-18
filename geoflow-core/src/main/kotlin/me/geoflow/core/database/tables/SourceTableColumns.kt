@@ -1,12 +1,16 @@
 package me.geoflow.core.database.tables
 
+import me.geoflow.core.database.extensions.submitQuery
+import me.geoflow.core.database.tables.records.SourceTableColumn
+import java.sql.Connection
+
 /**
  * Table used to store the metadata of the columns found in the files/tables from [SourceTables]
  *
  * When a source file is analyzed the column metadata is inserted into this table to alert a user if the file has
  * changed in the columns provided or the character length of data.
  */
-object SourceTableColumns : DbTable("source_table_columns") {
+object SourceTableColumns : DbTable("source_table_columns"), ApiExposed {
 
     override val createStatement: String = """
         CREATE TABLE IF NOT EXISTS public.source_table_columns
@@ -27,4 +31,18 @@ object SourceTableColumns : DbTable("source_table_columns") {
             OIDS = FALSE
         );
     """.trimIndent()
+
+    override val tableDisplayFields: Map<String, Map<String, String>> = mapOf(
+        "name" to mapOf(),
+        "type" to mapOf(),
+        "max_length" to mapOf(),
+        "min_length" to mapOf(),
+        "label" to mapOf(),
+    )
+
+    /** Returns a list of [SourceTableColumn] records for the specified [stOid] */
+    fun getRecords(connection: Connection, stOid: Long): List<SourceTableColumn> {
+        return connection.submitQuery(sql = "SELECT * FROM $tableName WHERE st_oid = ?", stOid)
+    }
+
 }
