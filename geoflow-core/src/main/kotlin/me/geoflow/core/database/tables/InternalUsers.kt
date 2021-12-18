@@ -184,7 +184,7 @@ object InternalUsers : DbTable("internal_users"), ApiExposed {
      */
     fun requireRole(connection: Connection, userId: Long, role: String) {
         val hasRole = connection.queryHasResult(
-            sql = "SELECT 1 FROM $tableName WHERE user_oid = ? AND ARRAY['admin',?] && roles",
+            sql = "SELECT 1 FROM $tableName WHERE user_oid = ? AND ARRAY['admin'::text,?] && roles",
             userId,
             role,
         )
