@@ -14,6 +14,7 @@ import me.geoflow.core.database.tables.Provs
 import me.geoflow.core.database.tables.RecordWarehouseTypes
 import me.geoflow.core.database.tables.Roles
 import me.geoflow.core.database.tables.SourceTables
+import me.geoflow.core.database.tables.SourceTableColumns
 import me.geoflow.core.database.tables.WorkflowOperations
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
@@ -33,6 +34,7 @@ import me.geoflow.core.database.tables.records.RequestUser
 import me.geoflow.core.database.tables.records.ResponseUser
 import me.geoflow.core.database.tables.records.Role
 import me.geoflow.core.database.tables.records.SourceTable
+import me.geoflow.core.database.tables.records.SourceTableColumn
 import me.geoflow.core.database.tables.records.WorkflowOperation
 import me.geoflow.core.mongo.MongoDb
 
@@ -81,6 +83,15 @@ sealed interface ApiResponse {
     ): Success<List<SourceTable>> {
         @SerialName("object")
         override val responseObject: String = "source_table"
+    }
+
+    /** API response for a list of records from [source_table_columns][SourceTableColumns] */
+    @Serializable
+    class SourceTableColumnsResponse(
+        override val payload: List<SourceTableColumn>,
+    ): Success<List<SourceTableColumn>> {
+        @SerialName("object")
+        override val responseObject: String = "source_table_column"
     }
 
     /** API response for a list of records from [source_tables][SourceTables] */
