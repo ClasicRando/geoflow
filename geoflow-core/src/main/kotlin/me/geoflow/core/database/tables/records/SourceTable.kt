@@ -8,7 +8,7 @@ import me.geoflow.core.database.enums.LoaderType
 /** API response data class for JSON serialization */
 @Serializable
 data class SourceTable(
-    /** unique ID of the pipeline run */
+    /** unique ID of the source table */
     @SerialName("st_oid")
     val stOid: Long,
     /** database table name the file (and sub table if needed) */
