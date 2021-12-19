@@ -4,7 +4,6 @@ import me.geoflow.core.database.enums.FileCollectType
 import me.geoflow.core.database.tables.PipelineRunTasks
 import me.geoflow.web.html.addParamsAsJsGlobalVariables
 import me.geoflow.web.html.basicTable
-import me.geoflow.web.html.dataDisplayModal
 import me.geoflow.web.html.sourceTableEditModal
 import me.geoflow.web.html.sourceTables
 import me.geoflow.web.html.tabLayout
@@ -14,6 +13,7 @@ import kotlinx.html.FlowContent
 import kotlinx.html.STYLE
 import kotlinx.html.script
 import kotlinx.html.unsafe
+import me.geoflow.web.html.SubTableDetails
 
 /**
  * Page for pipeline task operations
@@ -58,15 +58,14 @@ class PipelineTasks(
                     tableButtons = tableButtons,
                     clickableRows = false,
                     subscriber = "ws://localhost:8080/data/pipeline-run-tasks/$runId",
+                    subTableDetails = SubTableDetails(
+                        fields = PipelineRunTasks.subTableDisplayFields,
+                    ),
                 )
             },
             tabNav(label = "Source Tables") {
                 sourceTables(runId)
             },
-        )
-        dataDisplayModal(
-            modalId = TASK_DATA_MODAL_ID,
-            headerText = "Task Details",
         )
         sourceTableEditModal()
     }
@@ -90,6 +89,13 @@ class PipelineTasks(
         private const val TASKS_TABLE_ID = "tasksTable"
         private val tableButtons = listOf(
             tableButton(
+                name = "btnTimeUnit",
+                text = "Switch Time Unit",
+                icon = "clock",
+                event = "changeTimeUnit()",
+                title = "Switch between minutes and seconds",
+            ),
+            tableButton(
                 name = "btnRun",
                 text = "Run Next Task",
                 icon = "play",
@@ -108,15 +114,15 @@ class PipelineTasks(
             tableButton(
                 name = "btnConnected",
                 html = """
-                <button class="btn btn-secondary" name="btnConnected"
-                    title="Shows if the subscriber is active. Click to attempt restart if inactive">
-                    <span class="fa-layers fa-fw">
-                        <i class="fas fa-plug"></i>
-                        <i class="fas fa-slash"></i>
-                    </span>
-                </button>
-            """.trimIndent()
-            )
+                    <button class="btn btn-secondary" name="btnConnected"
+                        title="Shows if the subscriber is active. Click to attempt restart if inactive">
+                        <span class="fa-layers fa-fw">
+                            <i class="fas fa-plug"></i>
+                            <i class="fas fa-slash"></i>
+                        </span>
+                    </button>
+                """.trimIndent(),
+            ),
         )
 
     }
