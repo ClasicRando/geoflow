@@ -10,6 +10,7 @@ import kotlinx.html.a
 import kotlinx.html.body
 import kotlinx.html.div
 import kotlinx.html.head
+import kotlinx.html.id
 import kotlinx.html.lang
 import kotlinx.html.li
 import kotlinx.html.link
@@ -146,6 +147,9 @@ abstract class BasePage : Template<HTML> {
                     src = "/assets/subscribe-table.js"
                 }
                 script {
+                    src = "/assets/sub-table.js"
+                }
+                script {
                     src = "https://cdn.jsdelivr.net/npm/popper.js@1.16.0/dist/umd/popper.min.js"
                 }
                 script {
@@ -157,6 +161,15 @@ abstract class BasePage : Template<HTML> {
                     src = "https://unpkg.com/bootstrap-table@1.18.3/dist/bootstrap-table.min.js"
                 }
                 insert(scriptPlaceholder)
+                div {
+                    attributes["aria-live"] = "polite"
+                    attributes["aria-atomic"] = "atomic"
+                    style = "position: relative; min-height: 200px;"
+                    div {
+                        id = "toasts"
+                        style = "position: absolute; bottom: 0; right: 0;"
+                    }
+                }
             }
         }
     }
