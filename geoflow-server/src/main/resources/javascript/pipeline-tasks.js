@@ -1,6 +1,7 @@
 let tasksSubscriber;
 let runId = -1;
 let waitingForUpdate = false;
+let timeUnit = 'mins';
 $(document).ready(() => {
     tasksSubscriber = subscriberTables[taskTableId];
     tasksSubscriber.socket.addEventListener('message', (e) => { waitingForUpdate = false; })
@@ -97,40 +98,16 @@ function statusFormatter(value, row) {
     }
 }
 
-function titleCase(title) {
-    return title.replace(
-        /\w\S*/g,
-        function(txt) {
-            return txt.charAt(0).toUpperCase() + txt.substr(1).toLowerCase();
-        }
-    ).replace(
-        'Id',
-        'ID'
-    );
-}
-
-function showTaskInfo(prTaskId) {
-    if (!tasksSubscriber.isActive) {
-        showToast('Error', 'Task change listener is not currently running. Refresh page to reconnect');
-        return;
+function taskTimeFormatter(value, row) {
+    if (row.task_completed === null || row.task_start === null) {
+        return null;
     }
-    let data = tasksSubscriber.$table.bootstrapTable('getData').find(row => row.pipeline_run_task_id === prTaskId);
-    let $modalBody = $(`#${taskDataModalId}Body`);
-    $modalBody.empty();
-    const div = document.createElement('div');
-    for (const [key, value] of Object.entries(data)) {
-        const label = document.createElement('label');
-        label['for'] = key.replace(/\s+/g, '_');
-        label.innerHTML = titleCase(key.replace(/_+/g, ' '));
-        div.appendChild(label);
-        const textValue = document.createElement('p');
-        textValue.id = key.replace(/\s+/g, '_');
-        textValue.innerHTML = value === '' ? ' ' : value;
-        textValue.classList.add('border', 'rounded', 'p-3');
-        div.appendChild(textValue);
+    const timeFactor = 1000 * (timeUnit === 'mins' ? 60 : 1);
+    const dif = (new Date(row.task_completed) - new Date(row.task_start))/timeFactor;
+    if (dif === 0) {
+        return 0;
     }
-    $modalBody.append(div);
-    $(`#${taskDataModalId}`).modal('show');
+    return dif.toFixed(dif > 0.01 ? 2 : 4);
 }
 
 async function reworkTask(prTaskId) {
@@ -161,5 +138,12 @@ async function reworkTask(prTaskId) {
 function taskActionFormatter(value, row) {
     const prTaskId = row.pipeline_run_task_id;
     const redoButton = row.task_status === 'Complete' || row.task_status === 'Failed' ? `<i class="fas fa-redo p-1 inTableButton" onClick="reworkTask(${prTaskId})"></i>` : '';
-    return `<span style="display: inline;"><i class="fas fa-info-circle  p-1 inTableButton" onClick="showTaskInfo(${prTaskId})"></i>${redoButton}</span>`;
+    return redoButton;
+}
+
+function changeTimeUnit() {
+    timeUnit = timeUnit === 'mins' ? 'secs' : 'mins';
+    const data = tasksSubscriber.$table.bootstrapTable('getData');
+    tasksSubscriber.$table.bootstrapTable('load', data);
+    $('th[data-field=time]').find('.th-inner').text(`Time (${timeUnit})`);
 }
