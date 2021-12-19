@@ -52,7 +52,7 @@ let editValidator = null;
 let updateUserOid = -1;
 
 $(document).ready(async () => {
-    const response = await fetch('/data/roles')
+    const response = await fetch('/data/roles');
     if (response.status === 200) {
         const json = await response.json();
         if ('payload' in json) {
