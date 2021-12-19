@@ -2,6 +2,7 @@ package me.geoflow.web.html
 
 import me.geoflow.core.database.tables.SourceTables
 import kotlinx.html.FlowContent
+import kotlinx.html.TABLE
 import kotlinx.html.THEAD
 import kotlinx.html.UL
 import kotlinx.html.id
@@ -12,6 +13,7 @@ import kotlinx.html.thead
 import kotlinx.html.tr
 import kotlinx.html.ul
 import kotlinx.html.unsafe
+import me.geoflow.core.database.tables.SourceTableColumns
 
 /** Utility function to convert a JSON key to a display field name */
 fun getFieldTable(field: String): String = field
@@ -78,13 +80,37 @@ private fun THEAD.addFields(fields: Map<String, Map<String, String>>, clickableR
                     attributes["data-cell-style"] = "clickableTd"
                 }
                 for ((key, value) in options) {
-                    if (key != "name") {
+                    if (key != "title") {
                         attributes["data-$key"] = value
                     }
                 }
-                text(options["name"] ?: getFieldTable(field))
+                text(options["title"] ?: getFieldTable(field))
             }
         }
+    }
+}
+
+/** Container for sub table details when allowing a bootstrap table record to show details */
+data class SubTableDetails(
+    /** Web service endpoint to collect the sub table data. Only include the portion after '/data/' */
+    val url: String? = null,
+    /** Name of id field within the row object. Used to complete the API query */
+    val idField: String = "",
+    /** Fields to show in the sub table. Same structure as normal main table fields */
+    val fields: Map<String, Map<String, String>>,
+)
+
+/** Used the provided [details] to add attributes to the table for setting up the sub table actions */
+private fun TABLE.applySubTabDetails(details: SubTableDetails) {
+    attributes["data-detail-view"] = "true"
+    if (details.url != null) {
+        attributes["data-sub-table-url"] = "http://localhost:8080/data/${details.url}"
+        attributes["data-sub-table-id"] = details.idField
+    }
+    for ((i, subField) in details.fields.entries.withIndex()) {
+        val (field, options) = subField
+        val serializedOptions = options.entries.joinToString(separator = "&") { "${it.key}=${it.value}" }
+        attributes["data-sub-table-field$i"] = "field=${field}&$serializedOptions".trimEnd('&')
     }
 }
 
@@ -107,6 +133,7 @@ fun FlowContent.basicTable(
     customSortFunction: String = "",
     clickableRows: Boolean = true,
     subscriber: String = "",
+    subTableDetails: SubTableDetails? = null,
 ) {
     if (headerButtons.isNotEmpty()) {
         ul(classes = "header-button-list") {
@@ -133,6 +160,9 @@ fun FlowContent.basicTable(
         } else {
             attributes["data-sub"] = "true"
             attributes["data-sub-url"] = subscriber
+        }
+        if (subTableDetails != null) {
+            applySubTabDetails(subTableDetails)
         }
         attributes["data-classes"] = "table table-bordered${if (clickableRows) " table-hover" else ""}"
         attributes["data-thead-classes"] = "thead-dark"
@@ -182,5 +212,10 @@ fun FlowContent.sourceTables(runId: Long) {
         ),
         customSortFunction = "sourceTableRecordSorting",
         clickableRows = false,
+        subTableDetails = SubTableDetails(
+            url = "source-table-columns/{id}",
+            idField = "st_oid",
+            fields = SourceTableColumns.tableDisplayFields,
+        ),
     )
 }
