@@ -18,7 +18,7 @@ object SourceTables : DbTable("source_tables"), ApiExposed {
 
     override val tableDisplayFields: Map<String, Map<String, String>> = mapOf(
         "table_name" to mapOf("editable" to "true", "sortable" to "true"),
-        "file_id" to mapOf("name" to "File ID", "editable" to "true", "sortable" to "true"),
+        "file_id" to mapOf("title" to "File ID", "editable" to "true", "sortable" to "true"),
         "file_name" to mapOf("editable" to "true", "sortable" to "true"),
         "sub_table" to mapOf("editable" to "true"),
         "delimiter" to mapOf("editable" to "true"),
@@ -200,11 +200,12 @@ object SourceTables : DbTable("source_tables"), ApiExposed {
     fun finishAnalyze(connection: Connection, data: Map<Long, AnalyzeResult>) {
         val columnSql = """
             INSERT INTO ${SourceTableColumns.tableName}(st_oid,name,type,max_length,min_length,label,column_index)
-            VALUES(?,?,?,?,?,'',?)
+            VALUES(?,?,?,?,?,?,?)
             ON CONFLICT (st_oid, name) DO UPDATE SET type = ?,
                                                      max_length = ?,
                                                      min_length = ?,
-                                                     column_index = ?
+                                                     column_index = ?,
+                                                     label = ?
         """.trimIndent()
         val tableSql = """
             UPDATE $tableName
@@ -233,11 +234,13 @@ object SourceTables : DbTable("source_tables"), ApiExposed {
                     columnStatement.setString(3, column.type)
                     columnStatement.setInt(4, column.maxLength)
                     columnStatement.setInt(5, column.minLength)
-                    columnStatement.setInt(6, column.index)
-                    columnStatement.setString(7, column.type)
-                    columnStatement.setInt(8, column.maxLength)
-                    columnStatement.setInt(9, column.minLength)
-                    columnStatement.setInt(10, column.index)
+                    columnStatement.setString(6, columnName)
+                    columnStatement.setInt(7, column.index)
+                    columnStatement.setString(8, column.type)
+                    columnStatement.setInt(9, column.maxLength)
+                    columnStatement.setInt(10, column.minLength)
+                    columnStatement.setInt(11, column.index)
+                    columnStatement.setString(12, columnName)
                     columnStatement.addBatch()
                 }
                 tableStatement.setInt(1, analyzeResult.recordCount)

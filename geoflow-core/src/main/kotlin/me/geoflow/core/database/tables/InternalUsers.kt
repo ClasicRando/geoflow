@@ -22,12 +22,12 @@ import java.sql.Connection
 object InternalUsers : DbTable("internal_users"), ApiExposed {
 
     override val tableDisplayFields: Map<String, Map<String, String>> = mapOf(
-        "user_oid" to mapOf("name" to "User ID"),
-        "name" to mapOf("name" to "Full Name"),
+        "user_oid" to mapOf("title" to "User ID"),
+        "name" to mapOf("title" to "Full Name"),
         "username" to mapOf(),
-        "is_admin" to mapOf("name" to "Admin?", "formatter" to "isAdminFormatter"),
+        "is_admin" to mapOf("title" to "Admin?", "formatter" to "isAdminFormatter"),
         "roles" to mapOf(),
-        "can_edit" to mapOf("name" to "Edit", "formatter" to "editFormatter"),
+        "can_edit" to mapOf("title" to "Edit", "formatter" to "editFormatter"),
     )
 
     override val createStatement: String = """

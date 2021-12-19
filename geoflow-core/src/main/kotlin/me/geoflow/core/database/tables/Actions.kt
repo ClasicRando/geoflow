@@ -21,7 +21,7 @@ import java.sql.Connection
 object Actions : DbTable("actions"), ApiExposed, DefaultData {
 
     override val tableDisplayFields: Map<String, Map<String, String>> = mapOf(
-        "name" to mapOf("name" to "Action"),
+        "name" to mapOf("title" to "Action"),
         "description" to mapOf(),
     )
 

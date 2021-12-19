@@ -11,7 +11,7 @@ import java.sql.Connection
 object WorkflowOperations : DbTable("workflow_operations"), DefaultData, ApiExposed {
 
     override val tableDisplayFields: Map<String, Map<String, String>> = mapOf(
-        "name" to mapOf("name" to "Operation"),
+        "name" to mapOf("title" to "Operation"),
     )
 
     override val defaultRecordsFileName: String = "workflow_operations.csv"

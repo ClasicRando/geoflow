@@ -16,14 +16,14 @@ import java.sql.Connection
 object PipelineRuns : DbTable("pipeline_runs"), ApiExposed, Triggers {
 
     override val tableDisplayFields: Map<String, Map<String, String>> = mapOf(
-        "ds_id" to mapOf("name" to "Data Source ID"),
-        "ds_code" to mapOf("name" to "Data Source Code"),
+        "ds_id" to mapOf("title" to "Data Source ID"),
+        "ds_code" to mapOf("title" to "Data Source Code"),
         "record_date" to mapOf(),
         "operation_state" to mapOf(),
         "collection_user" to mapOf(),
         "load_user" to mapOf(),
         "check_user" to mapOf(),
-        "qa_user" to mapOf("name" to "QA User"),
+        "qa_user" to mapOf("title" to "QA User"),
         "actions" to mapOf("formatter" to "actionsFormatter")
     )
 

@@ -27,12 +27,22 @@ import java.time.Instant
 object PipelineRunTasks: DbTable("pipeline_run_tasks"), ApiExposed, Triggers {
 
     override val tableDisplayFields: Map<String, Map<String, String>> = mapOf(
-        "task_status" to mapOf("name" to "Status", "formatter" to "statusFormatter"),
-        "task_name" to mapOf("name" to "Task Name"),
-        "task_run_type" to mapOf("name" to "Run Type"),
-        "task_start" to mapOf("name" to "Start"),
-        "task_completed" to mapOf("name" to "Completed"),
+        "task_status" to mapOf("title" to "Status", "formatter" to "statusFormatter"),
+        "task_name" to mapOf("title" to "Name"),
+        "task_run_type" to mapOf("title" to "Run Type"),
+        "task_description" to mapOf("title" to "Description"),
+        "time" to mapOf("title" to "Time (mins)", "formatter" to "taskTimeFormatter"),
         "actions" to mapOf("formatter" to "taskActionFormatter"),
+    )
+
+    /** */
+    val subTableDisplayFields: Map<String, Map<String, String>> = mapOf(
+        "pipeline_run_task_id" to mapOf("title" to "ID"),
+        "task_id" to mapOf("title" to "Generic Task ID"),
+        "task_start" to mapOf("title" to "Start"),
+        "task_completed" to mapOf("title" to "Completed"),
+        "task_message" to mapOf("title" to "Task Message"),
+        "task_stack_trace" to mapOf("title" to "Stack Trace"),
     )
 
     override val createStatement: String = """
