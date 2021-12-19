@@ -17,6 +17,7 @@ fun Route.data() {
         pipelineRuns()
         pipelineRunTasks()
         sourceTables()
+        sourceTableColumns()
         users()
         jobs()
         provs()
@@ -116,6 +117,17 @@ private fun Route.sourceTables() {
             path = "/{stOid}",
             apiEndPoint = "/source-tables/{stOid}",
             httpMethod = HttpMethod.Delete,
+        )
+    }
+}
+
+/** Source table columns API route */
+private fun Route.sourceTableColumns() {
+    route(path = "/source-table-columns") {
+        apiCall<NoBody>(
+            path = "/{stOid}",
+            apiEndPoint = "source-table-columns/{stOid}",
+            httpMethod = HttpMethod.Get,
         )
     }
 }
