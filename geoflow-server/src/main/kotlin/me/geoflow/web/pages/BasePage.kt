@@ -162,13 +162,10 @@ abstract class BasePage : Template<HTML> {
                 }
                 insert(scriptPlaceholder)
                 div {
+                    id = "toasts"
                     attributes["aria-live"] = "polite"
                     attributes["aria-atomic"] = "atomic"
-                    style = "position: relative; min-height: 200px;"
-                    div {
-                        id = "toasts"
-                        style = "position: absolute; bottom: 0; right: 0;"
-                    }
+                    style = "position: absolute; bottom: 10px; right: 10px; min-height: 10px;"
                 }
             }
         }
