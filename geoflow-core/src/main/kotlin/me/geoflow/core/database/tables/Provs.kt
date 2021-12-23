@@ -26,7 +26,7 @@ object Provs : DbTable("provs"), DefaultData {
 
     /** Returns the full list of [Prov] records */
     fun getRecords(connection: Connection): List<Prov> {
-        return connection.submitQuery(sql = "SELECT * FROM $tableName")
+        return connection.submitQuery(sql = "SELECT prov_code, name, country_code, country_name FROM $tableName")
     }
 
 }
