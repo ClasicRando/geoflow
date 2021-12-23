@@ -24,14 +24,9 @@ import io.ktor.sessions.Sessions
 import io.ktor.sessions.cookie
 import io.ktor.sessions.SessionStorageMemory
 import io.ktor.websocket.WebSockets
-import mu.KLogger
-import mu.KotlinLogging
 import org.slf4j.Logger
 
-/** logger used for the KJob instance */
-val logger: KLogger = KotlinLogging.logger {}
-
-/** */
+/** Handles session authentication. Validation just checks if the current session has expired */
 private fun SessionAuthenticationProvider.Configuration<UserSession>.configure(log: Logger) {
     validate { session ->
         if (session.isExpired) {
@@ -51,7 +46,7 @@ private fun SessionAuthenticationProvider.Configuration<UserSession>.configure(l
     }
 }
 
-/** */
+/** Configuration of the status pages for specific exceptions */
 private fun StatusPages.Configuration.configure() {
     exception<MissingRequestParameterException> { cause ->
         call.respondHtml {
