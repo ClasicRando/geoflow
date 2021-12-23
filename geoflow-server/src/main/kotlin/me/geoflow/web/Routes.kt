@@ -10,6 +10,7 @@ import me.geoflow.web.pages.index
 import me.geoflow.web.pages.login
 import me.geoflow.web.pages.pipelineStatus
 import me.geoflow.web.pages.pipelineTasks
+import me.geoflow.web.pages.dataSources
 import me.geoflow.web.api.NoBody
 import me.geoflow.web.api.UserResponse
 import io.ktor.application.ApplicationCall
@@ -160,6 +161,16 @@ fun Route.adminDashboard() {
         call.requireUserRole("admin")
         call.respondHtml {
             adminDashboard()
+        }
+    }
+}
+
+/** */
+fun Route.dataSources() {
+    get(path = "/data-sources") {
+        call.requireUserRole("collection")
+        call.respondHtml {
+            dataSources(call)
         }
     }
 }

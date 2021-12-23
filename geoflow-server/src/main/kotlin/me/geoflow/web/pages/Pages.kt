@@ -1,5 +1,6 @@
 package me.geoflow.web.pages
 
+import io.ktor.application.ApplicationCall
 import io.ktor.html.Template
 import kotlinx.html.HTML
 
@@ -22,3 +23,6 @@ fun HTML.errorPage(message: String): Unit = applyTemplate(ErrorPage(message))
 
 /** Admin Dashboard page with data, tables and charts showing application administration related details */
 fun HTML.adminDashboard(): Unit = applyTemplate(AdminDashboard)
+
+/** Data sources page with table for creating and adding data source, as well as creating and editing contacts */
+fun HTML.dataSources(call: ApplicationCall): Unit = applyTemplate(DataSources(call))
