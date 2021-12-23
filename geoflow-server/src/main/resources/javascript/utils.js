@@ -81,9 +81,11 @@ class TableSubscriber {
 }
 
 $(document).ready(function() {
-    $(`#${sourceTableModalId}`).on('hidden.bs.modal', () => {
-        $(`#${sourceTableModalId}ResponseErrorMessage`).text('');
-    });
+    if (typeof sourceTableModalId !== "undefined") {
+        $(`#${sourceTableModalId}`).on('hidden.bs.modal', () => {
+            $(`#${sourceTableModalId}ResponseErrorMessage`).text('');
+        });
+    }
 });
 
 const apiFetchOptions = {
@@ -125,10 +127,6 @@ function fetchDELETE(url) {
 }
 
 var sourceTableRecord = {};
-var sourceTablesTableId = 'sourceTables';
-var sourceTableModalId = 'sourceTableDataEditRow';
-var sourceTableRecordLabelId = 'sourceTableRecordLabel';
-var deleteSourceTableConfirmId = 'deleteSourceTable';
 
 async function commitSourceTableChanges(method) {
     let response;
@@ -186,8 +184,8 @@ async function saveSourceTableChanges() {
     commitSourceTableChanges(sourceTableRecord.st_oid !== 0 ? 'update' : 'insert');
 }
 
-async function deleteSourceTable() {
-    $(`#${deleteSourceTableConfirmId}`).modal('hide');
+async function deleteSourceTable($el) {
+    $el.modal('hide');
     commitSourceTableChanges('delete');
 }
 
