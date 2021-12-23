@@ -4,7 +4,6 @@ import me.geoflow.core.database.enums.FileCollectType
 import me.geoflow.core.database.tables.PipelineRunTasks
 import me.geoflow.web.html.addParamsAsJsGlobalVariables
 import me.geoflow.web.html.basicTable
-import me.geoflow.web.html.sourceTableEditModal
 import me.geoflow.web.html.sourceTables
 import me.geoflow.web.html.tabLayout
 import me.geoflow.web.html.tabNav
@@ -67,7 +66,6 @@ class PipelineTasks(
                 sourceTables(runId)
             },
         )
-        sourceTableEditModal()
     }
 
     override val script: FlowContent.() -> Unit = {
