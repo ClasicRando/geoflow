@@ -51,3 +51,10 @@ inline fun requireState(value: Boolean, lazyMessage: () -> String) {
         throw IllegalStateException(message)
     }
 }
+
+/** */
+inline fun <reified T> getObjectInstance(): T {
+    val property = T::class.java.getDeclaredField("INSTANCE")
+    requireNotNull(property) { "Could not find the 'INSTANCE' property" }
+    return property.get(null) as T
+}
