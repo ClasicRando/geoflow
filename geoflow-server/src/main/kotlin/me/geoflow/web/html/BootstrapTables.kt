@@ -2,18 +2,23 @@ package me.geoflow.web.html
 
 import me.geoflow.core.database.tables.SourceTables
 import kotlinx.html.FlowContent
+import kotlinx.html.SCRIPT
 import kotlinx.html.TABLE
 import kotlinx.html.THEAD
 import kotlinx.html.UL
+import kotlinx.html.div
 import kotlinx.html.id
 import kotlinx.html.script
+import kotlinx.html.style
 import kotlinx.html.table
 import kotlinx.html.th
 import kotlinx.html.thead
 import kotlinx.html.tr
 import kotlinx.html.ul
 import kotlinx.html.unsafe
+import me.geoflow.core.database.tables.ApiExposed
 import me.geoflow.core.database.tables.SourceTableColumns
+import me.geoflow.core.utils.getObjectInstance
 
 /** Utility function to convert a JSON key to a display field name */
 fun getFieldTable(field: String): String = field
@@ -71,7 +76,7 @@ data class HeaderButton(
 )
 
 /** Adds a row to the `thead` tag and populates that row with the fields provided */
-private fun THEAD.addFields(fields: Map<String, Map<String, String>>, clickableRows: Boolean) {
+fun THEAD.addFields(fields: Map<String, Map<String, String>>, clickableRows: Boolean) {
     tr {
         for ((field, options) in fields) {
             th {
@@ -100,8 +105,17 @@ data class SubTableDetails(
     val fields: Map<String, Map<String, String>>,
 )
 
+/** Function to get a [SubTableDetails] instance using an [ApiExposed] table */
+inline fun <reified T: ApiExposed> subTableDetails(url: String, idField: String): SubTableDetails {
+    return SubTableDetails(
+        url = url,
+        idField = idField,
+        fields = getObjectInstance<T>().tableDisplayFields,
+    )
+}
+
 /** Used the provided [details] to add attributes to the table for setting up the sub table actions */
-private fun TABLE.applySubTabDetails(details: SubTableDetails) {
+fun TABLE.applySubTabDetails(details: SubTableDetails) {
     attributes["data-detail-view"] = "true"
     if (details.url != null) {
         attributes["data-sub-table-url"] = "http://localhost:8080/data/${details.url}"
@@ -111,6 +125,19 @@ private fun TABLE.applySubTabDetails(details: SubTableDetails) {
         val (field, options) = subField
         val serializedOptions = options.entries.joinToString(separator = "&") { "${it.key}=${it.value}" }
         attributes["data-sub-table-field$i"] = "field=${field}&$serializedOptions".trimEnd('&')
+    }
+}
+
+/** Creates a javascript function that returns all the [tableButtons] provided. Function is named using the [tableId] */
+fun SCRIPT.addTableButtons(tableId: String, tableButtons: List<String>) {
+    unsafe {
+        raw("""
+            function ${tableId}buttons() {
+                return {
+                    ${tableButtons.joinToString()}
+                }
+            }
+        """.trimIndent())
     }
 }
 
@@ -143,49 +170,116 @@ fun FlowContent.basicTable(
             }
         }
     }
-    table {
-        id = tableId
-        attributes["data-toggle"] = "table"
-        if (headerButtons.isNotEmpty()) {
-            attributes["data-toolbar"] = "#toolbar"
+    div {
+        style = "max-height: 800px; overflow-y: auto; display: block"
+        table {
+            id = tableId
+            attributes["data-toggle"] = "table"
+            if (headerButtons.isNotEmpty()) {
+                attributes["data-toolbar"] = "#toolbar"
+            }
+            if (dataUrl.isNotBlank()) {
+                attributes["data-url"] = "http://localhost:8080/data/$dataUrl"
+            }
+            if (dataField.isNotBlank()) {
+                attributes["data-data-field"] = dataField
+            }
+            if (subscriber.isBlank()) {
+                attributes["data-show-refresh"] = "true"
+            } else {
+                attributes["data-sub"] = "true"
+                attributes["data-sub-url"] = subscriber
+            }
+            if (subTableDetails != null) {
+                applySubTabDetails(subTableDetails)
+            }
+            attributes["data-classes"] = "table table-bordered${if (clickableRows) " table-hover" else ""}"
+            attributes["data-thead-classes"] = "thead-dark"
+            attributes["data-search"] = "true"
+            if (customSortFunction.isNotBlank()) {
+                attributes["data-custom-sort"] = customSortFunction.trim()
+            }
+            if (tableButtons.isNotEmpty()) {
+                attributes["data-buttons"] = "${tableId}buttons"
+            }
+            thead {
+                addFields(fields, clickableRows)
+            }
+            if (tableButtons.isNotEmpty()) {
+                script {
+                    addTableButtons(tableId, tableButtons)
+                }
+            }
         }
-        if (dataUrl.isNotBlank()) {
-            attributes["data-url"] = "http://localhost:8080/data/$dataUrl"
+    }
+}
+
+/**
+ * Constructs a basic [BootstrapTable](https://bootstrap-table.com) that fetches data from the desired [url][dataUrl],
+ * displays the field from [T] using the keys as reference to JSON data's keys. The fields obtained from [T] also allows
+ * the user to add [column options](https://bootstrap-table.com/docs/api/column-options/) as a map of option to value.
+ * Optional parameters include [table buttons](https://bootstrap-table.com/docs/api/table-options/#buttons),
+ * [header buttons](https://bootstrap-table.com/docs/api/table-options/#toolbar), sort function (name of javascript
+ * function to call), a flag denoting is the rows are [clickable][clickableRows], and a [subscriber] url.
+ */
+@Suppress("LongParameterList")
+inline fun <reified T: ApiExposed> FlowContent.basicTable2(
+    tableId: String,
+    dataUrl: String = "",
+    dataField: String = "",
+    tableButtons: List<String> = emptyList(),
+    headerButtons: List<HeaderButton> = emptyList(),
+    customSortFunction: String = "",
+    clickableRows: Boolean = true,
+    subscriber: String = "",
+    subTableDetails: SubTableDetails? = null,
+) {
+    if (headerButtons.isNotEmpty()) {
+        ul(classes = "header-button-list") {
+            id = "toolbar"
+            for (headerButton in headerButtons) {
+                headerButton.html(this)
+            }
         }
-        if (dataField.isNotBlank()) {
-            attributes["data-data-field"] = dataField
-        }
-        if (subscriber.isBlank()) {
-            attributes["data-show-refresh"] = "true"
-        } else {
-            attributes["data-sub"] = "true"
-            attributes["data-sub-url"] = subscriber
-        }
-        if (subTableDetails != null) {
-            applySubTabDetails(subTableDetails)
-        }
-        attributes["data-classes"] = "table table-bordered${if (clickableRows) " table-hover" else ""}"
-        attributes["data-thead-classes"] = "thead-dark"
-        attributes["data-search"] = "true"
-        if (customSortFunction.isNotBlank()) {
-            attributes["data-custom-sort"] = customSortFunction.trim()
-        }
-        if (tableButtons.isNotEmpty()) {
-            attributes["data-buttons"] = "${tableId}buttons"
-        }
-        thead {
-            addFields(fields, clickableRows)
-        }
-        if (tableButtons.isNotEmpty()) {
-            script {
-                unsafe {
-                    raw("""
-                        function ${tableId}buttons() {
-                            return {
-                                ${tableButtons.joinToString()}
-                            }
-                        }
-                    """.trimIndent())
+    }
+    div {
+        style = "max-height: 800px; overflow-y: auto; display: block"
+        table {
+            id = tableId
+            attributes["data-toggle"] = "table"
+            if (headerButtons.isNotEmpty()) {
+                attributes["data-toolbar"] = "#toolbar"
+            }
+            if (dataUrl.isNotBlank()) {
+                attributes["data-url"] = "http://localhost:8080/data/$dataUrl"
+            }
+            if (dataField.isNotBlank()) {
+                attributes["data-data-field"] = dataField
+            }
+            if (subscriber.isBlank()) {
+                attributes["data-show-refresh"] = "true"
+            } else {
+                attributes["data-sub"] = "true"
+                attributes["data-sub-url"] = subscriber
+            }
+            if (subTableDetails != null) {
+                applySubTabDetails(subTableDetails)
+            }
+            attributes["data-classes"] = "table table-bordered${if (clickableRows) " table-hover" else ""}"
+            attributes["data-thead-classes"] = "thead-dark"
+            attributes["data-search"] = "true"
+            if (customSortFunction.isNotBlank()) {
+                attributes["data-custom-sort"] = customSortFunction.trim()
+            }
+            if (tableButtons.isNotEmpty()) {
+                attributes["data-buttons"] = "${tableId}buttons"
+            }
+            thead {
+                addFields(getObjectInstance<T>().tableDisplayFields, clickableRows)
+            }
+            if (tableButtons.isNotEmpty()) {
+                script {
+                    addTableButtons(tableId, tableButtons)
                 }
             }
         }
@@ -218,4 +312,6 @@ fun FlowContent.sourceTables(runId: Long) {
             fields = SourceTableColumns.tableDisplayFields,
         ),
     )
+    script { addParamsAsJsGlobalVariables("sourceTablesTableId" to SOURCE_TABLES_TABLE_ID) }
+    sourceTableEditModal()
 }
