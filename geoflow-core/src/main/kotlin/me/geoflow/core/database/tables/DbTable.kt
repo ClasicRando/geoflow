@@ -1,5 +1,8 @@
 package me.geoflow.core.database.tables
 
+import mu.KLogger
+import mu.KotlinLogging
+
 /**
  * Base definition of a database table. Contains some constraints and default implementations of properties used by
  * the BuildScript.
@@ -29,4 +32,6 @@ abstract class DbTable(val tableName: String) {
         } else {
             setOf()
         }
+    /** */
+    protected val logger: KLogger = KotlinLogging.logger {}
 }
