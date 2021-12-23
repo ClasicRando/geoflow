@@ -55,7 +55,7 @@ object AdminDashboard : BasePage() {
                 formModal(
                     modalId = USER_CREATE_MODAL,
                     headerText = "Create User",
-                    okClickFunction = "createUser",
+                    okClickFunction = "createUser()",
                 ) {
                     id = CREATE_USER_FORM_ID
                     action = ""
@@ -125,7 +125,7 @@ object AdminDashboard : BasePage() {
                 formModal(
                     modalId = USER_EDIT_MODAL,
                     headerText = "Edit User",
-                    okClickFunction = "editUser",
+                    okClickFunction = "editUser()",
                 ) {
                     id = EDIT_USER_FORM_ID
                     action = ""
