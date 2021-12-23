@@ -5,6 +5,8 @@ package me.geoflow.web.api
 import io.ktor.http.HttpMethod
 import io.ktor.routing.Route
 import io.ktor.routing.route
+import me.geoflow.core.database.tables.records.DataSourceContact
+import me.geoflow.core.database.tables.records.DataSourceRequest
 import me.geoflow.core.database.tables.records.RequestUser
 import me.geoflow.core.database.tables.records.SourceTable
 import me.geoflow.core.mongo.MongoDb
@@ -22,6 +24,9 @@ fun Route.data() {
         jobs()
         provs()
         roles()
+        dataSources()
+        dataSourceContacts()
+        recordWarehouseTypes()
     }
 }
 
@@ -54,6 +59,14 @@ private fun Route.provs() {
     route(path = "/provs") {
         /** Returns list of available provs */
         apiCall<NoBody>(apiEndPoint = "/provs", httpMethod = HttpMethod.Get)
+    }
+}
+
+/** Record Warehouse Types API route */
+private fun Route.recordWarehouseTypes() {
+    route(path = "/rec-warehouse-types") {
+        /** Returns list of available provs */
+        apiCall<NoBody>(apiEndPoint = "/rec-warehouse-types", httpMethod = HttpMethod.Get)
     }
 }
 
@@ -92,6 +105,48 @@ private fun Route.pipelineRunTasks() {
             path = "/run-all/{runId}",
             apiEndPoint = "/pipeline-run-tasks/run-all/{runId}",
             httpMethod = HttpMethod.Post,
+        )
+    }
+}
+
+/** Data sources API route */
+private fun Route.dataSources() {
+    route(path = "/data-sources") {
+        apiCall<NoBody>(
+            path = "/{dsId}",
+            apiEndPoint = "data-sources/{dsId}",
+            httpMethod = HttpMethod.Get,
+        )
+        apiCall<NoBody>(
+            apiEndPoint = "data-sources",
+            httpMethod = HttpMethod.Get,
+        )
+        apiCall<DataSourceRequest>(
+            apiEndPoint = "data-sources",
+            httpMethod = HttpMethod.Post,
+        )
+        apiCall<DataSourceRequest>(
+            apiEndPoint = "data-sources",
+            httpMethod = HttpMethod.Patch,
+        )
+    }
+}
+
+/** Data source contacts API route */
+private fun Route.dataSourceContacts() {
+    route(path = "/data-source-contacts") {
+        apiCall<NoBody>(
+            path = "/{dsId}",
+            apiEndPoint = "data-source-contacts/{dsId}",
+            httpMethod = HttpMethod.Get,
+        )
+        apiCall<DataSourceContact>(
+            apiEndPoint = "/data-source-contacts",
+            httpMethod = HttpMethod.Post,
+        )
+        apiCall<DataSourceContact>(
+            apiEndPoint = "/data-source-contacts",
+            httpMethod = HttpMethod.Put,
         )
     }
 }
@@ -135,7 +190,15 @@ private fun Route.sourceTableColumns() {
 /** Internal Users API route */
 private fun Route.users() {
     route(path = "/users") {
-        apiCall<NoBody>(apiEndPoint = "/users", httpMethod = HttpMethod.Get)
+        apiCall<NoBody>(
+            path = "/self",
+            apiEndPoint = "/users/self",
+            httpMethod = HttpMethod.Get,
+        )
+        apiCall<NoBody>(
+            apiEndPoint = "/users",
+            httpMethod = HttpMethod.Get,
+        )
         apiCall<RequestUser>(
             apiEndPoint = "/users",
             httpMethod = HttpMethod.Post,
