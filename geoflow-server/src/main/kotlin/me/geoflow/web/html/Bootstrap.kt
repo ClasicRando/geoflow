@@ -19,6 +19,7 @@ import kotlinx.html.onClick
 import kotlinx.html.option
 import kotlinx.html.p
 import kotlinx.html.role
+import kotlinx.html.script
 import kotlinx.html.select
 import kotlinx.html.textInput
 import kotlinx.html.ul
@@ -70,6 +71,7 @@ inline fun FlowContent.formModal(
     modalId: String,
     headerText: String,
     okClickFunction: String,
+    size: String = "",
     crossinline body: FORM.() -> Unit,
 ) {
     div(classes = "modal fade") {
@@ -79,7 +81,7 @@ inline fun FlowContent.formModal(
         attributes["tabindex"] = "-1"
         attributes["aria-labelledby"] = "staticBackdropLabel"
         attributes["aria-hidden"] = "true"
-        div(classes = "modal-dialog modal-dialog-centered modal-dialog-scrollable") {
+        div(classes = "modal-dialog modal-dialog-centered modal-dialog-scrollable $size") {
             div(classes = "modal-content") {
                 div(classes = "modal-header") {
                     h5(classes = "modal-title") {
@@ -103,42 +105,8 @@ inline fun FlowContent.formModal(
                     }
                     button(classes = "btn btn-secondary") {
                         type = ButtonType.button
-                        onClick = "$okClickFunction()"
+                        onClick = okClickFunction
                         +"OK"
-                    }
-                }
-            }
-        }
-    }
-}
-
-/**
- * Creates a blank modal that can have various values displayed during webpage operation.
- */
-fun FlowContent.dataDisplayModal(modalId: String, headerText: String) {
-    div(classes = "modal fade") {
-        id = modalId
-        attributes["data-backdrop"] = "static"
-        attributes["data-keyboard"] = "false"
-        attributes["tabindex"] = "-1"
-        attributes["aria-labelledby"] = "staticBackdropLabel"
-        attributes["aria-hidden"] = "true"
-        div(classes = "modal-dialog modal-dialog-centered modal-dialog-scrollable") {
-            div(classes = "modal-content") {
-                div(classes = "modal-header") {
-                    h5(classes = "modal-title") {
-                        id = "staticBackdropLabel"
-                        +headerText
-                    }
-                }
-                div(classes = "modal-body") {
-                    id = "${modalId}Body"
-                }
-                div(classes = "modal-footer") {
-                    button(classes = "btn btn-secondary") {
-                        type = ButtonType.button
-                        attributes["data-dismiss"] = "modal"
-                        +"Close"
                     }
                 }
             }
@@ -175,7 +143,7 @@ fun FlowContent.confirmModal(confirmModalId: String, confirmMessage: String, res
                     button(classes = "btn btn-secondary") {
                         id = "${confirmModalId}Confirm"
                         type = ButtonType.button
-                        onClick = "$resultFunction()"
+                        onClick = resultFunction
                         +"OK"
                     }
                     button(classes = "btn btn-secondary") {
@@ -367,8 +335,15 @@ fun FlowContent.sourceTableEditModal() {
     confirmModal(
         confirmModalId = DELETE_SOURCE_TABLE_CONFIRM_ID,
         confirmMessage = "Are you sure you want to delete this record?",
-        resultFunction = "deleteSourceTable",
+        resultFunction = "deleteSourceTable($('#${DELETE_SOURCE_TABLE_CONFIRM_ID}'))",
     )
+    script {
+        addParamsAsJsGlobalVariables(
+            "sourceTableModalId" to SOURCE_TABLES_MODAL_ID,
+            "sourceTableRecordLabelId" to SOURCE_TABLE_RECORD_LABEL_ID,
+            "deleteSourceTableConfirmId" to DELETE_SOURCE_TABLE_CONFIRM_ID,
+        )
+    }
 }
 
 /** Container for a tab nav element. Accepts a DIV lambda for the user to customize the tab content */
