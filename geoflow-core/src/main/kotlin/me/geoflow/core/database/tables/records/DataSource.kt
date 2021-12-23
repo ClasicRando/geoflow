@@ -17,6 +17,8 @@ data class DataSource(
     val code: String,
     /** Prov/state code for the record if data source is prov level */
     val prov: String?,
+    /** Country of the data source */
+    val country: String,
     /** Description of the data source */
     val description: String,
     /** Path to the base directory for all pipeline runs of this data source */
@@ -66,9 +68,9 @@ data class DataSource(
     companion object {
         /** Generic sql to obtain a [DataSource] */
         val sql: String = """
-            SELECT t1.ds_id, t1.code, t1.prov, t1.description, t1.files_location, t1.prov_level, t1.comments,
-                   t2.name, t3.name, t1.created, t1.last_updated, t4.name, t1.search_radius, t5.name, t1.reporting_type,
-                   t6.name, t7.name, t8.name, t9.name
+            SELECT t1.ds_id, t1.code, t1.prov, t1.country, t1.description, t1.files_location, t1.prov_level, 
+                   t1.comments, t2.name, t3.name, t1.created, t1.last_updated, t4.name, t1.search_radius, t5.name,
+                   t1.reporting_type, t6.name, t7.name, t8.name, t9.name
             FROM   ${DataSources.tableName} t1
             LEFT JOIN ${InternalUsers.tableName} t2
             ON     t1.assigned_user = t2.user_oid

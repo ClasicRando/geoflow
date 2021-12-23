@@ -19,7 +19,7 @@ import java.sql.Connection
  * The records contain data about how the source is moved through the system, treated during reporting and other meta
  * details about the source
  */
-object DataSources : DbTable("data_sources") {
+object DataSources : DbTable("data_sources"), ApiExposed {
 
     override val createStatement: String = """
         CREATE TABLE IF NOT EXISTS public.data_sources
@@ -29,6 +29,7 @@ object DataSources : DbTable("data_sources") {
             prov text COLLATE pg_catalog."default" NOT NULL REFERENCES public.provs (prov_code) MATCH SIMPLE
                 ON UPDATE CASCADE
                 ON DELETE RESTRICT,
+            country text COLLATE pg_catalog."default" NOT NULL CHECK (country_check(country, prov)),
             description text COLLATE pg_catalog."default" NOT NULL CHECK (check_not_blank_or_empty(description)),
             files_location text COLLATE pg_catalog."default" NOT NULL CHECK (check_not_blank_or_empty(files_location)),
             prov_level boolean NOT NULL,
@@ -61,6 +62,29 @@ object DataSources : DbTable("data_sources") {
         );
     """.trimIndent()
 
+    override val tableDisplayFields: Map<String, Map<String, String>> = mapOf(
+        "ds_id" to mapOf("title" to "ID"),
+        "code" to mapOf("title" to "Source Code"),
+        "prov" to mapOf("title" to "Prov/State"),
+        "country" to mapOf("title" to "Country Code"),
+        "description" to mapOf(),
+        "files_location" to mapOf(),
+        "comments" to mapOf(),
+        "assigned_user" to mapOf("title" to "Assigned To"),
+        "created_by" to mapOf(),
+        "created" to mapOf(),
+        "updated_by" to mapOf(),
+        "last_updated" to mapOf(),
+        "search_radius" to mapOf(),
+        "record_warehouse_type" to mapOf("title" to "Warehouse Type"),
+        "reporting_type" to mapOf(),
+        "collection_pipeline" to mapOf(),
+        "load_pipeline" to mapOf(),
+        "check_pipeline" to mapOf(),
+        "qa_pipeline" to mapOf("title" to "QA Pipeline"),
+        "actions" to mapOf("formatter" to "dataSourceActionsFormatter"),
+    )
+
     /**
      * Returns a single [DataSource] record for the provided [dsId]
      *
@@ -79,7 +103,7 @@ object DataSources : DbTable("data_sources") {
      * @throws java.sql.SQLException when the connection throws an exception
      */
     fun getRecords(connection: Connection, userId: Long): List<DataSource> {
-        InternalUsers.requireRole(connection, userId, "ds_create")
+        InternalUsers.requireRole(connection, userId, "collection")
         return connection.submitQuery(sql = DataSource.sql)
     }
 
