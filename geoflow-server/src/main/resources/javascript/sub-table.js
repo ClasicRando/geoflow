@@ -41,13 +41,8 @@ async function getData(url, idField, columns, $detail) {
         console.log(json);
         return;
     }
-    const payload = json.payload;
-    if ((payload.length||0) === 0) {
-        console.log(payload);
-        return;
-    }
     $detail.html('<table></table>').find('table').bootstrapTable({
         columns: columns,
-        data: payload,
+        data: json.payload,
     });
 }
