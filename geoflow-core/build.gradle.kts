@@ -22,6 +22,7 @@ val kotlinLoggingVersion: String by project
 val reflectionsVersion: String by project
 val coroutinesJdbc: String by project
 val kMongoVersion: String by project
+val log4jVersion: String by project
 
 dependencies {
     testImplementation("org.jetbrains.kotlin:kotlin-test:$kotlinVersion")
@@ -65,17 +66,17 @@ dependencies {
     constraints {
         add("implementation", "org.apache.logging.log4j:log4j-core") {
             version {
-                strictly("[2.16, 3[")
-                prefer("2.16.0")
+                strictly("[$log4jVersion, 3[")
+                prefer(log4jVersion)
             }
-            because("CVE-2021-44228: Log4j vulnerable to remote code execution")
+            because("CVE-2021-44228/45105/45046: Log4j vulnerable to remote code execution")
         }
         add("implementation", "org.apache.logging.log4j:log4j-api") {
             version {
-                strictly("[2.16, 3[")
-                prefer("2.16.0")
+                strictly("[$log4jVersion, 3[")
+                prefer(log4jVersion)
             }
-            because("CVE-2021-44228: Log4j vulnerable to remote code execution")
+            because("CVE-2021-44228/45105/45046: Log4j vulnerable to remote code execution")
         }
     }
 }
