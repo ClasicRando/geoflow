@@ -53,9 +53,15 @@ object DataSources : DbTable("data_sources"), ApiExposed {
             collection_pipeline bigint NOT NULL REFERENCES public.pipelines (pipeline_id) MATCH SIMPLE
                 ON UPDATE CASCADE
                 ON DELETE RESTRICT,
-            load_pipeline bigint,
-            check_pipeline bigint,
-            qa_pipeline bigint
+            load_pipeline bigint NOT NULL REFERENCES public.pipelines (pipeline_id) MATCH SIMPLE
+                ON UPDATE CASCADE
+                ON DELETE RESTRICT,
+            check_pipeline bigint NOT NULL REFERENCES public.pipelines (pipeline_id) MATCH SIMPLE
+                ON UPDATE CASCADE
+                ON DELETE RESTRICT,
+            qa_pipeline bigint NOT NULL REFERENCES public.pipelines (pipeline_id) MATCH SIMPLE
+                ON UPDATE CASCADE
+                ON DELETE RESTRICT
         )
         WITH (
             OIDS = FALSE
@@ -133,6 +139,7 @@ object DataSources : DbTable("data_sources"), ApiExposed {
                 UPDATE $tableName
                 SET    code = ?,
                        prov = ?,
+                       country = ?,
                        description = ?,
                        files_location = ?,
                        prov_level = ?,
@@ -151,6 +158,7 @@ object DataSources : DbTable("data_sources"), ApiExposed {
             """.trimIndent(),
             request.code,
             request.prov.takeIf { request.provLevel },
+            request.country,
             request.description,
             request.filesLocation,
             request.provLevel,
@@ -183,14 +191,15 @@ object DataSources : DbTable("data_sources"), ApiExposed {
         require(request.searchRadius > 0) { "Search radius value must be greater than zero" }
         return connection.runReturningFirstOrNull(
             sql = """
-                INSERT INTO data_sources(code,prov,description,files_location,prov_level,comments,assigned_user,
+                INSERT INTO data_sources(code,prov,country,description,files_location,prov_level,comments,assigned_user,
                                          search_radius,record_warehouse_type,reporting_type,collection_pipeline,
                                          load_pipeline,check_pipeline,qa_pipeline,created_by)
-                VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?)
+                VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)
                 RETURNING ds_id
             """.trimIndent(),
             request.code,
             request.prov.takeIf { request.provLevel },
+            request.country,
             request.description,
             request.filesLocation,
             request.provLevel,

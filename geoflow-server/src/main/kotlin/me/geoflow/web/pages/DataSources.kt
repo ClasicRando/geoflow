@@ -16,10 +16,12 @@ import me.geoflow.web.api.NoBody
 import me.geoflow.web.api.makeApiCall
 import me.geoflow.web.html.addParamsAsJsGlobalVariables
 import me.geoflow.web.html.basicTable2
+import me.geoflow.web.html.confirmModal
 import me.geoflow.web.html.formModal
 import me.geoflow.web.html.subTableDetails
 import me.geoflow.web.html.tableButton
 import me.geoflow.web.session
+import me.geoflow.web.utils.Quad
 import me.geoflow.core.database.tables.DataSources as DataSourcesTable
 
 /** */
@@ -62,7 +64,7 @@ class DataSources(call: ApplicationCall) : BasePage() {
         formModal(
             modalId = CREATE_CONTACT_MODAL_ID,
             headerText = "Create Contact",
-            okClickFunction = "postNewContact($('#${CREATE_CONTACT_FORM_ID}'))",
+            okClickFunction = "postContact($('#${CREATE_CONTACT_FORM_ID}'))",
         ) {
             id = CREATE_CONTACT_FORM_ID
             action = ""
@@ -120,7 +122,7 @@ class DataSources(call: ApplicationCall) : BasePage() {
         formModal(
             modalId = EDIT_CONTACT_MODAL_ID,
             headerText = "Edit Contact",
-            okClickFunction = "putNewContact($('#${EDIT_CONTACT_FORM_ID}'))",
+            okClickFunction = "putContact($('#${EDIT_CONTACT_FORM_ID}'))",
         ) {
             id = EDIT_CONTACT_FORM_ID
             action = ""
@@ -178,7 +180,7 @@ class DataSources(call: ApplicationCall) : BasePage() {
         formModal(
             modalId = CREATE_SOURCE_MODAL_ID,
             headerText = "Create Data Source",
-            okClickFunction = "postNewSource($('#${CREATE_SOURCE_FORM_ID}'))",
+            okClickFunction = "postDataSource($('#${CREATE_SOURCE_FORM_ID}'))",
             size = "modal-xl",
         ) {
             id = CREATE_SOURCE_FORM_ID
@@ -213,7 +215,6 @@ class DataSources(call: ApplicationCall) : BasePage() {
                         select(classes = "custom-select") {
                             id = "createCollectionPipeline"
                             name = "collectionPipeline"
-                            disabled = true
                         }
                     }
                 }
@@ -235,7 +236,7 @@ class DataSources(call: ApplicationCall) : BasePage() {
                             htmlFor = "createWarehouseType"
                             +"Warehouse Type"
                         }
-                        select(classes = "form-control") {
+                        select(classes = "custom-select") {
                             id = "createWarehouseType"
                             name = "warehouseType"
                         }
@@ -248,7 +249,6 @@ class DataSources(call: ApplicationCall) : BasePage() {
                         select(classes = "custom-select") {
                             id = "createLoadPipeline"
                             name = "loadPipeline"
-                            disabled = true
                         }
                     }
                 }
@@ -283,14 +283,13 @@ class DataSources(call: ApplicationCall) : BasePage() {
                         select(classes = "custom-select") {
                             id = "createCheckPipeline"
                             name = "checkPipeline"
-                            disabled = true
                         }
                     }
                 }
             }
             div(classes = "form-group") {
                 div(classes = "form-row") {
-                    div(classes = "col-8") {
+                    div(classes = "col") {
                         label {
                             htmlFor = "createFileLocation"
                             +"Files Location"
@@ -300,7 +299,17 @@ class DataSources(call: ApplicationCall) : BasePage() {
                             name = "fileLocation"
                         }
                     }
-                    div(classes = "col-4") {
+                    div(classes = "col") {
+                        label {
+                            htmlFor = "createAssignedUser"
+                            +"Assigned User"
+                        }
+                        select(classes = "custom-select") {
+                            id = "createAssignedUser"
+                            name = "assignedUser"
+                        }
+                    }
+                    div(classes = "col") {
                         label {
                             htmlFor = "createQaPipeline"
                             +"QA Pipeline"
@@ -308,7 +317,6 @@ class DataSources(call: ApplicationCall) : BasePage() {
                         select(classes = "custom-select") {
                             id = "createQaPipeline"
                             name = "qaPipeline"
-                            disabled = true
                         }
                     }
                 }
@@ -334,20 +342,216 @@ class DataSources(call: ApplicationCall) : BasePage() {
                 }
             }
         }
+        formModal(
+            modalId = EDIT_SOURCE_MODAL_ID,
+            headerText = "Edit Data Source",
+            okClickFunction = "patchDataSource($('#${EDIT_SOURCE_FORM_ID}'))",
+            size = "modal-xl",
+        ) {
+            id = EDIT_SOURCE_FORM_ID
+            action = ""
+            div(classes = "form-group") {
+                div(classes = "form-row") {
+                    div(classes = "col") {
+                        label {
+                            htmlFor = "editCode"
+                            +"Source Code"
+                        }
+                        textInput(classes = "form-control") {
+                            id = "editCode"
+                            name = "code"
+                        }
+                    }
+                    div(classes = "col") {
+                        label {
+                            htmlFor = "editRadius"
+                            +"Search Radius"
+                        }
+                        textInput(classes = "form-control") {
+                            id = "editRadius"
+                            name = "radius"
+                        }
+                    }
+                    div(classes = "col") {
+                        label {
+                            htmlFor = "editCollectionPipeline"
+                            +"Collection Pipeline"
+                        }
+                        select(classes = "custom-select") {
+                            id = "editCollectionPipeline"
+                            name = "collectionPipeline"
+                        }
+                    }
+                }
+            }
+            div(classes = "form-group") {
+                div(classes = "form-row") {
+                    div(classes = "col") {
+                        label {
+                            htmlFor = "editCountry"
+                            +"Country"
+                        }
+                        select(classes = "custom-select") {
+                            id = "editCountry"
+                            name = "country"
+                        }
+                    }
+                    div(classes = "col") {
+                        label {
+                            htmlFor = "editWarehouseType"
+                            +"Warehouse Type"
+                        }
+                        select(classes = "custom-select") {
+                            id = "editWarehouseType"
+                            name = "warehouseType"
+                        }
+                    }
+                    div(classes = "col") {
+                        label {
+                            htmlFor = "editLoadPipeline"
+                            +"Load Pipeline"
+                        }
+                        select(classes = "custom-select") {
+                            id = "editLoadPipeline"
+                            name = "loadPipeline"
+                        }
+                    }
+                }
+            }
+            div(classes = "form-group") {
+                div(classes = "form-row") {
+                    div(classes = "col") {
+                        label {
+                            htmlFor = "editProv"
+                            +"Prov"
+                        }
+                        select(classes = "custom-select") {
+                            id = "editProv"
+                            name = "prov"
+                        }
+                    }
+                    div(classes = "col-4") {
+                        label {
+                            htmlFor = "editReportType"
+                            +"Report Type"
+                        }
+                        textInput(classes = "form-control") {
+                            id = "editReportType"
+                            name = "reportType"
+                        }
+                    }
+                    div(classes = "col") {
+                        label {
+                            htmlFor = "editCheckPipeline"
+                            +"Check Pipeline"
+                        }
+                        select(classes = "custom-select") {
+                            id = "editCheckPipeline"
+                            name = "checkPipeline"
+                        }
+                    }
+                }
+            }
+            div(classes = "form-group") {
+                div(classes = "form-row") {
+                    div(classes = "col") {
+                        label {
+                            htmlFor = "editFileLocation"
+                            +"Files Location"
+                        }
+                        textInput(classes = "form-control") {
+                            id = "editFileLocation"
+                            name = "fileLocation"
+                        }
+                    }
+                    div(classes = "col") {
+                        label {
+                            htmlFor = "editAssignedUser"
+                            +"Assigned User"
+                        }
+                        select(classes = "custom-select") {
+                            id = "editAssignedUser"
+                            name = "assignedUser"
+                        }
+                    }
+                    div(classes = "col") {
+                        label {
+                            htmlFor = "editQaPipeline"
+                            +"QA Pipeline"
+                        }
+                        select(classes = "custom-select") {
+                            id = "editQaPipeline"
+                            name = "qaPipeline"
+                        }
+                    }
+                }
+            }
+            div(classes = "form-group") {
+                label {
+                    htmlFor = "editDescription"
+                    +"Description"
+                }
+                textArea(classes = "form-control") {
+                    id = "editDescription"
+                    name = "description"
+                }
+            }
+            div(classes = "form-group") {
+                label {
+                    htmlFor = "editComments"
+                    +"Comments"
+                }
+                textArea(classes = "form-control") {
+                    id = "editComments"
+                    name = "comments"
+                }
+            }
+        }
+        confirmModal(
+            confirmModalId = CONFIRM_DELETE_CONTACT_MODAL_ID,
+            confirmMessage = "Are you sure you want to delete the contact?",
+            resultFunction = "deleteContact()",
+        )
     }
 
     override val script: FlowContent.() -> Unit = {
+        val (collectionUsers, provs, warehouseTypes, pipelines) = runBlocking {
+            val session = call.session
+            requireNotNull(session)
+            val collectionUsers = makeApiCall<NoBody, String>(
+                endPoint = "/api/users/collection",
+                apiToken = session.apiToken,
+            ).takeIf { it.contains("payload") } ?: "{\"payload\": []}"
+            val provs = makeApiCall<NoBody, String>(
+                endPoint = "/api/provs",
+                apiToken = session.apiToken,
+            ).takeIf { it.contains("payload") } ?: "{\"payload\": []}"
+            val warehouseTypes = makeApiCall<NoBody, String>(
+                endPoint = "/api/rec-warehouse-types",
+                apiToken = session.apiToken,
+            ).takeIf { it.contains("payload") } ?: "{\"payload\": []}"
+            val pipelines = makeApiCall<NoBody, String>(
+                endPoint = "/api/pipelines",
+                apiToken = session.apiToken,
+            ).takeIf { it.contains("payload") } ?: "{\"payload\": []}"
+            Quad(collectionUsers, provs, warehouseTypes, pipelines)
+        }
         script {
             addParamsAsJsGlobalVariables(
                 "dataSourceTableId" to TABLE_ID,
-                "createContactModal" to CREATE_CONTACT_MODAL_ID,
+                "createContactModalId" to CREATE_CONTACT_MODAL_ID,
                 "createContactFormId" to CREATE_CONTACT_FORM_ID,
                 "editContactModalId" to EDIT_CONTACT_MODAL_ID,
                 "editContactFormId" to EDIT_CONTACT_FORM_ID,
                 "createSourceModalId" to CREATE_SOURCE_MODAL_ID,
                 "createSourceFormId" to CREATE_SOURCE_FORM_ID,
-                "editSourceModal" to EDIT_SOURCE_MODAL_ID,
-                "editSourceForm" to EDIT_SOURCE_FORM_ID,
+                "editSourceModalId" to EDIT_SOURCE_MODAL_ID,
+                "editSourceFormId" to EDIT_SOURCE_FORM_ID,
+                "collectionUsersJson" to collectionUsers,
+                "provsJson" to provs,
+                "warehouseTypesJson" to warehouseTypes,
+                "pipelinesJson" to pipelines,
+                "confirmDeleteContactId" to CONFIRM_DELETE_CONTACT_MODAL_ID,
             )
         }
         script {
@@ -365,6 +569,7 @@ class DataSources(call: ApplicationCall) : BasePage() {
         private const val CREATE_SOURCE_FORM_ID = "createSourceForm"
         private const val EDIT_SOURCE_MODAL_ID = "editSourceModal"
         private const val EDIT_SOURCE_FORM_ID = "editSourceForm"
+        private const val CONFIRM_DELETE_CONTACT_MODAL_ID = "confirmDeleteContact"
     }
 
 }

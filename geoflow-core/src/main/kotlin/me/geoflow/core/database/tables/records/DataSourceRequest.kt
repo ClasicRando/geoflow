@@ -14,6 +14,8 @@ data class DataSourceRequest(
     val code: String,
     /** Prov/state code for the record if data source is prov level */
     val prov: String?,
+    /** Country of the data source */
+    val country: String,
     /** Description of the data source */
     val description: String,
     /** Path to the base directory for all pipeline runs of this data source */
