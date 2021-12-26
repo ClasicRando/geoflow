@@ -20,6 +20,7 @@ object ApiUsers : ApiPath(path = "/users") {
         createUser(this)
         updateUser(this)
         hasRole(this)
+        getCollectionUsers(this)
     }
 
     /** Returns a single user record if the caller is the user */
@@ -44,6 +45,14 @@ object ApiUsers : ApiPath(path = "/users") {
         parent.apiCallPostgres(httpMethod = HttpMethod.Get) { userOid, connection ->
             val payload = InternalUsers.getUsers(connection, userOid)
             ApiResponse.UsersResponse(payload)
+        }
+    }
+
+    /** Returns list of user records that have the collection role */
+    private fun getCollectionUsers(parent: Route) {
+        parent.apiCallPostgres(httpMethod = HttpMethod.Get, path = "/collection") { userOid, connection ->
+            val payload = InternalUsers.getCollectionUsers(connection, userOid)
+            ApiResponse.CollectionUsersResponse(payload)
         }
     }
 
