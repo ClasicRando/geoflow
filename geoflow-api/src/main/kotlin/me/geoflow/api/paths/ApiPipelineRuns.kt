@@ -15,6 +15,8 @@ object ApiPipelineRuns : ApiPath(path = "/pipeline-runs")  {
     override fun Route.registerEndpoints() {
         getRuns(this)
         pickupRun(this)
+        moveForwardRun(this)
+        moveBackRun(this)
     }
 
     /** Returns list of pipeline runs for the given workflow code based upon the current user. */
@@ -31,9 +33,33 @@ object ApiPipelineRuns : ApiPath(path = "/pipeline-runs")  {
      */
     private fun pickupRun(parent: Route) {
         parent.apiCallPostgres(httpMethod = HttpMethod.Post, path = "/pickup/{runId}") { userOid, connection ->
-            val runId = call.parameters.getOrFail("").toLong()
+            val runId = call.parameters.getOrFail<Long>("runId")
             PipelineRuns.pickupRun(connection, runId, userOid)
             ApiResponse.MessageResponse("Successfully picked up $runId to Active state under the current user")
+        }
+    }
+
+    /**
+     * Requests that the specified run to be moved to the next workflow state. Returns a message indicating if the
+     * provided runId was successfully moved forward
+     */
+    private fun moveForwardRun(parent: Route) {
+        parent.apiCallPostgres(httpMethod = HttpMethod.Post, path = "/move-forward/{runId}") { userOid, connection ->
+            val runId = call.parameters.getOrFail<Long>("runId")
+            PipelineRuns.moveForwardRun(connection, runId, userOid)
+            ApiResponse.MessageResponse("Successfully moved $runId to the next workflow state")
+        }
+    }
+
+    /**
+     * Requests that the specified run to be moved to the previous workflow state or operation. Returns a message
+     * indicating if the provided runId was successfully moved back
+     */
+    private fun moveBackRun(parent: Route) {
+        parent.apiCallPostgres(httpMethod = HttpMethod.Post, path = "/move-back/{runId}") { userOid, connection ->
+            val runId = call.parameters.getOrFail<Long>("runId")
+            PipelineRuns.moveBackRun(connection, runId, userOid)
+            ApiResponse.MessageResponse("Successfully moved $runId to the next workflow state")
         }
     }
 
