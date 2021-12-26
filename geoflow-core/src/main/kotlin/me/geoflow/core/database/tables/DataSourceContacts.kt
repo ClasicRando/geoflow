@@ -119,4 +119,21 @@ object DataSourceContacts: DbTable("data_source_contacts"), ApiExposed {
         ) ?: throw NoRecordAffected(tableName, "No record inserted into data source contacts")
     }
 
+    /**
+     * Deletes the data source contact record for the provided [contactId]
+     *
+     * @throws UserMissingRole the caller does not have the 'collection' role
+     * @throws java.sql.SQLException exception thrown during sql DELETE
+     */
+    fun deleteRecord(connection: Connection, userId: Long, contactId: Long) {
+        InternalUsers.requireRole(connection, userId, "collection")
+        val deleteCount = connection.runUpdate(
+            sql = "DELETE FROM $tableName WHERE contact_id = ?",
+            contactId,
+        )
+        if (deleteCount == 0) {
+            throw NoRecordAffected(tableName, "Delete contact DML did not affect any records")
+        }
+    }
+
 }
