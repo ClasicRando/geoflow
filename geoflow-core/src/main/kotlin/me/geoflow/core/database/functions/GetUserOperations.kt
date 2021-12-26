@@ -26,9 +26,9 @@ object GetUserOperations: PlPgSqlTableFunction(
         	where  t1.user_oid = $1;
             
             if 'admin' = ANY(v_roles) then
-        		return query select * from workflow_operations;
+        		return query select * from workflow_operations ORDER BY workflow_order;
         	else
-        		return query select * from workflow_operations where role = ANY(v_roles);
+        		return query select * from workflow_operations where role = ANY(v_roles) ORDER BY workflow_order;
         	end if;
         end;
         ${'$'}BODY${'$'};
