@@ -2,10 +2,14 @@ package me.geoflow.core.database.tables
 
 import me.geoflow.core.database.errors.NoRecordFound
 import me.geoflow.core.database.enums.OperationState
+import me.geoflow.core.database.errors.IllegalUserAction
+import me.geoflow.core.database.errors.RunNotComplete
+import me.geoflow.core.database.extensions.executeNoReturn
 import me.geoflow.core.database.extensions.queryFirstOrNull
 import me.geoflow.core.database.extensions.queryHasResult
 import me.geoflow.core.database.extensions.runUpdate
 import me.geoflow.core.database.extensions.submitQuery
+import me.geoflow.core.database.functions.UserHasRun
 import me.geoflow.core.database.tables.records.PipelineRun
 import java.sql.Connection
 
@@ -65,6 +69,7 @@ object PipelineRuns : DbTable("pipeline_runs"), ApiExposed, Triggers {
         );
     """.trimIndent()
 
+    @Suppress("MaxLineLength")
     override val triggers: List<Trigger> = listOf(
         // Trigger function for updating a pipeline run record
         Trigger(
@@ -94,9 +99,9 @@ object PipelineRuns : DbTable("pipeline_runs"), ApiExposed, Triggers {
                     INTO   v_pipeline_id
                     FROM   data_sources
                     WHERE  ds_id = NEW.ds_id;
-                    IF NEW.operation_state = 'Active' AND OLD.operation_state = 'Ready' THEN
+                    IF NEW.operation_state = 'Active' AND OLD.operation_state = 'Ready' AND NEW.workflow_operation = OLD.workflow_operation THEN
                         INSERT INTO pipeline_run_tasks(run_id,task_id,parent_task_id,parent_task_order)
-                        SELECT NEW.run_id, t2.task_id, t2.parent_task, t2.parent_task_order
+                        SELECT NEW.run_id, t2.task_id, 0 t2.task_order
                         FROM   pipelines t1
                         JOIN   pipeline_tasks t2
                         ON	   t1.pipeline_id = t2.pipeline_id
@@ -218,4 +223,117 @@ object PipelineRuns : DbTable("pipeline_runs"), ApiExposed, Triggers {
             runId,
         )
     }
+
+    /**
+     * Sets a run to the next workflow operation.
+     *
+     * @throws IllegalUserAction the user does not have the ability to move the run forward
+     * @throws NoRecordFound the runId provided does not link to a record
+     * @throws RunNotComplete the run still has one or more tasks in the current operation that are not complete
+     */
+    fun moveForwardRun(connection: Connection, runId: Long, userId: Long) {
+        UserHasRun.requireUserRun(
+            connection = connection,
+            userOid =  userId,
+            runId = runId,
+        )
+        val workflowOperation = connection.queryFirstOrNull<String>(
+            sql = """
+                SELECT workflow_operation
+                FROM   $tableName
+                WHERE  run_id = ?
+                AND    operation_state = 'Active'::operation_state
+                FOR UPDATE
+            """.trimIndent(),
+            runId
+        ) ?: throw NoRecordFound(
+            tableName = tableName,
+            message = "RunId provided could does not link to a record or run is not 'Ready'",
+        )
+        val incompleteTasksCount = connection.queryFirstOrNull<Long>(
+            sql = """
+                SELECT COUNT(0)
+                FROM   ${PipelineRunTasks.tableName}
+                WHERE  run_id = ?
+                AND    workflow_operation = ?
+                AND    task_status != 'Complete'::task_status
+            """.trimIndent(),
+            runId,
+            workflowOperation,
+        ) ?: 0L
+        if (incompleteTasksCount != 0L) {
+            throw RunNotComplete(runId)
+        }
+        connection.runUpdate(
+            sql = """
+                WITH next_operations AS (
+                    SELECT code, LEAD(code) OVER (order by workflow_order) next_code
+                    FROM   workflow_operations
+                    ORDER BY workflow_order
+                )
+                UPDATE $tableName
+                SET    operation_state = 'Ready'::operation_state,
+                       workflow_operation = (SELECT next_code
+                                             FROM   next_operations
+                                             WHERE  code = workflow_operation)
+                WHERE  run_id = ?
+            """.trimIndent(),
+            runId,
+        )
+    }
+
+    /**
+     * Sets a run to the previous workflow operation or operation state.
+     *
+     * @throws NoRecordFound when the runId provided does not link to a record
+     */
+    fun moveBackRun(connection: Connection, runId: Long, userId: Long) {
+        UserHasRun.requireUserRun(
+            connection = connection,
+            userOid =  userId,
+            runId = runId,
+        )
+        val (operationState, workflowOperation) = connection.queryFirstOrNull<Pair<String, String>>(
+            sql = "SELECT operation_state, workflow_operation FROM $tableName WHERE run_id = ? FOR UPDATE",
+            runId
+        ) ?: throw NoRecordFound(tableName, "RunId provided could does not link to a record")
+        if (operationState == OperationState.Active.name) {
+            connection.executeNoReturn(
+                sql = """
+                    UPDATE $tableName
+                    SET    operation_state = 'Ready'::operation_state,
+                           ${workflowOperation}_user_oid = null
+                    WHERE  run_id = ?
+                """.trimIndent(),
+                runId,
+            )
+            connection.executeNoReturn(
+                sql = """
+                    DELETE FROM ${PipelineRunTasks.tableName}
+                    WHERE  run_id = ?
+                    AND    workflow_operation = ?
+                """.trimIndent(),
+                runId,
+                workflowOperation,
+            )
+        } else {
+            connection.executeNoReturn(
+                sql = """
+                    WITH prev_operations AS (
+                        SELECT code, LAG(code) OVER (order by workflow_order) prev_code
+                        FROM   workflow_operations
+                        ORDER BY workflow_order
+                    )
+                    UPDATE $tableName
+                    SET    operation_state = 'Active'::operation_state,
+                           workflow_operation = (SELECT prev_code
+                                                 FROM   prev_operations
+                                                 WHERE  code = workflow_operation)
+                    WHERE  run_id = ?
+                """.trimIndent(),
+                runId,
+            )
+        }
+    }
+
 }
