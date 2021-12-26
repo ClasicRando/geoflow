@@ -2,11 +2,11 @@ package me.geoflow.web.pages
 
 import me.geoflow.core.database.tables.PipelineRuns
 import me.geoflow.web.html.addParamsAsJsGlobalVariables
-import me.geoflow.web.html.basicModal
 import me.geoflow.web.html.basicTable
 import kotlinx.html.FlowContent
 import kotlinx.html.STYLE
 import kotlinx.html.script
+import me.geoflow.web.html.confirmModal
 
 /**
  * Page for pipeline status operations
@@ -32,19 +32,30 @@ class PipelineStatus(
             fields = PipelineRuns.tableDisplayFields,
             clickableRows = false,
         )
-        basicModal(
-            modalId = MODAL_ID,
-            headerText = "Select Run",
-            bodyMessage = "Pick up this run?",
-            okClickFunction = "pickup"
+        confirmModal(
+            confirmModalId = CONFIRM_PICKUP,
+            confirmMessage = "Pick up this run?",
+            resultFunction = "pickup()"
+        )
+        confirmModal(
+            confirmModalId = CONFIRM_FORWARD,
+            confirmMessage = "Move this run to the next state?",
+            resultFunction = "forward()"
+        )
+        confirmModal(
+            confirmModalId = CONFIRM_BACK,
+            confirmMessage = "Move this run to the previous state?",
+            resultFunction = "back()"
         )
     }
 
     override val script: FlowContent.() -> Unit = {
         script {
             addParamsAsJsGlobalVariables(
-                "modalId" to MODAL_ID,
+                "confirmPickupId" to CONFIRM_PICKUP,
                 "tableId" to TABLE_ID,
+                "confirmForwardId" to CONFIRM_FORWARD,
+                "confirmBackId" to CONFIRM_BACK
             )
         }
         script {
@@ -54,7 +65,9 @@ class PipelineStatus(
 
     companion object {
 
-        private const val MODAL_ID = "selectReadyRun"
+        private const val CONFIRM_PICKUP = "confirmPickup"
+        private const val CONFIRM_FORWARD = "confirmForward"
+        private const val CONFIRM_BACK = "confirmBack"
         private const val TABLE_ID = "runs"
 
     }
