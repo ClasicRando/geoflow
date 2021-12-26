@@ -7,6 +7,7 @@ import io.ktor.routing.Route
 import io.ktor.routing.route
 import me.geoflow.core.database.tables.records.DataSourceContact
 import me.geoflow.core.database.tables.records.DataSourceRequest
+import me.geoflow.core.database.tables.records.Pipeline
 import me.geoflow.core.database.tables.records.RequestUser
 import me.geoflow.core.database.tables.records.SourceTable
 import me.geoflow.core.mongo.MongoDb
@@ -27,6 +28,7 @@ fun Route.data() {
         dataSources()
         dataSourceContacts()
         recordWarehouseTypes()
+        pipelines()
     }
 }
 
@@ -67,6 +69,29 @@ private fun Route.recordWarehouseTypes() {
     route(path = "/rec-warehouse-types") {
         /** Returns list of available provs */
         apiCall<NoBody>(apiEndPoint = "/rec-warehouse-types", httpMethod = HttpMethod.Get)
+    }
+}
+
+/** Pipelines API route */
+private fun Route.pipelines() {
+    route(path = "/pipelines") {
+        apiCall<NoBody>(
+            apiEndPoint = "/pipelines",
+            httpMethod = HttpMethod.Get,
+        )
+        apiCall<NoBody>(
+            path = "/{pipelineId}",
+            apiEndPoint = "/pipelines/{pipelineId}",
+            httpMethod = HttpMethod.Get,
+        )
+        apiCall<Pipeline>(
+            apiEndPoint = "/pipelines",
+            httpMethod = HttpMethod.Post,
+        )
+        apiCall<Pipeline>(
+            apiEndPoint = "/pipelines",
+            httpMethod = HttpMethod.Put,
+        )
     }
 }
 
@@ -147,6 +172,11 @@ private fun Route.dataSourceContacts() {
         apiCall<DataSourceContact>(
             apiEndPoint = "/data-source-contacts",
             httpMethod = HttpMethod.Put,
+        )
+        apiCall<NoBody>(
+            path = "/{contactId}",
+            apiEndPoint = "/data-source-contacts/{contactId}",
+            httpMethod = HttpMethod.Delete,
         )
     }
 }
