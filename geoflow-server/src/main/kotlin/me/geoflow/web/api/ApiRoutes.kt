@@ -109,6 +109,16 @@ private fun Route.pipelineRuns() {
             apiEndPoint = "/pipeline-runs/pickup/{runId}",
             httpMethod = HttpMethod.Post,
         )
+        apiCall<NoBody>(
+            path = "/move-forward/{runId}",
+            apiEndPoint = "/pipeline-runs/move-forward/{runId}",
+            httpMethod = HttpMethod.Post,
+        )
+        apiCall<NoBody>(
+            path = "/move-back/{runId}",
+            apiEndPoint = "/pipeline-runs/move-back/{runId}",
+            httpMethod = HttpMethod.Post,
+        )
     }
 }
 
