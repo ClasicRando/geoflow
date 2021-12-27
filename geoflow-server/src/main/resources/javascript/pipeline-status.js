@@ -1,5 +1,18 @@
 let runId = -1;
 let code;
+const operations = JSON.parse(operationsJson);
+
+$(document).ready(function() {
+    code = window.location.href.match(/(?<=\/)[^/]+$/g);
+    const $status = $(`#${statusSelectId}`);
+    for (const operation of operations.payload||[]) {
+        $status.append(`<option value="${operation.href}">${operation.name}</option>`);
+    }
+    $status.val(`/pipeline-status/${code}`);
+    $status.change((e) => {
+        redirect($(e.target).val())
+    });
+});
 
 async function pickup() {
     $(`#${confirmPickupId}`).modal('hide');
@@ -68,7 +81,3 @@ function actionsFormatter(value, row) {
         return `<span style="display: inline;">${enterButton}${forwardButton}${backButton}</span>`;
     }
 }
-
-$(document).ready(function() {
-    code = window.location.href.match(/(?<=\/)[^/]+$/g);
-});
