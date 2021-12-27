@@ -521,19 +521,19 @@ class DataSources(call: ApplicationCall) : BasePage() {
             val collectionUsers = makeApiCall<NoBody, String>(
                 endPoint = "/api/users/collection",
                 apiToken = session.apiToken,
-            ).takeIf { it.contains("payload") } ?: "{\"payload\": []}"
+            ).takeIf { it.contains("payload") } ?: DEFAULT_RESPONSE
             val provs = makeApiCall<NoBody, String>(
                 endPoint = "/api/provs",
                 apiToken = session.apiToken,
-            ).takeIf { it.contains("payload") } ?: "{\"payload\": []}"
+            ).takeIf { it.contains("payload") } ?: DEFAULT_RESPONSE
             val warehouseTypes = makeApiCall<NoBody, String>(
                 endPoint = "/api/rec-warehouse-types",
                 apiToken = session.apiToken,
-            ).takeIf { it.contains("payload") } ?: "{\"payload\": []}"
+            ).takeIf { it.contains("payload") } ?: DEFAULT_RESPONSE
             val pipelines = makeApiCall<NoBody, String>(
                 endPoint = "/api/pipelines",
                 apiToken = session.apiToken,
-            ).takeIf { it.contains("payload") } ?: "{\"payload\": []}"
+            ).takeIf { it.contains("payload") } ?: DEFAULT_RESPONSE
             Quad(collectionUsers, provs, warehouseTypes, pipelines)
         }
         script {
@@ -570,6 +570,7 @@ class DataSources(call: ApplicationCall) : BasePage() {
         private const val EDIT_SOURCE_MODAL_ID = "editSourceModal"
         private const val EDIT_SOURCE_FORM_ID = "editSourceForm"
         private const val CONFIRM_DELETE_CONTACT_MODAL_ID = "confirmDeleteContact"
+        private const val DEFAULT_RESPONSE = "{\"payload\": []}"
     }
 
 }
