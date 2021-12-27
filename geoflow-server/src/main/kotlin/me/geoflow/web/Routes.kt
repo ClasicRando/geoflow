@@ -141,7 +141,7 @@ fun Route.pipelineStatus() {
     get(path = "/pipeline-status/{code}") {
         val code = call.parameters.getOrFail("code")
         call.respondHtml {
-            pipelineStatus(code)
+            pipelineStatus(code, call)
         }
     }
 }

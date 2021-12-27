@@ -13,7 +13,9 @@ fun HTML.applyTemplate(template: Template<HTML>): Unit = with(template) {
 fun HTML.index(): Unit = applyTemplate(Index)
 
 /** PipelineStatus page with template created from [workflowCode] */
-fun HTML.pipelineStatus(workflowCode: String): Unit = applyTemplate(PipelineStatus(workflowCode))
+fun HTML.pipelineStatus(workflowCode: String, call: ApplicationCall) {
+    applyTemplate(PipelineStatus(workflowCode, call))
+}
 
 /** PipelineTasks page with template created from [runId] */
 fun HTML.pipelineTasks(runId: Long): Unit = applyTemplate(PipelineTasks(runId))
