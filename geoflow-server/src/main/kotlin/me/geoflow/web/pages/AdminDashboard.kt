@@ -2,7 +2,6 @@ package me.geoflow.web.pages
 
 import me.geoflow.core.database.tables.InternalUsers
 import me.geoflow.web.html.addParamsAsJsGlobalVariables
-import me.geoflow.web.html.basicTable
 import me.geoflow.web.html.formModal
 import me.geoflow.web.html.tableButton
 import kotlinx.html.FlowContent
@@ -15,6 +14,7 @@ import kotlinx.html.passwordInput
 import kotlinx.html.script
 import kotlinx.html.select
 import kotlinx.html.textInput
+import me.geoflow.web.html.basicTable
 
 /**
  * Home for admin related tasks. Shows data for users, runs and the worker application
@@ -44,10 +44,9 @@ object AdminDashboard : BasePage() {
     override val content: FlowContent.() -> Unit = {
         div(classes = "row") {
             div(classes = "col") {
-                basicTable(
+                basicTable<InternalUsers>(
                     tableId = USER_TABLE_ID,
                     dataUrl = "users",
-                    fields = InternalUsers.tableDisplayFields,
                     dataField = "payload",
                     tableButtons = tableButtons,
                     clickableRows = false,

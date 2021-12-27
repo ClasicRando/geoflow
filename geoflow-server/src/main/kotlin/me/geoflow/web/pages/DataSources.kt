@@ -15,7 +15,7 @@ import me.geoflow.core.database.tables.DataSourceContacts
 import me.geoflow.web.api.NoBody
 import me.geoflow.web.api.makeApiCall
 import me.geoflow.web.html.addParamsAsJsGlobalVariables
-import me.geoflow.web.html.basicTable2
+import me.geoflow.web.html.basicTable
 import me.geoflow.web.html.confirmModal
 import me.geoflow.web.html.formModal
 import me.geoflow.web.html.subTableDetails
@@ -48,7 +48,7 @@ class DataSources(call: ApplicationCall) : BasePage() {
                 title = "Add new data source to be load",
             )
         } else null
-        basicTable2<DataSourcesTable>(
+        basicTable<DataSourcesTable>(
             tableId = TABLE_ID,
             dataUrl = "data-sources",
             dataField = "payload",

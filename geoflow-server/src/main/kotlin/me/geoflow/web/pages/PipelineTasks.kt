@@ -3,7 +3,6 @@ package me.geoflow.web.pages
 import me.geoflow.core.database.enums.FileCollectType
 import me.geoflow.core.database.tables.PipelineRunTasks
 import me.geoflow.web.html.addParamsAsJsGlobalVariables
-import me.geoflow.web.html.basicTable
 import me.geoflow.web.html.sourceTables
 import me.geoflow.web.html.tabLayout
 import me.geoflow.web.html.tabNav
@@ -13,6 +12,7 @@ import kotlinx.html.STYLE
 import kotlinx.html.script
 import kotlinx.html.unsafe
 import me.geoflow.web.html.SubTableDetails
+import me.geoflow.web.html.basicTable
 
 /**
  * Page for pipeline task operations
@@ -50,10 +50,9 @@ class PipelineTasks(
     override val content: FlowContent.() -> Unit = {
         tabLayout(
             tabNav(label = "Tasks") {
-                basicTable(
+                basicTable<PipelineRunTasks>(
                     tableId = TASKS_TABLE_ID,
                     dataUrl = "",
-                    fields = PipelineRunTasks.tableDisplayFields,
                     tableButtons = tableButtons,
                     clickableRows = false,
                     subscriber = "ws://localhost:8080/data/pipeline-run-tasks/$runId",

@@ -2,10 +2,10 @@ package me.geoflow.web.pages
 
 import me.geoflow.core.database.tables.PipelineRuns
 import me.geoflow.web.html.addParamsAsJsGlobalVariables
-import me.geoflow.web.html.basicTable
 import kotlinx.html.FlowContent
 import kotlinx.html.STYLE
 import kotlinx.html.script
+import me.geoflow.web.html.basicTable
 import me.geoflow.web.html.confirmModal
 
 /**
@@ -25,11 +25,10 @@ class PipelineStatus(
     override val styles: STYLE.() -> Unit = {}
 
     override val content: FlowContent.() -> Unit = {
-        basicTable(
+        basicTable<PipelineRuns>(
             tableId = TABLE_ID,
             dataUrl = "pipeline-runs/$workflowCode",
             dataField = "payload",
-            fields = PipelineRuns.tableDisplayFields,
             clickableRows = false,
         )
         confirmModal(

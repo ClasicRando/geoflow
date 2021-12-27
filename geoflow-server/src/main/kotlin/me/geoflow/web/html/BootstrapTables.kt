@@ -143,79 +143,6 @@ fun SCRIPT.addTableButtons(tableId: String, tableButtons: List<String>) {
 
 /**
  * Constructs a basic [BootstrapTable](https://bootstrap-table.com) that fetches data from the desired [url][dataUrl],
- * displays the desired [fields] using the keys as reference to JSON data's keys. The [fields] parameter also allows the
- * user to add [column options](https://bootstrap-table.com/docs/api/column-options/) as a map of option to value.
- * Optional parameters include [table buttons](https://bootstrap-table.com/docs/api/table-options/#buttons),
- * [header buttons](https://bootstrap-table.com/docs/api/table-options/#toolbar), sort function (name of javascript
- * function to call), a flag denoting is the rows are [clickable][clickableRows], and a [subscriber] url.
- */
-@Suppress("LongParameterList")
-fun FlowContent.basicTable(
-    tableId: String,
-    fields: Map<String, Map<String, String>>,
-    dataUrl: String = "",
-    dataField: String = "",
-    tableButtons: List<String> = emptyList(),
-    headerButtons: List<HeaderButton> = emptyList(),
-    customSortFunction: String = "",
-    clickableRows: Boolean = true,
-    subscriber: String = "",
-    subTableDetails: SubTableDetails? = null,
-) {
-    if (headerButtons.isNotEmpty()) {
-        ul(classes = "header-button-list") {
-            id = "toolbar"
-            for (headerButton in headerButtons) {
-                headerButton.html(this)
-            }
-        }
-    }
-    div {
-        style = "max-height: 800px; overflow-y: auto; display: block"
-        table {
-            id = tableId
-            attributes["data-toggle"] = "table"
-            if (headerButtons.isNotEmpty()) {
-                attributes["data-toolbar"] = "#toolbar"
-            }
-            if (dataUrl.isNotBlank()) {
-                attributes["data-url"] = "http://localhost:8080/data/$dataUrl"
-            }
-            if (dataField.isNotBlank()) {
-                attributes["data-data-field"] = dataField
-            }
-            if (subscriber.isBlank()) {
-                attributes["data-show-refresh"] = "true"
-            } else {
-                attributes["data-sub"] = "true"
-                attributes["data-sub-url"] = subscriber
-            }
-            if (subTableDetails != null) {
-                applySubTabDetails(subTableDetails)
-            }
-            attributes["data-classes"] = "table table-bordered${if (clickableRows) " table-hover" else ""}"
-            attributes["data-thead-classes"] = "thead-dark"
-            attributes["data-search"] = "true"
-            if (customSortFunction.isNotBlank()) {
-                attributes["data-custom-sort"] = customSortFunction.trim()
-            }
-            if (tableButtons.isNotEmpty()) {
-                attributes["data-buttons"] = "${tableId}buttons"
-            }
-            thead {
-                addFields(fields, clickableRows)
-            }
-            if (tableButtons.isNotEmpty()) {
-                script {
-                    addTableButtons(tableId, tableButtons)
-                }
-            }
-        }
-    }
-}
-
-/**
- * Constructs a basic [BootstrapTable](https://bootstrap-table.com) that fetches data from the desired [url][dataUrl],
  * displays the field from [T] using the keys as reference to JSON data's keys. The fields obtained from [T] also allows
  * the user to add [column options](https://bootstrap-table.com/docs/api/column-options/) as a map of option to value.
  * Optional parameters include [table buttons](https://bootstrap-table.com/docs/api/table-options/#buttons),
@@ -223,7 +150,7 @@ fun FlowContent.basicTable(
  * function to call), a flag denoting is the rows are [clickable][clickableRows], and a [subscriber] url.
  */
 @Suppress("LongParameterList")
-inline fun <reified T: ApiExposed> FlowContent.basicTable2(
+inline fun <reified T: ApiExposed> FlowContent.basicTable(
     tableId: String,
     dataUrl: String = "",
     dataField: String = "",
@@ -290,11 +217,10 @@ private const val SOURCE_TABLES_TABLE_ID = "sourceTables"
 
 /** Constructs a basic table for source table data */
 fun FlowContent.sourceTables(runId: Long) {
-    basicTable(
+    basicTable<SourceTables>(
         tableId = SOURCE_TABLES_TABLE_ID,
         dataUrl = "source-tables/$runId",
         dataField = "payload",
-        fields = SourceTables.tableDisplayFields,
         tableButtons = listOf(
             tableButton(
                 name = "btnAddTable",
