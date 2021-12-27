@@ -35,7 +35,8 @@ object ApiPipelineRuns : ApiPath(path = "/pipeline-runs")  {
         parent.apiCallPostgres(httpMethod = HttpMethod.Post, path = "/pickup/{runId}") { userOid, connection ->
             val runId = call.parameters.getOrFail<Long>("runId")
             PipelineRuns.pickupRun(connection, runId, userOid)
-            ApiResponse.MessageResponse("Successfully picked up $runId to Active state under the current user")
+            val payload = "Successfully picked up run_id = $runId to Active state under the current user"
+            ApiResponse.MessageResponse(payload)
         }
     }
 
@@ -47,7 +48,8 @@ object ApiPipelineRuns : ApiPath(path = "/pipeline-runs")  {
         parent.apiCallPostgres(httpMethod = HttpMethod.Post, path = "/move-forward/{runId}") { userOid, connection ->
             val runId = call.parameters.getOrFail<Long>("runId")
             PipelineRuns.moveForwardRun(connection, runId, userOid)
-            ApiResponse.MessageResponse("Successfully moved $runId to the next workflow state")
+            val payload = "Successfully moved run_id = $runId to the next workflow state"
+            ApiResponse.MessageResponse(payload)
         }
     }
 
