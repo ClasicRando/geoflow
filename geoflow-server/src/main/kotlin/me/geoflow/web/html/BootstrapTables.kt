@@ -67,14 +67,6 @@ fun tableButton(name: String, html: String): String {
     """.trimIndent()
 }
 
-/** Container for table header buttons. Provides a [name] and [html] code for the html list entry */
-data class HeaderButton(
-    /** name of button */
-    val name: String,
-    /** code used to add the button to the ul tag */
-    val html: UL.() -> Unit,
-)
-
 /** Adds a row to the `thead` tag and populates that row with the fields provided */
 fun THEAD.addFields(fields: Map<String, Map<String, String>>, clickableRows: Boolean) {
     tr {
@@ -155,28 +147,22 @@ inline fun <reified T: ApiExposed> FlowContent.basicTable(
     dataUrl: String = "",
     dataField: String = "",
     tableButtons: List<String> = emptyList(),
-    headerButtons: List<HeaderButton> = emptyList(),
     customSortFunction: String = "",
     clickableRows: Boolean = true,
     subscriber: String = "",
     subTableDetails: SubTableDetails? = null,
+    crossinline toolbar: UL.() -> Unit = {},
 ) {
-    if (headerButtons.isNotEmpty()) {
-        ul(classes = "header-button-list") {
-            id = "toolbar"
-            for (headerButton in headerButtons) {
-                headerButton.html(this)
-            }
-        }
+    ul(classes = "header-button-list") {
+        id = "toolbar"
+        toolbar(this)
     }
     div {
         style = "max-height: 800px; overflow-y: auto; display: block"
         table {
             id = tableId
             attributes["data-toggle"] = "table"
-            if (headerButtons.isNotEmpty()) {
-                attributes["data-toolbar"] = "#toolbar"
-            }
+            attributes["data-toolbar"] = "#toolbar"
             if (dataUrl.isNotBlank()) {
                 attributes["data-url"] = "http://localhost:8080/data/$dataUrl"
             }
