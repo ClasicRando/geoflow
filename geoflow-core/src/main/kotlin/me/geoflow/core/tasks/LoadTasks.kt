@@ -4,7 +4,6 @@ package me.geoflow.core.tasks
 import me.geoflow.core.loading.AnalyzeResult
 import me.geoflow.core.loading.LoadingInfo
 import me.geoflow.core.loading.analyzeFile
-import me.geoflow.core.loading.checkTableExists
 import me.geoflow.core.loading.loadFile
 import me.geoflow.core.database.extensions.runBatchUpdate
 import me.geoflow.core.database.tables.PipelineRuns
@@ -14,6 +13,9 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.buffer
 import kotlinx.coroutines.flow.collect
 import kotlinx.coroutines.flow.flowOn
+import me.geoflow.core.database.extensions.executeNoReturn
+import me.geoflow.core.database.extensions.queryFirstOrNull
+import me.geoflow.core.database.extensions.submitQuery
 import me.geoflow.core.database.tables.records.PipelineRunTask
 import java.io.File
 import java.sql.Connection
@@ -73,13 +75,6 @@ suspend fun loadFiles(connection: Connection, prTask: PipelineRunTask) {
 
 /** Utility function to create source table using the provided [loadingInfo]. Drops table if it already exists */
 private fun createSourceTable(connection: Connection, loadingInfo: LoadingInfo) {
-    if (connection.checkTableExists(loadingInfo.tableName)) {
-        taskLogger.info("Dropping ${loadingInfo.tableName} to load")
-        connection.prepareStatement("drop table ${loadingInfo.tableName}").use { statement ->
-            statement.execute()
-        }
-    }
-    connection.prepareStatement(loadingInfo.createStatement).use { statement ->
-        statement.execute()
-    }
+    connection.executeNoReturn("DROP TABLE IF EXISTS ${loadingInfo.tableName}")
+    connection.executeNoReturn(loadingInfo.createStatement)
 }
