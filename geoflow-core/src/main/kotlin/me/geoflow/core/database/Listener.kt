@@ -9,6 +9,7 @@ import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.withContext
 import kotlinx.coroutines.NonCancellable
+import me.geoflow.core.database.extensions.executeNoReturn
 import mu.KotlinLogging
 import org.postgresql.PGConnection
 import org.postgresql.PGNotification
@@ -28,9 +29,7 @@ fun CoroutineScope.startListener(channelName: String, callback: suspend (String)
     return launch(Database.scope.coroutineContext) {
         useConnection { connection ->
             val pgConnection: PGConnection = connection.unwrap(PGConnection::class.java)
-            connection.prepareStatement("LISTEN $channelName").use {
-                it.execute()
-            }
+            connection.executeNoReturn("LISTEN $channelName")
             @Suppress("TooGenericExceptionCaught")
             try {
                 while (isActive) {
@@ -51,9 +50,7 @@ fun CoroutineScope.startListener(channelName: String, callback: suspend (String)
                 withContext(NonCancellable) {
                     if (!connection.isClosed) {
                         logger.info("Setting connection to unlisten to '$channelName'")
-                        connection.prepareStatement("UNLISTEN $channelName").use {
-                            it.execute()
-                        }
+                        connection.executeNoReturn("UNLISTEN $channelName")
                     }
                 }
             }
