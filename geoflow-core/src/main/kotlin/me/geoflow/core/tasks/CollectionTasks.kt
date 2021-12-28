@@ -185,7 +185,7 @@ fun scanSourceFolder(connection: Connection, prTask: PipelineRunTask): String? {
  * Finds all file names that were passed as a message to the task and attempts to download all the returned URLs
  */
 @SystemTask(taskId = 4, taskName = "Download Missing Files")
-suspend fun downloadMissingFiles(connection: Connection, prTask: PipelineRunTask) {
+suspend fun downloadMissingFiles(connection: Connection, prTask: PipelineRunTask): String {
     val pipelineRun = PipelineRuns.getRun(connection, prTask.runId)
         ?: throw IllegalArgumentException("Run cannot be null")
     val outputFolder = File(pipelineRun.runFilesLocation)
@@ -230,6 +230,11 @@ suspend fun downloadMissingFiles(connection: Connection, prTask: PipelineRunTask
                 )
             }
         }
+    }
+    return if (urls.isEmpty()) {
+        "No files downloaded"
+    } else {
+        "Downloaded: ${urls.joinToString(separator = "','", prefix = "'", postfix = "'")}"
     }
 }
 
