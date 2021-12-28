@@ -18,6 +18,7 @@ object ApiDataSourceContacts : ApiPath(path = "/data-source-contacts") {
         getRecords(this)
         updateRecord(this)
         createRecord(this)
+        deleteRecord(this)
     }
 
     /** Returns a list of data source contacts records */
@@ -43,6 +44,15 @@ object ApiDataSourceContacts : ApiPath(path = "/data-source-contacts") {
             val body = call.receive<DataSourceContact>()
             val payload = DataSourceContacts.createRecord(connection, userId, body)
             ApiResponse.InsertIdResponse(payload)
+        }
+    }
+
+    /** Returns a list of data source contacts records */
+    private fun deleteRecord(parent: Route) {
+        parent.apiCallPostgres(httpMethod = HttpMethod.Delete, path = "/{contactId}") { userId, connection ->
+            val contactId = call.parameters.getOrFail<Long>("contactId")
+            DataSourceContacts.deleteRecord(connection, userId, contactId)
+            ApiResponse.MessageResponse("Successfully deleted contact_id = $contactId")
         }
     }
 

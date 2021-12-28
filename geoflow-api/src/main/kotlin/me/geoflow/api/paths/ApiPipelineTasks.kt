@@ -34,7 +34,7 @@ object ApiPipelineTasks : ApiPath(path = "/pipeline-tasks") {
      * pipelineId
      */
     private fun setPipelineTasks(parent: Route) {
-        parent.apiCallPostgres(httpMethod = HttpMethod.Get, path = "/{pipelineId}") { userId, connection ->
+        parent.apiCallPostgres(httpMethod = HttpMethod.Post, path = "/{pipelineId}") { userId, connection ->
             val pipelineId = call.parameters.getOrFail<Long>("pipelineId")
             val pipelineTasks = call.receive<List<PipelineTask>>()
             val (delete, insert) = PipelineTasks.setRecords(connection, userId, pipelineId, pipelineTasks)

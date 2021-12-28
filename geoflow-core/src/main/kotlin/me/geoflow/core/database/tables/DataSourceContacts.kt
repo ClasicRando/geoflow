@@ -12,7 +12,7 @@ import java.sql.Connection
 /**
  * Table used to store contacts of a [DataSource][me.geoflow.core.database.tables.records.DataSource]
  */
-object DataSourceContacts: DbTable("data_source_contacts") {
+object DataSourceContacts: DbTable("data_source_contacts"), ApiExposed {
 
     override val createStatement: String = """
         CREATE TABLE IF NOT EXISTS public.data_source_contacts
@@ -31,6 +31,15 @@ object DataSourceContacts: DbTable("data_source_contacts") {
             OIDS = FALSE
         );
     """.trimIndent()
+
+    override val tableDisplayFields: Map<String, Map<String, String>> = mapOf(
+        "name" to mapOf(),
+        "email" to mapOf(),
+        "website" to mapOf(),
+        "type" to mapOf(),
+        "notes" to mapOf(),
+        "actions" to mapOf("formatter" to "dataSourceContactActionsFormatter"),
+    )
 
     /** Returns a list of [DataSourceContact] record for the provided [dsId] */
     fun getRecords(connection: Connection, dsId: Long): List<DataSourceContact> {
@@ -108,6 +117,23 @@ object DataSourceContacts: DbTable("data_source_contacts") {
             contact.notes?.takeIf { it.isNotBlank() },
             contact.dsId,
         ) ?: throw NoRecordAffected(tableName, "No record inserted into data source contacts")
+    }
+
+    /**
+     * Deletes the data source contact record for the provided [contactId]
+     *
+     * @throws UserMissingRole the caller does not have the 'collection' role
+     * @throws java.sql.SQLException exception thrown during sql DELETE
+     */
+    fun deleteRecord(connection: Connection, userId: Long, contactId: Long) {
+        InternalUsers.requireRole(connection, userId, "collection")
+        val deleteCount = connection.runUpdate(
+            sql = "DELETE FROM $tableName WHERE contact_id = ?",
+            contactId,
+        )
+        if (deleteCount == 0) {
+            throw NoRecordAffected(tableName, "Delete contact DML did not affect any records")
+        }
     }
 
 }

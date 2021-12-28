@@ -41,18 +41,18 @@ object PlottingFields : DbTable("plotting_fields"), ApiExposed {
     """.trimIndent()
 
     override val tableDisplayFields: Map<String, Map<String, String>> = mapOf(
-        "file_id" to mapOf("name" to "File ID"),
-        "name" to mapOf("name" to "Company Name"),
-        "address_line1" to mapOf("name" to "Address Line 1"),
-        "address_line2" to mapOf("name" to "Address Line 2"),
+        "file_id" to mapOf("title" to "File ID"),
+        "name" to mapOf("title" to "Company Name"),
+        "address_line1" to mapOf("title" to "Address Line 1"),
+        "address_line2" to mapOf("title" to "Address Line 2"),
         "city" to mapOf(),
         "alternate_cites" to mapOf("formatter" to "alternateCitiesFormatter"),
         "mail_code" to mapOf(),
         "latitude" to mapOf(),
         "longitude" to mapOf(),
-        "prov" to mapOf("name" to "Prov/State"),
-        "clean_address" to mapOf("name" to "Cleaned Address"),
-        "clean_city" to mapOf("name" to "Cleaned City"),
+        "prov" to mapOf("title" to "Prov/State"),
+        "clean_address" to mapOf("title" to "Cleaned Address"),
+        "clean_city" to mapOf("title" to "Cleaned City"),
     )
 
     /** Returns a list of API response objects representing DB records for the provided [runId] */

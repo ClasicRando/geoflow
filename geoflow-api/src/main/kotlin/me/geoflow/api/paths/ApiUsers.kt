@@ -5,6 +5,7 @@ import io.ktor.application.call
 import io.ktor.http.HttpMethod
 import io.ktor.request.receive
 import io.ktor.routing.Route
+import io.ktor.util.getOrFail
 import me.geoflow.api.utils.ApiResponse
 import me.geoflow.api.utils.apiCallPostgres
 import me.geoflow.core.database.tables.records.RequestUser
@@ -18,6 +19,17 @@ object ApiUsers : ApiPath(path = "/users") {
         getUsers(this)
         createUser(this)
         updateUser(this)
+        hasRole(this)
+        getCollectionUsers(this)
+    }
+
+    /** Returns a single user record if the caller is the user */
+    private fun hasRole(parent: Route) {
+        parent.apiCallPostgres(httpMethod = HttpMethod.Get, path = "/has-role/{role}") { userOid, connection ->
+            val role = call.parameters.getOrFail("role")
+            InternalUsers.requireRole(connection, userOid, role)
+            ApiResponse.MessageResponse("User has role, '$role'")
+        }
     }
 
     /** Returns a single user record if the caller is the user */
@@ -33,6 +45,14 @@ object ApiUsers : ApiPath(path = "/users") {
         parent.apiCallPostgres(httpMethod = HttpMethod.Get) { userOid, connection ->
             val payload = InternalUsers.getUsers(connection, userOid)
             ApiResponse.UsersResponse(payload)
+        }
+    }
+
+    /** Returns list of user records that have the collection role */
+    private fun getCollectionUsers(parent: Route) {
+        parent.apiCallPostgres(httpMethod = HttpMethod.Get, path = "/collection") { userOid, connection ->
+            val payload = InternalUsers.getCollectionUsers(connection, userOid)
+            ApiResponse.CollectionUsersResponse(payload)
         }
     }
 

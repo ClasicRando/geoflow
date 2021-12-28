@@ -1,12 +1,20 @@
 package me.geoflow.web.pages
 
+import io.ktor.application.ApplicationCall
+import kotlinx.coroutines.runBlocking
 import me.geoflow.core.database.tables.PipelineRuns
 import me.geoflow.web.html.addParamsAsJsGlobalVariables
-import me.geoflow.web.html.basicModal
-import me.geoflow.web.html.basicTable
 import kotlinx.html.FlowContent
 import kotlinx.html.STYLE
+import kotlinx.html.id
+import kotlinx.html.li
 import kotlinx.html.script
+import kotlinx.html.select
+import me.geoflow.web.api.NoBody
+import me.geoflow.web.api.makeApiCall
+import me.geoflow.web.html.basicTable
+import me.geoflow.web.html.confirmModal
+import me.geoflow.web.session
 
 /**
  * Page for pipeline status operations
@@ -20,31 +28,59 @@ import kotlinx.html.script
 class PipelineStatus(
     /** Code of the workflow operation to be displayed in this page. Only displays runs currently in this state */
     private val workflowCode: String,
+    /** Call context used to extract the session */
+    private val call: ApplicationCall,
 ) : BasePage() {
 
     override val styles: STYLE.() -> Unit = {}
 
     override val content: FlowContent.() -> Unit = {
-        basicTable(
+        basicTable<PipelineRuns>(
             tableId = TABLE_ID,
             dataUrl = "pipeline-runs/$workflowCode",
             dataField = "payload",
-            fields = PipelineRuns.tableDisplayFields,
             clickableRows = false,
+        ) {
+            li {
+                select(classes = "custom-select") {
+                    id = STATUS_SELECT
+                }
+            }
+        }
+        confirmModal(
+            confirmModalId = CONFIRM_PICKUP,
+            confirmMessage = "Pick up this run?",
+            resultFunction = "pickup()"
         )
-        basicModal(
-            modalId = MODAL_ID,
-            headerText = "Select Run",
-            bodyMessage = "Pick up this run?",
-            okClickFunction = "pickup"
+        confirmModal(
+            confirmModalId = CONFIRM_FORWARD,
+            confirmMessage = "Move this run to the next state?",
+            resultFunction = "forward()"
+        )
+        confirmModal(
+            confirmModalId = CONFIRM_BACK,
+            confirmMessage = "Move this run to the previous state?",
+            resultFunction = "back()"
         )
     }
 
     override val script: FlowContent.() -> Unit = {
+        val operationsJson = runBlocking {
+            val session = call.session
+            requireNotNull(session)
+            makeApiCall<NoBody, String>(
+                endPoint = "/api/operations",
+                apiToken = session.apiToken,
+            )
+        }
         script {
             addParamsAsJsGlobalVariables(
-                "modalId" to MODAL_ID,
+                "confirmPickupId" to CONFIRM_PICKUP,
                 "tableId" to TABLE_ID,
+                "confirmForwardId" to CONFIRM_FORWARD,
+                "confirmBackId" to CONFIRM_BACK,
+                "operationsJson" to operationsJson,
+                "statusSelectId" to STATUS_SELECT,
             )
         }
         script {
@@ -53,10 +89,11 @@ class PipelineStatus(
     }
 
     companion object {
-
-        private const val MODAL_ID = "selectReadyRun"
+        private const val CONFIRM_PICKUP = "confirmPickup"
+        private const val CONFIRM_FORWARD = "confirmForward"
+        private const val CONFIRM_BACK = "confirmBack"
         private const val TABLE_ID = "runs"
-
+        private const val STATUS_SELECT = "status"
     }
 
 }

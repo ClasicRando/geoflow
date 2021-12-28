@@ -81,9 +81,11 @@ class TableSubscriber {
 }
 
 $(document).ready(function() {
-    $(`#${sourceTableModalId}`).on('hidden.bs.modal', () => {
-        $(`#${sourceTableModalId}ResponseErrorMessage`).text('');
-    });
+    if (typeof sourceTableModalId !== "undefined") {
+        $(`#${sourceTableModalId}`).on('hidden.bs.modal', () => {
+            $(`#${sourceTableModalId}ResponseErrorMessage`).text('');
+        });
+    }
 });
 
 const apiFetchOptions = {
@@ -125,10 +127,6 @@ function fetchDELETE(url) {
 }
 
 var sourceTableRecord = {};
-var sourceTablesTableId = 'sourceTables';
-var sourceTableModalId = 'sourceTableDataEditRow';
-var sourceTableRecordLabelId = 'sourceTableRecordLabel';
-var deleteSourceTableConfirmId = 'deleteSourceTable';
 
 async function commitSourceTableChanges(method) {
     let response;
@@ -186,8 +184,8 @@ async function saveSourceTableChanges() {
     commitSourceTableChanges(sourceTableRecord.st_oid !== 0 ? 'update' : 'insert');
 }
 
-async function deleteSourceTable() {
-    $(`#${deleteSourceTableConfirmId}`).modal('hide');
+async function deleteSourceTable($el) {
+    $el.modal('hide');
     commitSourceTableChanges('delete');
 }
 
@@ -294,36 +292,43 @@ function addValidFeedback($control, message) {
 }
 
 function showToast(title, message) {
-    const container = document.createElement('div');
-    const toast = `
-    <div class="position-fixed bottom-0 right-0 p-3" style="z-index: 5; right: 0; bottom: 0;">
-        <div class="toast hide" role="alert" data-delay="10000" aria-live="assertive" aria-atomic="true">
-            <div class="toast-header">
-                <img src="http://localhost:8080/favicon.ico" class="rounded mr-2">
-                <strong class="mr-2">${title}</strong>
-                <small>just now</small>
-                <button type="button" class="ml-2 mb-1 close" data-dismiss="toast" aria-label="Close">
-                    <span aria-hidden="true">&times;</span>
-                </button>
-            </div>
-            <div class="toast-body">
-                ${message}
-            </div>
+    const container = document.getElementById('toasts');
+    const toastDiv = document.createElement('div');
+    toastDiv.innerHTML = `
+    <div class="toast hide" role="alert" data-delay="10000" aria-live="assertive" aria-atomic="true">
+        <div class="toast-header">
+            <img src="http://localhost:8080/favicon.ico" class="rounded mr-2">
+            <strong class="mr-2">${title}</strong>
+            <small>just now</small>
+            <button type="button" class="ml-2 mb-1 close" data-dismiss="toast" aria-label="Close">
+                <span aria-hidden="true">&times;</span>
+            </button>
+        </div>
+        <div class="toast-body">
+            ${message}
         </div>
     </div>
     `;
-    container.innerHTML = toast;
-    container.addEventListener('hidden.bs.toast', (e) => {
-        e.target.remove();
-    });
-    document.body.append(container);
-    const $toast = $(container).find('.toast');
+    container.appendChild(toastDiv);
+    const $toast = $(toastDiv).find('.toast');
     $toast.toast('show');
     $toast.on('hidden.bs.toast', (e) => {
-        container.remove();
+        toastDiv.remove();
     });
 }
 
 function formatErrors(errors) {
     return errors.map(error => `${error.error_name} -> ${error.message}`).join('\n');
+}
+
+function titleCase(title) {
+    return title.replace(
+        /\w\S*/g,
+        function(txt) {
+            return txt.charAt(0).toUpperCase() + txt.substr(1).toLowerCase();
+        }
+    ).replace(
+        'Id',
+        'ID'
+    );
 }

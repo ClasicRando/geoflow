@@ -37,8 +37,8 @@ object PlottingMethods : DbTable("plotting_methods"), Triggers, ApiExposed {
 
     override val tableDisplayFields: Map<String, Map<String, String>> = mapOf(
         "order" to mapOf(),
-        "method_type" to mapOf("name" to "Name", "formatter" to "methodTypeFormatter"),
-        "file_id" to mapOf("name" to "File ID"),
+        "method_type" to mapOf("title" to "Name", "formatter" to "methodTypeFormatter"),
+        "file_id" to mapOf("title" to "File ID"),
     )
 
     override val triggers: List<Trigger> = listOf(

@@ -8,6 +8,7 @@ import me.geoflow.core.database.extensions.submitQuery
 import me.geoflow.core.database.errors.NoRecordFound
 import me.geoflow.core.database.errors.UserMissingRole
 import me.geoflow.core.database.errors.UserNotAdmin
+import me.geoflow.core.database.tables.records.CollectionUser
 import me.geoflow.core.database.tables.records.InternalUser
 import me.geoflow.core.database.tables.records.RequestUser
 import me.geoflow.core.database.tables.records.ResponseUser
@@ -22,12 +23,12 @@ import java.sql.Connection
 object InternalUsers : DbTable("internal_users"), ApiExposed {
 
     override val tableDisplayFields: Map<String, Map<String, String>> = mapOf(
-        "user_oid" to mapOf("name" to "User ID"),
-        "name" to mapOf("name" to "Full Name"),
+        "user_oid" to mapOf("title" to "User ID"),
+        "name" to mapOf("title" to "Full Name"),
         "username" to mapOf(),
-        "is_admin" to mapOf("name" to "Admin?", "formatter" to "isAdminFormatter"),
+        "is_admin" to mapOf("title" to "Admin?", "formatter" to "isAdminFormatter"),
         "roles" to mapOf(),
-        "can_edit" to mapOf("name" to "Edit", "formatter" to "editFormatter"),
+        "can_edit" to mapOf("title" to "Edit", "formatter" to "editFormatter"),
     )
 
     override val createStatement: String = """
@@ -158,6 +159,17 @@ object InternalUsers : DbTable("internal_users"), ApiExposed {
         val sql = """
             SELECT user_oid, name, username, array_to_string(roles, ', '), NOT('admin' = ANY(roles)) can_edit
             FROM   $tableName
+        """.trimIndent()
+        return connection.submitQuery(sql = sql)
+    }
+
+    /** API function to get a list of all users with the collection role */
+    fun getCollectionUsers(connection: Connection, userId: Long): List<CollectionUser> {
+        requireRole(connection, userId, "collection")
+        val sql = """
+            SELECT user_oid, name
+            FROM   $tableName
+            WHERE  'collection' = ANY(roles)
         """.trimIndent()
         return connection.submitQuery(sql = sql)
     }

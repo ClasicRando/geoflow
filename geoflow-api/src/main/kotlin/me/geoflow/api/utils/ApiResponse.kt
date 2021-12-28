@@ -19,6 +19,7 @@ import me.geoflow.core.database.tables.WorkflowOperations
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 import me.geoflow.core.database.tables.records.Action
+import me.geoflow.core.database.tables.records.CollectionUser
 import me.geoflow.core.database.tables.records.DataSource
 import me.geoflow.core.database.tables.records.DataSourceContact
 import me.geoflow.core.database.tables.records.NextTask
@@ -110,6 +111,15 @@ sealed interface ApiResponse {
     ): Success<List<ResponseUser>> {
         @SerialName("object")
         override val responseObject: String = "internal_user"
+    }
+
+    /** API response for a list of records from [internal_users][InternalUsers] with the collection role */
+    @Serializable
+    class CollectionUsersResponse(
+        override val payload: List<CollectionUser>,
+    ): Success<List<CollectionUser>> {
+        @SerialName("object")
+        override val responseObject: String = "collection_user"
     }
 
     /** API response for a list of records from [internal_users][InternalUsers] */

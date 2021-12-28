@@ -27,8 +27,8 @@ fun throwableToResponseErrors(t: Throwable): ApiErrors {
             is IllegalUserAction -> "illegal_user_action"
             else -> {
                 it::class.simpleName?.replace("([A-Z])([a-z])".toRegex()) { match ->
-                    "${match.groupValues[1].lowercase()}_${match.groupValues[2]}"
-                }?.lowercase()
+                    "_${match.groupValues[1].lowercase()}${match.groupValues[2]}"
+                }?.lowercase()?.trimStart('_')
             }
         }
         mapOf(

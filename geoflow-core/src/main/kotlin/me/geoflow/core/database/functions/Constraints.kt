@@ -52,6 +52,35 @@ object Constraints {
         	RETURN true;
         END;
         ${'$'}BODY${'$'};
-    """.trimIndent()
+        """.trimIndent(),
+        /**
+         * Returns true if the country is valid
+         *
+         * If the prov value is null, confirm the country value exists in the provs table. If the prov value is not
+         * null, then confirm the country value matches the prov.
+         */
+        """
+        CREATE OR REPLACE FUNCTION public.country_check(
+        	country text,
+        	prov text)
+            RETURNS boolean
+            LANGUAGE 'plpgsql'
+            COST 100
+            VOLATILE PARALLEL UNSAFE
+        AS ${'$'}BODY${'$'}
+        declare
+            country text := trim($1);
+            prov text := trim($2);
+            res boolean := false;
+        begin
+            if prov is null then
+                select country in (select distinct country_code from provs) into res;
+            else
+                select country in (select distinct country_code from provs where prov_code = prov) into res;
+            end if;
+            return res;
+        end;
+        ${'$'}BODY${'$'};
+        """.trimIndent()
     )
 }

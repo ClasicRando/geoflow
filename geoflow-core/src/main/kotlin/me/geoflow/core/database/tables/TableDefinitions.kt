@@ -15,7 +15,7 @@ interface DefaultData : TableBuildRequirement {
 val DefaultData.defaultRecordsFile: InputStream?
     get() = this::class.java.classLoader.getResourceAsStream(defaultRecordsFileName)
 
-/** Table is used to return results in the API */
+/** Marks an object as contains field information for a bootstrapTable. Usually applied to a [DbTable] */
 interface ApiExposed {
     /**
      * Fields provided when this table is used in the server API to display in a bootstrap table.

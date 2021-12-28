@@ -52,7 +52,7 @@ let editValidator = null;
 let updateUserOid = -1;
 
 $(document).ready(async () => {
-    const response = await fetch('/data/roles')
+    const response = await fetch('/data/roles');
     if (response.status === 200) {
         const json = await response.json();
         if ('payload' in json) {
@@ -120,30 +120,33 @@ function editFormatter(value, row) {
 }
 
 function openNewUserModal() {
-    $(`#${userCreateModal}`).modal('show');
+    const $modal = $(`#${userCreateModal}`);
+    const $form = $modal.find('form');
+    $form.find('#fullName').val('');
+    $form.find('#username').val('');
+    $form.find('#roles').val('');
+    $form.find('#isAdmin').prop('checked', false);
+    $form.find('#password').val('');
+    $form.find('#repeatPassword').val('');
+    $modal.modal('show');
 }
 
 async function submitNewUser($form) {
-    const $fullName = $form.find('#fullName');
-    const $username = $form.find('#username');
-    const $password = $form.find('#password');
-    const $roles = $form.find('#roles');
-    const $isAdmin = $form.find('#isAdmin');
     const user = {
-        fullName: $fullName.val(),
-        username: $username.val(),
+        fullName: $form.find('#fullName').val(),
+        username: $form.find('#username').val(),
         user_oid: null,
-        password: $password.val(),
-        roles: $isAdmin.prop('checked') ? ['admin'] : $roles.val(),
+        password: $form.find('#password').val(),
+        roles: $form.find('#isAdmin').prop('checked') ? ['admin'] : $form.find('#roles').val(),
     };
     const response = await fetchPOST('/data/users', user);
     const json = await response.json();
-    console.log(json);
     if ('errors' in json) {
         $(`#${userCreateModal}ResponseErrorMessage`).text(formatErrors(json.errors));
     } else {
         $(`#${userCreateModal}`).modal('hide');
         showToast('Created User', `Created ${user.username} (${json.payload})`);
+        updateUserOid = -1;
     }
 }
 
@@ -172,15 +175,11 @@ function openEditUserModal(userOid) {
 }
 
 async function submitEditUser($form) {
-    const $fullName = $form.find('#fullName');
-    const $username = $form.find('#username');
-    const $roles = $form.find('#roles');
-    const $isAdmin = $form.find('#isAdmin');
     const user = {
-        fullName: $fullName.val(),
-        username: $username.val(),
+        fullName: $form.find('#fullName').val(),
+        username: $form.find('#username').val(),
         user_oid: updateUserOid,
-        roles: $isAdmin.prop('checked') ? ['admin'] : $roles.val(),
+        roles: $form.find('#isAdmin').prop('checked') ? ['admin'] : $form.find('#roles').val(),
         password: null,
     };
     const response = await fetchPATCH('/data/users', user);
@@ -190,8 +189,8 @@ async function submitEditUser($form) {
     } else {
         $(`#${userEditModal}`).modal('hide');
         showToast('Updated User', `Successful update to ${json.payload.username}`);
+        updateUserOid = -1;
     }
-    updateUserOid = -1;
 }
 
 async function editUser() {

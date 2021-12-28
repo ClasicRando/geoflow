@@ -39,7 +39,7 @@ object ApiPipelines : ApiPath(path = "/pipelines") {
 
     /** Attempts to create a new pipeline record with the provided request body */
     private fun createPipeline(parent: Route) {
-        parent.apiCallPostgres(httpMethod = HttpMethod.Get) { userId, connection ->
+        parent.apiCallPostgres(httpMethod = HttpMethod.Post) { userId, connection ->
             val pipeline = call.receive<Pipeline>()
             val payload = Pipelines.createRecord(connection, userId, pipeline)
             ApiResponse.InsertIdResponse(payload)
@@ -48,7 +48,7 @@ object ApiPipelines : ApiPath(path = "/pipelines") {
 
     /** Attempts to update an existing pipeline record with a new name. Will not update the workflow operation field */
     private fun updatePipeline(parent: Route) {
-        parent.apiCallPostgres(httpMethod = HttpMethod.Get) { userId, connection ->
+        parent.apiCallPostgres(httpMethod = HttpMethod.Put) { userId, connection ->
             val pipeline = call.receive<Pipeline>()
             Pipelines.updateName(connection, userId, pipeline)
             ApiResponse.PipelineResponse(pipeline)

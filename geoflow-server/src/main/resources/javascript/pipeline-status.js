@@ -1,21 +1,68 @@
 let runId = -1;
 let code;
+const operations = JSON.parse(operationsJson);
+
+$(document).ready(function() {
+    code = window.location.href.match(/(?<=\/)[^/]+$/g);
+    const $status = $(`#${statusSelectId}`);
+    for (const operation of operations.payload||[]) {
+        $status.append(`<option value="${operation.href}">${operation.name}</option>`);
+    }
+    $status.val(`/pipeline-status/${code}`);
+    $status.change((e) => {
+        redirect($(e.target).val())
+    });
+});
 
 async function pickup() {
-    $(`#${modalId}`).modal('hide');
+    $(`#${confirmPickupId}`).modal('hide');
     const response = await fetchPOST(`/data/pipeline-runs/pickup/${runId}`);
     const json = await response.json();
-    if ('errors' in json) {
-        showToast('Error During Pickup', formatErrors(json.errors));
-    } else {
+    if ('payload' in json) {
         $(`#${tableId}`).bootstrapTable('refresh');
-        showToast('Picked Up Run', json.payload);
+        showToast('Run Picked Up', json.payload);
+    } else {
+        showToast('Error During Pickup', formatErrors(json.errors));
     }
 }
 
-function showModal(value) {
+async function forward() {
+    $(`#${confirmForwardId}`).modal('hide');
+    const response = await fetchPOST(`/data/pipeline-runs/move-forward/${runId}`);
+    const json = await response.json();
+    if ('payload' in json) {
+        $(`#${tableId}`).bootstrapTable('refresh');
+        showToast('Run Moved Forward', json.payload);
+    } else {
+        showToast('Error During Move Forward', formatErrors(json.errors));
+    }
+}
+
+async function back() {
+    $(`#${confirmBackId}`).modal('hide');
+    const response = await fetchPOST(`/data/pipeline-runs/move-back/${runId}`);
+    const json = await response.json();
+    if ('payload' in json) {
+        $(`#${tableId}`).bootstrapTable('refresh');
+        showToast('Run Moved Back', json.payload);
+    } else {
+        showToast('Error During Move Back', formatErrors(json.errors));
+    }
+}
+
+function showPickupModal(value) {
     runId = value;
-    $(`#${modalId}`).modal('show');
+    $(`#${confirmPickupId}`).modal('show');
+}
+
+function showForwardModal(value) {
+    runId = value;
+    $(`#${confirmForwardId}`).modal('show');
+}
+
+function showBackModal(value) {
+    runId = value;
+    $(`#${confirmBackId}`).modal('show');
 }
 
 function enterRun(value) {
@@ -23,15 +70,14 @@ function enterRun(value) {
 }
 
 function actionsFormatter(value, row) {
-    if (row[`${code}_user`] === '') {
-        return `<span style="display: inline;"><i class="fas fa-play p-1 inTableButton" onClick="showModal(${row.run_id})"></i></span>`;
+    const userId = row[`${code}_user`];
+    const backButton = `<i class="fas fa-redo p-1 inTableButton" onClick="showBackModal(${row.run_id})"></i>`;
+    if (userId === null) {
+        const pickupButton = `<i class="fas fa-play p-1 inTableButton" onClick="showPickupModal(${row.run_id})"></i>`;
+        return `<span style="display: inline;">${pickupButton}${backButton}</span>`;
     } else {
-        return `<span style="display: inline;"><i class="fas fa-sign-in-alt p-1 inTableButton" onClick="enterRun(${row.run_id})"></i></span>`;
+        const forwardButton = row.operation_state === 'Active' ? `<i class="fas fa-fast-forward p-1 inTableButton" onClick="showForwardModal(${row.run_id})"></i>` : '';
+        const enterButton = `<i class="fas fa-sign-in-alt p-1 inTableButton" onClick="enterRun(${row.run_id})"></i>`;
+        return `<span style="display: inline;">${enterButton}${forwardButton}${backButton}</span>`;
     }
 }
-
-$(document).ready(function() {
-    const url = new URL(window.location.href);
-    const urlParams = new URLSearchParams(url.search);
-    code = urlParams.get('code');
-});

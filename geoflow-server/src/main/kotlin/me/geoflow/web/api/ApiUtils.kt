@@ -87,11 +87,11 @@ private suspend fun DefaultClientWebSocketSession.socketLoop(serverSocket: Defau
         } catch (_: ClosedReceiveChannelException) {
         } catch (c: CancellationException) {
             if (!serverSocket.isActive) {
-                serverSocket.call.application.environment.log.info("pipelineRunTasks WebSocket job was cancelled", c)
+                serverSocket.call.application.log.info("pipelineRunTasks WebSocket job was cancelled", c)
             }
         }  catch (t: Throwable) {
             if (!serverSocket.isActive) {
-                serverSocket.call.application.environment.log.info(
+                serverSocket.call.application.log.info(
                     "Exception during pipelineRunTasks WebSocket session",
                     t
                 )
@@ -196,7 +196,7 @@ inline fun <reified B> Route.apiCall(
             call.application.log.info(call.request.path(), t)
             """
                 {
-                    "error": "${t.message}"
+                    "errors": "${t.message}"
                 }
             """.trimIndent()
         }

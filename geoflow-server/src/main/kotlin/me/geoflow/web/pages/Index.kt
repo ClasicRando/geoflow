@@ -3,11 +3,11 @@ package me.geoflow.web.pages
 import me.geoflow.core.database.tables.Actions
 import me.geoflow.core.database.tables.WorkflowOperations
 import me.geoflow.web.html.addParamsAsJsGlobalVariables
-import me.geoflow.web.html.basicTable
 import kotlinx.html.FlowContent
 import kotlinx.html.STYLE
 import kotlinx.html.div
 import kotlinx.html.script
+import me.geoflow.web.html.basicTable
 
 /** Page for initial page upon login */
 object Index : BasePage() {
@@ -20,19 +20,17 @@ object Index : BasePage() {
     override val content: FlowContent.() -> Unit = {
         div(classes = "row") {
             div(classes = "col") {
-                basicTable(
+                basicTable<WorkflowOperations>(
                     tableId = OPERATIONS_TABLE_ID,
                     dataUrl = "operations",
                     dataField = "payload",
-                    fields = WorkflowOperations.tableDisplayFields,
                 )
             }
             div(classes = "col") {
-                basicTable(
+                basicTable<Actions>(
                     tableId = ACTIONS_TABLE_ID,
                     dataUrl = "actions",
                     dataField = "payload",
-                    fields = Actions.tableDisplayFields,
                 )
             }
         }

@@ -24,38 +24,9 @@ import io.ktor.sessions.Sessions
 import io.ktor.sessions.cookie
 import io.ktor.sessions.SessionStorageMemory
 import io.ktor.websocket.WebSockets
-import it.justwrote.kjob.KJob
-import it.justwrote.kjob.Mongo
-import it.justwrote.kjob.job.JobExecutionType
-import it.justwrote.kjob.kjob
-import mu.KLogger
-import mu.KotlinLogging
 import org.slf4j.Logger
 
-/** logger used for the KJob instance */
-val logger: KLogger = KotlinLogging.logger {}
-/** Kjob instance used by the server to schedule jobs for the worker application */
-@Suppress("MagicNumber")
-val kjob: KJob = kjob(Mongo) {
-    nonBlockingMaxJobs = 1
-    blockingMaxJobs = 1
-    maxRetries = 0
-    defaultJobExecutor = JobExecutionType.NON_BLOCKING
-
-    exceptionHandler = { t -> logger.error("Unhandled exception", t) }
-    keepAliveExecutionPeriodInSeconds = 60
-    jobExecutionPeriodInSeconds = 1
-    cleanupPeriodInSeconds = 300
-    cleanupSize = 50
-
-    connectionString = "mongodb://127.0.0.1:27017"
-    databaseName = "kjob"
-    jobCollection = "kjob-jobs"
-    lockCollection = "kjob-locks"
-    expireLockInMinutes = 5L
-}.start()
-
-/** */
+/** Handles session authentication. Validation just checks if the current session has expired */
 private fun SessionAuthenticationProvider.Configuration<UserSession>.configure(log: Logger) {
     validate { session ->
         if (session.isExpired) {
@@ -75,7 +46,7 @@ private fun SessionAuthenticationProvider.Configuration<UserSession>.configure(l
     }
 }
 
-/** */
+/** Configuration of the status pages for specific exceptions */
 private fun StatusPages.Configuration.configure() {
     exception<MissingRequestParameterException> { cause ->
         call.respondHtml {
@@ -137,6 +108,7 @@ fun Application.module() {
             pipelineStatus()
             pipelineTasks()
             adminDashboard()
+            dataSources()
         }
         login()
         logout()
