@@ -246,13 +246,20 @@ suspend fun SequenceScope<Any?>.extractParams(items: Iterable<*>) {
     }
 }
 
+/** Flattens an iterable by passing each item to the sequence builder */
+suspend fun SequenceScope<Any?>.extractParams(items: Array<*>) {
+    for (item in items) {
+        yield(item)
+    }
+}
+
 /** Returns a lazy sequence of params with iterable items flattened to single items */
 fun flattenParameters(vararg params: Any?): Sequence<Any?> = sequence {
     for (param in params) {
-        if (param is Iterable<*>) {
-            extractParams(param)
-        } else {
-            yield(param)
+        when (param) {
+            is Iterable<*> -> extractParams(param)
+            is Array<*> -> extractParams(param)
+            else -> yield(param)
         }
     }
 }
