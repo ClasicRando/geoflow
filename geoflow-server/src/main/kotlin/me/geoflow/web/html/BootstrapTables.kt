@@ -133,6 +133,9 @@ fun SCRIPT.addTableButtons(tableId: String, tableButtons: List<String>) {
     }
 }
 
+/** */
+val emptyToolbar: UL.() -> Unit = {}
+
 /**
  * Constructs a basic [BootstrapTable](https://bootstrap-table.com) that fetches data from the desired [url][dataUrl],
  * displays the field from [T] using the keys as reference to JSON data's keys. The fields obtained from [T] also allows
@@ -151,18 +154,23 @@ inline fun <reified T: ApiExposed> FlowContent.basicTable(
     clickableRows: Boolean = true,
     subscriber: String = "",
     subTableDetails: SubTableDetails? = null,
-    crossinline toolbar: UL.() -> Unit = {},
+    noinline toolbar: UL.() -> Unit = emptyToolbar,
 ) {
-    ul(classes = "header-button-list") {
-        id = "toolbar"
-        toolbar(this)
+    if (toolbar !== emptyToolbar) {
+        ul(classes = "header-button-list") {
+            id = "toolbar"
+            style = "list-style-type: none;"
+            toolbar(this)
+        }
     }
     div {
         style = "max-height: 800px; overflow-y: auto; display: block"
         table {
             id = tableId
             attributes["data-toggle"] = "table"
-            attributes["data-toolbar"] = "#toolbar"
+            if (toolbar !== emptyToolbar) {
+                attributes["data-toolbar"] = "#toolbar"
+            }
             if (dataUrl.isNotBlank()) {
                 attributes["data-url"] = "http://localhost:8080/data/$dataUrl"
             }
