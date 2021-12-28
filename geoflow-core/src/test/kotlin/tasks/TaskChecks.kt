@@ -81,7 +81,7 @@ class TaskChecks {
             Tasks.getSystemTasks(it)
         }.associate { it.taskId to it.name }
     }
-    private val connectionType = Connection::class.createType()//typeOf<Connection>()
+    private val connectionType = Connection::class.createType()
     private val prTaskType = typeOf<PipelineRunTask>()
     private val longType = typeOf<Long>()
     private val unitType = typeOf<Unit>()
