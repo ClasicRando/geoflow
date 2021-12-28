@@ -206,9 +206,9 @@ object PipelineRunTasks: DbTable("pipeline_run_tasks"), ApiExposed, Triggers {
     }
 
     /**
-     * Adds the desired generic task as the last child of the [pipelineRunTaskId]
+     * Adds the desired generic task as the last child of the [parentTaskId]
      */
-    fun addTask(connection: Connection, pipelineRunTaskId: Long, taskId: Long): Long? {
+    fun addTask(connection: Connection, parentTaskId: Long, taskId: Long): Long {
         val sql = """
             INSERT INTO $tableName (run_id,task_status,task_id,parent_task_id,parent_task_order,workflow_operation) 
             SELECT distinct t1.run_id, ?, ?, t1.pr_task_id,
@@ -226,8 +226,8 @@ object PipelineRunTasks: DbTable("pipeline_run_tasks"), ApiExposed, Triggers {
             sql = sql,
             TaskStatus.Waiting.pgObject,
             taskId,
-            pipelineRunTaskId,
-        )
+            parentTaskId,
+        ) ?: throw NoRecordAffected(tableName, "Did not insert a record as a child task to id = $parentTaskId")
     }
 
     /**
