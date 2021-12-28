@@ -159,32 +159,16 @@ fun scanSourceFolder(connection: Connection, prTask: PipelineRunTask): String? {
         if (hasScanned) {
             error("Attempted to rescan after download but still missing files")
         }
-        val downloadFiles = missingFiles
-            .filter { it.value in downloadCollectNames }
-            .keys
-        val downloadTaskId = if (downloadFiles.isNotEmpty()) {
-            PipelineRunTasks.addTask(
-                connection,
-                prTask.pipelineRunTaskId,
-                getTaskIdFromFunction(::downloadMissingFiles)
-            )
-        } else {
-            null
-        }
         val collectFiles = missingFiles
             .filter { it.value !in downloadCollectNames }
             .keys
-        val collectFilesTaskId = if (collectFiles.isNotEmpty()) {
-            PipelineRunTasks.addTask(
+        if (collectFiles.isNotEmpty()) {
+            val collectFilesTaskId = PipelineRunTasks.addTask(
                 connection,
                 prTask.pipelineRunTaskId,
                 COLLECT_MISSING_FILES
             )
-        } else {
-            null
-        }
-        if (downloadTaskId != null || collectFilesTaskId != null) {
-            PipelineRunTasks.addTask(connection, prTask.pipelineRunTaskId, prTask.task.taskId)
+            PipelineRunTasks.addTask(connection, collectFilesTaskId, prTask.task.taskId)
         }
     }
     return if (extraFiles.isNotEmpty()) {
