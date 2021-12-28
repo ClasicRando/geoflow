@@ -65,7 +65,7 @@ const val FIRST_PIPELINE_DETECTED: Long = 10L
 fun buildPipelineRun(connection: Connection, prTask: PipelineRunTask) {
     val lastRun = PipelineRuns.lastRun(connection, prTask.pipelineRunTaskId)
     if (lastRun == null) {
-        PipelineRunTasks.addTask(connection, prTask.pipelineRunTaskId, 2)
+        PipelineRunTasks.addTask(connection, prTask.pipelineRunTaskId, FIRST_PIPELINE_DETECTED)
         PipelineRunTasks.addTask(connection, prTask.pipelineRunTaskId, getTaskIdFromFunction(::validateFirstPipeline))
     } else {
         connection.executeNoReturn(
