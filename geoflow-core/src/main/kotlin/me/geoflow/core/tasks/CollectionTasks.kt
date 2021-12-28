@@ -284,25 +284,18 @@ suspend fun backupFilesToZip(connection: Connection, prTask: PipelineRunTask) {
 @SystemTask(taskId = 8, taskName = "Validate Source Tables")
 fun validateSourceTables(connection: Connection, prTask: PipelineRunTask) {
     UpdateFiles.call(connection, prTask.runId)
-    val sql = """
+    val issues = connection.submitQuery<Pair<String, String>>(
+        sql = """
             SELECT loader_type, file_name
             FROM   ${SourceTables.tableName}
             WHERE  run_id = ?
             AND    loader_type in (?,?)
             AND    TRIM(sub_table) IS NULL
-        """.trimIndent()
-    val issues = connection.prepareStatement(sql).use { statement ->
-        statement.setLong(1, prTask.runId)
-        statement.setObject(2, LoaderType.Excel.pgObject)
-        statement.setObject(3, LoaderType.MDB.pgObject)
-        statement.executeQuery().use { rs ->
-            buildList {
-                while (rs.next()) {
-                    add(rs.getString(1) to rs.getString(2))
-                }
-            }
-        }
-    }
+        """.trimIndent(),
+        prTask.runId,
+        LoaderType.Excel.pgObject,
+        LoaderType.MDB.pgObject,
+    )
     if (issues.isNotEmpty()) {
         error(issues.joinToString { "${it.first} file ${it.second} cannot have a null sub table" })
     }
