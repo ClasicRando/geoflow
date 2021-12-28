@@ -78,3 +78,36 @@ private fun createSourceTable(connection: Connection, loadingInfo: LoadingInfo) 
     connection.executeNoReturn("DROP TABLE IF EXISTS ${loadingInfo.tableName}")
     connection.executeNoReturn(loadingInfo.createStatement)
 }
+
+/**
+ * System task to look up the last run's source tables and rename the tables with the postfix of '_old'. If another
+ * table is already named with '_old' that table will be dropped since those tables are from 2 runs prior.
+ */
+@SystemTask(taskId = 14, taskName = "Backup Old Tables")
+fun backupOldTables(connection: Connection, prTask: PipelineRunTask): String {
+    val lastRunId = connection.queryFirstOrNull<Long>(
+        sql = """
+            SELECT t1.run_id
+            FROM   pipeline_runs t1
+            JOIN  (SELECT ds_id, run_id FROM pipeline_runs WHERE run_id = ?) t2
+            ON     t1.ds_id = t2.ds_id
+            AND    t1.run_id != t2.run_id
+            ORDER BY t1.record_date desc
+            LIMIT 1
+        """.trimIndent(),
+        prTask.runId,
+    ) ?: return "This is the first run for the data source so no need to backup previous load tables"
+    val tableNames = connection.submitQuery<String>(
+        sql = """
+            SELECT table_name
+            FROM   ${SourceTables.tableName}
+            WHERE  run_id = ?
+        """.trimIndent(),
+        lastRunId
+    )
+    for (table in tableNames) {
+        connection.executeNoReturn("DROP TABLE IF EXISTS ${table}_old")
+        connection.executeNoReturn("ALTER TABLE IF EXISTS $table RENAME TO ${table}_old")
+    }
+    return "Backed up: ${tableNames.joinToString(separator = "','", prefix = "'", postfix = "'")}"
+}
