@@ -37,6 +37,7 @@ private fun Route.operations() {
     route(path = "/operations") {
         /** Returns list of operations based upon the current user's roles. */
         apiCall<NoBody>(apiEndPoint = "/operations", httpMethod = HttpMethod.Get)
+        apiCall<NoBody>(path = "/data", apiEndPoint = "/operations/data", httpMethod = HttpMethod.Get)
     }
 }
 

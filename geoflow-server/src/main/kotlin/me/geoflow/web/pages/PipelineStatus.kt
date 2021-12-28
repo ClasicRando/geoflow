@@ -69,7 +69,7 @@ class PipelineStatus(
             val session = call.session
             requireNotNull(session)
             makeApiCall<NoBody, String>(
-                endPoint = "/api/operations",
+                endPoint = "/api/operations/data",
                 apiToken = session.apiToken,
             )
         }

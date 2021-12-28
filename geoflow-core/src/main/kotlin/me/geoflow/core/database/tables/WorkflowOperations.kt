@@ -23,6 +23,7 @@ object WorkflowOperations : DbTable("workflow_operations"), DefaultData, ApiExpo
             href text COLLATE pg_catalog."default" NOT NULL CHECK (check_not_blank_or_empty(href)),
             role text COLLATE pg_catalog."default" NOT NULL CHECK (check_not_blank_or_empty(role)),
             name text COLLATE pg_catalog."default" NOT NULL CHECK (check_not_blank_or_empty(name)) UNIQUE,
+            workflow_group text COLLATE pg_catalog."default" NOT NULL CHECK (check_not_blank_or_empty(workflow_group)),
             workflow_order integer NOT NULL UNIQUE
         )
         WITH (
@@ -37,8 +38,32 @@ object WorkflowOperations : DbTable("workflow_operations"), DefaultData, ApiExpo
      */
     fun userOperations(connection: Connection, userOid: Long): List<WorkflowOperation> {
         val sql = """
+            with operations as (
+            	select case
+            			when workflow_group = 'data' then 'Data Loading'
+            			else 'Other'
+            		   end "name",
+            		   rank() over (partition by workflow_group order by workflow_order) rnk,
+            		   href
+            	from   ${GetUserOperations.name}(?)
+            )
+            select name, href
+            from   operations
+            where  rnk = 1;
+        """.trimIndent()
+        return connection.submitQuery(sql = sql, userOid)
+    }
+
+    /**
+     * Returns a JSON serializable response of data operations available to a user
+     *
+     * @throws IllegalStateException when either QueryRowSet value is null
+     */
+    fun dataOperations(connection: Connection, userOid: Long): List<WorkflowOperation> {
+        val sql = """
             SELECT name, href
             FROM   ${GetUserOperations.name}(?)
+            WHERE  workflow_group = 'data'
         """.trimIndent()
         return connection.submitQuery(sql = sql, userOid)
     }

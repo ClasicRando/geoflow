@@ -7,13 +7,13 @@ import kotlin.reflect.typeOf
  * Currently, used within queries and existing here for build script purposes.
  */
 object GetUserOperations: PlPgSqlTableFunction(
-    name = "get_user_operation",
+    name = "get_user_operations",
     parameterTypes = listOf(
         typeOf<Long>(),
     ),
 ) {
     override val functionCode: String = """
-        CREATE FUNCTION public.get_user_operation(IN user_oid bigint)
+        CREATE FUNCTION public.get_user_operations(IN user_oid bigint)
             RETURNS setof workflow_operations
             LANGUAGE 'plpgsql'
             

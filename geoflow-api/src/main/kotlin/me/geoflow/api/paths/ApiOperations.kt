@@ -12,12 +12,21 @@ object ApiOperations : ApiPath(path = "/operations") {
 
     override fun Route.registerEndpoints() {
         getOperations(this)
+        getDataOperations(this)
     }
 
     /** Returns list of operations based upon the current user's roles. */
     private fun getOperations(parent: Route) {
         parent.apiCallPostgres(httpMethod = HttpMethod.Get) { userOid, connection ->
             val payload = WorkflowOperations.userOperations(connection, userOid)
+            ApiResponse.OperationsResponse(payload)
+        }
+    }
+
+    /** Returns list of data operations based upon the current user's roles. */
+    private fun getDataOperations(parent: Route) {
+        parent.apiCallPostgres(httpMethod = HttpMethod.Get, path = "/data") { userOid, connection ->
+            val payload = WorkflowOperations.dataOperations(connection, userOid)
             ApiResponse.OperationsResponse(payload)
         }
     }
