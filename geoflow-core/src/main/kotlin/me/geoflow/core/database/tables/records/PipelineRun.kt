@@ -73,7 +73,7 @@ data class PipelineRun(
     val mergeType: String,
 ) {
     /** [LocalDate] representation of [recordDate] */
-    private val recordLocalDate: LocalDate get() = LocalDate.parse(recordDate, DateTimeFormatter.ISO_LOCAL_DATE)
+    val recordLocalDate: LocalDate get() = LocalDate.parse(recordDate, DateTimeFormatter.ISO_LOCAL_DATE)
     /** Generated file location for the current pipeline run */
     val runFilesLocation: String get() = "$filesLocation/${formatLocalDateDefault(recordLocalDate)}/files"
     /** Generated zip location for the current pipeline run */
