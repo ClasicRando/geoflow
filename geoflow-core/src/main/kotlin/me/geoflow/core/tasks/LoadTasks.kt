@@ -16,9 +16,18 @@ import kotlinx.coroutines.flow.flowOn
 import me.geoflow.core.database.extensions.executeNoReturn
 import me.geoflow.core.database.extensions.queryFirstOrNull
 import me.geoflow.core.database.extensions.submitQuery
+import me.geoflow.core.database.tables.PipelineRunTasks
 import me.geoflow.core.database.tables.records.PipelineRunTask
 import java.io.File
 import java.sql.Connection
+import java.time.Instant
+import java.time.ZoneId
+
+/**
+ * User task to notify the user that the record date of the collected data is outside the threshold for relevant data
+ */
+@UserTask(taskName = "Recollect Data")
+const val RECOLLECT_DATA: Long = 16L
 
 /**
  * System task to analyze all the source files for a pipeline run that are marked to be analyzed.
@@ -108,4 +117,20 @@ fun backupOldTables(connection: Connection, prTask: PipelineRunTask): String {
         connection.executeNoReturn("ALTER TABLE IF EXISTS $table RENAME TO ${table}_old")
     }
     return "Backed up: ${tableNames.joinToString(separator = "','", prefix = "'", postfix = "'")}"
+}
+
+/** Threshold for how many days old a record date can be before the data is deemed to be old */
+private const val DAYS_OLD = 14L
+
+/**
+ * System task to check if the record date of the collected data is outside the threshold for relevant data. Spawns
+ * User tasks to alert the user that the data is old.
+ */
+@SystemTask(taskId = 15, taskName = "Check If Data Is Old")
+fun checkIfDataIsOld(connection: Connection, prTask: PipelineRunTask) {
+    val pipelineRun = PipelineRuns.getRun(connection, prTask.runId)
+    val currentDay = Instant.now().atZone(ZoneId.systemDefault()).toLocalDate()
+    if (pipelineRun.recordLocalDate.plusDays(DAYS_OLD).isBefore(currentDay)) {
+        PipelineRunTasks.addTask(connection, prTask.pipelineRunTaskId, RECOLLECT_DATA)
+    }
 }
