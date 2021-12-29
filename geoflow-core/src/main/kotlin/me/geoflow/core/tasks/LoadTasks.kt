@@ -95,8 +95,8 @@ fun backupOldTables(connection: Connection, prTask: PipelineRunTask): String {
     val lastRunId = connection.queryFirstOrNull<Long>(
         sql = """
             SELECT t1.run_id
-            FROM   pipeline_runs t1
-            JOIN  (SELECT ds_id, run_id FROM pipeline_runs WHERE run_id = ?) t2
+            FROM   ${PipelineRuns.tableName} t1
+            JOIN  (SELECT ds_id, run_id FROM ${PipelineRuns.tableName} WHERE run_id = ?) t2
             ON     t1.ds_id = t2.ds_id
             AND    t1.run_id != t2.run_id
             ORDER BY t1.record_date desc
