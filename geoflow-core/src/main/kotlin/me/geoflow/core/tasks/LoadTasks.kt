@@ -31,7 +31,6 @@ import java.sql.Connection
 @SystemTask(taskId = 12, taskName = "Analyze Files")
 suspend fun analyzeFiles(connection: Connection, prTask: PipelineRunTask) {
     val pipelineRun = PipelineRuns.getRun(connection, prTask.runId)
-        ?: throw IllegalArgumentException("Run ID must not be null")
     val results = mutableMapOf<Long, AnalyzeResult>()
     for (fileInfo in SourceTables.filesToAnalyze(connection, pipelineRun.runId)) {
         val file = File(pipelineRun.runFilesLocation, fileInfo.fileName)
@@ -56,7 +55,6 @@ suspend fun analyzeFiles(connection: Connection, prTask: PipelineRunTask) {
 @SystemTask(taskId = 13, taskName = "Load Files")
 suspend fun loadFiles(connection: Connection, prTask: PipelineRunTask) {
     val pipelineRun = PipelineRuns.getRun(connection, prTask.runId)
-        ?: throw IllegalArgumentException("Run ID must not be null")
     val updateSql = "UPDATE ${SourceTables.tableName} SET load = false WHERE st_oid = ?"
     for (file in SourceTables.filesToLoad(connection, prTask.runId)) {
         for (loadingInfo in file.loaders) {

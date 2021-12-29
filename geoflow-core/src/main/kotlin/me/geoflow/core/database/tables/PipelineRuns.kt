@@ -182,12 +182,15 @@ object PipelineRuns : DbTable("pipeline_runs"), ApiExposed, Triggers {
     /**
      * Attempts to return a PipelineRun entity from the provided runId. Returns null if the runId does not match any
      * records
+     *
+     * @throws NoRecordFound query returns nothing
+     * @throws java.sql.SQLException connection throws exception
      */
-    fun getRun(connection: Connection, runId: Long): PipelineRun? {
+    fun getRun(connection: Connection, runId: Long): PipelineRun {
         return connection.queryFirstOrNull(
             sql = "${PipelineRun.sql} WHERE t1.run_id = ?",
             runId,
-        )
+        ) ?: throw NoRecordFound(tableName, "Could not find a record for run_id = $runId")
     }
 
     /**

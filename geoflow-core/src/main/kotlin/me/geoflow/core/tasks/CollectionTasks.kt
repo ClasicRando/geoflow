@@ -134,7 +134,6 @@ private fun checkSourceFolder(
 @SystemTask(taskId = 3, taskName = "Scan Source Folder")
 fun scanSourceFolder(connection: Connection, prTask: PipelineRunTask): String? {
     val pipelineRun = PipelineRuns.getRun(connection, prTask.runId)
-        ?: throw IllegalArgumentException("Run cannot be null")
     val folder = File(pipelineRun.runFilesLocation)
     require(folder.exists()) {
         "Files location specified by data source does not exist or the system does not have access"
@@ -187,7 +186,6 @@ fun scanSourceFolder(connection: Connection, prTask: PipelineRunTask): String? {
 @SystemTask(taskId = 4, taskName = "Download Missing Files")
 suspend fun downloadMissingFiles(connection: Connection, prTask: PipelineRunTask): String {
     val pipelineRun = PipelineRuns.getRun(connection, prTask.runId)
-        ?: throw IllegalArgumentException("Run cannot be null")
     val outputFolder = File(pipelineRun.runFilesLocation)
     require(outputFolder.exists()) {
         "Files location specified by data source does not exist or the system does not have access"
@@ -247,7 +245,6 @@ suspend fun downloadMissingFiles(connection: Connection, prTask: PipelineRunTask
 @SystemTask(taskId = 7, taskName = "Backup Files to Zip Folder")
 suspend fun backupFilesToZip(connection: Connection, prTask: PipelineRunTask) {
     val pipelineRun = PipelineRuns.getRun(connection, prTask.runId)
-        ?: throw IllegalArgumentException("Run cannot be null")
     val backupDirectory = File(pipelineRun.runZipLocation)
     if (!backupDirectory.exists()) {
         backupDirectory.mkdir()
