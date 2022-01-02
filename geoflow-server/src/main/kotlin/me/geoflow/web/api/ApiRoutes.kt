@@ -214,6 +214,11 @@ private fun Route.sourceTables() {
             apiEndPoint = "/source-tables/{stOid}",
             httpMethod = HttpMethod.Delete,
         )
+        apiCall<NoBody>(
+            path = "/comparisons/{runId}",
+            apiEndPoint = "/source-tables/comparisons/{runId}",
+            httpMethod = HttpMethod.Get,
+        )
     }
 }
 
@@ -223,6 +228,11 @@ private fun Route.sourceTableColumns() {
         apiCall<NoBody>(
             path = "/{stOid}",
             apiEndPoint = "source-table-columns/{stOid}",
+            httpMethod = HttpMethod.Get,
+        )
+        apiCall<NoBody>(
+            path = "/comparisons/{stOid}",
+            apiEndPoint = "source-table-columns/comparisons/{stOid}",
             httpMethod = HttpMethod.Get,
         )
     }
