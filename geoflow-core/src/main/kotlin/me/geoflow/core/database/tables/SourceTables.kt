@@ -10,6 +10,7 @@ import me.geoflow.core.database.functions.UserHasRun
 import me.geoflow.core.database.tables.records.AnalyzeFiles
 import me.geoflow.core.database.tables.records.LoadFiles
 import me.geoflow.core.database.tables.records.SourceTable
+import me.geoflow.core.database.tables.records.TableCountComparison
 
 /**
  * Table used to store the source table and file information used for all pipeline runs. Parent to [SourceTableColumns]
@@ -256,4 +257,33 @@ object SourceTables : DbTable("source_tables"), ApiExposed {
     fun filesToLoad(connection: Connection, runId: Long): List<LoadFiles> {
         return connection.submitQuery(sql = LoadFiles.sql, runId)
     }
+
+    /** */
+    val tableCountComparisonFields: Map<String, Map<String, String>> = mapOf(
+        "current_table_name" to mapOf(),
+        "current_file_name" to mapOf(),
+        "current_record_count" to mapOf(),
+        "last_table_name" to mapOf(),
+        "last_file_name" to mapOf(),
+        "last_record_count" to mapOf(),
+    )
+
+    /** */
+    fun tableCountComparison(connection: Connection, runId: Long): List<TableCountComparison> {
+        val lastRun = PipelineRuns.lastRun(connection, runId) ?: throw IllegalArgumentException(
+            "The data source linked to run_id = $runId must have a previous run to compare"
+        )
+        return connection.submitQuery(
+            sql = """
+                SELECT t1.st_oid, t1.table_name, t1.file_name, t1.record_count,
+                       t2.table_name, t2.file_name, t2.record_count
+                FROM  (SELECT * FROM $tableName WHERE run_id = ?) t1
+                JOIN  (SELECT * FROM $tableName WHERE run_id = ?) t2
+                ON     t1.file_id = t2.file_id
+            """.trimIndent(),
+            runId,
+            lastRun,
+        )
+    }
+
 }
