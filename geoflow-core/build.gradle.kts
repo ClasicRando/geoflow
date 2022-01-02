@@ -23,6 +23,7 @@ val reflectionsVersion: String by project
 val coroutinesJdbc: String by project
 val kMongoVersion: String by project
 val log4jVersion: String by project
+val htmlJvmVersion: String by project
 
 dependencies {
     testImplementation("org.jetbrains.kotlin:kotlin-test:$kotlinVersion")
@@ -63,6 +64,7 @@ dependencies {
     implementation("org.litote.kmongo:kmongo-coroutine:$kMongoVersion")
     implementation("org.litote.kmongo:kmongo-coroutine-serialization:$kMongoVersion")
     implementation("org.litote.kmongo:kmongo-id-serialization:$kMongoVersion")
+    implementation("org.jetbrains.kotlinx:kotlinx-html-jvm:$htmlJvmVersion")
     constraints {
         add("implementation", "org.apache.logging.log4j:log4j-core") {
             version {
