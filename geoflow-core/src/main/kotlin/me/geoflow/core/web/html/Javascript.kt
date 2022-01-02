@@ -1,4 +1,4 @@
-package me.geoflow.web.html
+package me.geoflow.core.web.html
 
 import kotlinx.html.SCRIPT
 import kotlinx.html.unsafe

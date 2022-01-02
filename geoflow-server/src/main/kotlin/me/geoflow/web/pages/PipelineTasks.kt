@@ -2,17 +2,18 @@ package me.geoflow.web.pages
 
 import me.geoflow.core.database.enums.FileCollectType
 import me.geoflow.core.database.tables.PipelineRunTasks
-import me.geoflow.web.html.addParamsAsJsGlobalVariables
+import me.geoflow.core.web.html.addParamsAsJsGlobalVariables
 import me.geoflow.web.html.sourceTables
-import me.geoflow.web.html.tabLayout
-import me.geoflow.web.html.tabNav
-import me.geoflow.web.html.tableButton
+import me.geoflow.core.web.html.tabLayout
+import me.geoflow.core.web.html.tabNav
+import me.geoflow.core.web.html.tableButton
 import kotlinx.html.FlowContent
 import kotlinx.html.STYLE
 import kotlinx.html.script
 import kotlinx.html.unsafe
-import me.geoflow.web.html.SubTableDetails
-import me.geoflow.web.html.basicTable
+import me.geoflow.core.web.html.SubTableDetails
+import me.geoflow.core.web.html.basicTable
+import me.geoflow.core.web.html.emptyModal
 
 /**
  * Page for pipeline task operations
@@ -65,6 +66,11 @@ class PipelineTasks(
                 sourceTables(runId)
             },
         )
+        emptyModal(
+            modalId = TASK_OUTPUT_MODAL,
+            headerText = "Task Output",
+            size = "modal-xl",
+        )
     }
 
     override val script: FlowContent.() -> Unit = {
@@ -73,6 +79,7 @@ class PipelineTasks(
                 "taskTableId" to TASKS_TABLE_ID,
                 "taskDataModalId" to TASK_DATA_MODAL_ID,
                 "types" to FileCollectType.values(),
+                "taskOutputId" to TASK_OUTPUT_MODAL,
             )
         }
         script {
@@ -84,6 +91,7 @@ class PipelineTasks(
 
         private const val TASK_DATA_MODAL_ID = "taskData"
         private const val TASKS_TABLE_ID = "tasksTable"
+        private const val TASK_OUTPUT_MODAL = "taskOutput"
         private val tableButtons = listOf(
             tableButton(
                 name = "btnTimeUnit",

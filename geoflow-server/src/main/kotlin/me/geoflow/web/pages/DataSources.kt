@@ -14,12 +14,12 @@ import kotlinx.html.textInput
 import me.geoflow.core.database.tables.DataSourceContacts
 import me.geoflow.web.api.NoBody
 import me.geoflow.web.api.makeApiCall
-import me.geoflow.web.html.addParamsAsJsGlobalVariables
-import me.geoflow.web.html.basicTable
-import me.geoflow.web.html.confirmModal
-import me.geoflow.web.html.formModal
-import me.geoflow.web.html.subTableDetails
-import me.geoflow.web.html.tableButton
+import me.geoflow.core.web.html.addParamsAsJsGlobalVariables
+import me.geoflow.core.web.html.basicTable
+import me.geoflow.core.web.html.confirmModal
+import me.geoflow.core.web.html.formModal
+import me.geoflow.core.web.html.subTableDetails
+import me.geoflow.core.web.html.tableButton
 import me.geoflow.web.session
 import me.geoflow.web.utils.Quad
 import me.geoflow.core.database.tables.DataSources as DataSourcesTable

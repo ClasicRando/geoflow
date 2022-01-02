@@ -2,12 +2,12 @@ package me.geoflow.web.pages
 
 import me.geoflow.core.database.tables.Actions
 import me.geoflow.core.database.tables.WorkflowOperations
-import me.geoflow.web.html.addParamsAsJsGlobalVariables
+import me.geoflow.core.web.html.addParamsAsJsGlobalVariables
 import kotlinx.html.FlowContent
 import kotlinx.html.STYLE
 import kotlinx.html.div
 import kotlinx.html.script
-import me.geoflow.web.html.basicTable
+import me.geoflow.core.web.html.basicTable
 
 /** Page for initial page upon login */
 object Index : BasePage() {

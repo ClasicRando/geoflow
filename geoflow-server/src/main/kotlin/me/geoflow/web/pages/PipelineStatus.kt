@@ -3,7 +3,7 @@ package me.geoflow.web.pages
 import io.ktor.application.ApplicationCall
 import kotlinx.coroutines.runBlocking
 import me.geoflow.core.database.tables.PipelineRuns
-import me.geoflow.web.html.addParamsAsJsGlobalVariables
+import me.geoflow.core.web.html.addParamsAsJsGlobalVariables
 import kotlinx.html.FlowContent
 import kotlinx.html.STYLE
 import kotlinx.html.id
@@ -12,8 +12,8 @@ import kotlinx.html.script
 import kotlinx.html.select
 import me.geoflow.web.api.NoBody
 import me.geoflow.web.api.makeApiCall
-import me.geoflow.web.html.basicTable
-import me.geoflow.web.html.confirmModal
+import me.geoflow.core.web.html.basicTable
+import me.geoflow.core.web.html.confirmModal
 import me.geoflow.web.session
 
 /**
