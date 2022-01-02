@@ -51,4 +51,7 @@ data class ResponsePrTask(
     /** Run type of the underling task. Name of the enum value */
     @SerialName("task_run_type")
     val taskRunType: String,
+    /** HTML used in the task output modal */
+    @SerialName("modal_html")
+    val modalHtml: String?,
 )

@@ -137,8 +137,9 @@ async function reworkTask(prTaskId) {
 
 function taskActionFormatter(value, row) {
     const prTaskId = row.pipeline_run_task_id;
+    const outputButton = row.modal_html !== null ? `<i class="fas fa-table p-1 inTableButton" onClick="showOutputModal(${prTaskId})"></i>` : '';
     const redoButton = row.task_status === 'Complete' || row.task_status === 'Failed' ? `<i class="fas fa-redo p-1 inTableButton" onClick="reworkTask(${prTaskId})"></i>` : '';
-    return redoButton;
+    return `<span style="display: inline;">${redoButton}${outputButton}</span>`;
 }
 
 function changeTimeUnit() {
@@ -146,4 +147,11 @@ function changeTimeUnit() {
     const data = tasksSubscriber.$table.bootstrapTable('getData');
     tasksSubscriber.$table.bootstrapTable('load', data);
     $('th[data-field=time]').find('.th-inner').text(`Time (${timeUnit})`);
+}
+
+function showOutputModal(prTaskId) {
+    const $modalBody = $(`#${taskOutputId}Body`);
+    const modalHtml = tasksSubscriber.$table.bootstrapTable('getData').filter(row => row.pipeline_run_task_id === prTaskId).modal_html;
+    $modalBody.empty();
+    $modalBody.append(modalHtml);
 }

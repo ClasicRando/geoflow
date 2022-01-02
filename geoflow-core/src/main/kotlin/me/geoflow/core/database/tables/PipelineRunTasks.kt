@@ -1,5 +1,8 @@
 package me.geoflow.core.database.tables
 
+import kotlinx.html.DIV
+import kotlinx.html.div
+import kotlinx.html.stream.appendHTML
 import me.geoflow.core.database.errors.NoRecordAffected
 import me.geoflow.core.database.errors.NoRecordFound
 import me.geoflow.core.database.enums.TaskRunType
@@ -65,7 +68,8 @@ object PipelineRunTasks: DbTable("pipeline_run_tasks"), ApiExposed, Triggers {
                 REFERENCES public.workflow_operations (code) MATCH SIMPLE
                 ON UPDATE CASCADE
                 ON DELETE RESTRICT,
-            task_stack_trace text COLLATE pg_catalog."default" CHECK (check_not_blank_or_empty(task_stack_trace))
+            task_stack_trace text COLLATE pg_catalog."default" CHECK (check_not_blank_or_empty(task_stack_trace)),
+            modal_html text COLLATE pg_catalog."default" CHECK (check_not_blank_or_empty(modal_html))
         )
         WITH (
             OIDS = FALSE
@@ -205,18 +209,32 @@ object PipelineRunTasks: DbTable("pipeline_run_tasks"), ApiExposed, Triggers {
         }
     }
 
+    private val emptyLambda: DIV.() -> Unit = {}
+
     /**
      * Adds the desired generic task as the last child of the [parentTaskId]
      */
-    fun addTask(connection: Connection, parentTaskId: Long, taskId: Long): Long {
+    fun addTask(
+        connection: Connection,
+        parentTaskId: Long,
+        taskId: Long,
+        modalContent: DIV.() -> Unit = emptyLambda,
+    ): Long {
+        val modal = if (modalContent !== emptyLambda) {
+            StringBuilder().appendHTML().div {
+                modalContent()
+            }.toString()
+        } else null
         val sql = """
-            INSERT INTO $tableName (run_id,task_status,task_id,parent_task_id,parent_task_order,workflow_operation) 
+            INSERT INTO $tableName(run_id,task_status,task_id,parent_task_id,parent_task_order,workflow_operation,
+                                   modal_html) 
             SELECT distinct t1.run_id, ?, ?, t1.pr_task_id,
                    COALESCE(
                       MAX(t2.parent_task_order) OVER (PARTITION BY t2.parent_task_id ) + 1,
                       1
                     ),
-                   t1.workflow_operation
+                   t1.workflow_operation,
+                   ?
             FROM   $tableName t1
             LEFT JOIN $tableName t2 on t1.pr_task_id = t2.parent_task_id
             WHERE  t1.pr_task_id = ?
@@ -227,6 +245,7 @@ object PipelineRunTasks: DbTable("pipeline_run_tasks"), ApiExposed, Triggers {
             TaskStatus.Waiting.pgObject,
             taskId,
             parentTaskId,
+            modal
         ) ?: throw NoRecordAffected(tableName, "Did not insert a record as a child task to id = $parentTaskId")
     }
 

@@ -33,6 +33,8 @@ class PipelineRunTask private constructor(
     val workflowOperation: String,
     /** Stack trace for the exception thrown (if any) during task run */
     val taskStackTrace: String?,
+    /** HTML used in the task output modal */
+    val modalHtml: String?,
 ) {
     /** [Instant] when the task run started. Converted from the provided [Timestamp] */
     val taskStart: Instant? = taskStart?.toInstant()
@@ -54,7 +56,7 @@ class PipelineRunTask private constructor(
         val sql: String = """
             SELECT t1.pr_task_id, t1.run_id, t1.task_start, t1.task_completed, t1.task_id, t2.name, t2.description,
                    t2.state, t2.task_run_type, t1.task_message, t1.parent_task_id, t1.parent_task_order,
-                   t1.task_status, t1.workflow_operation, t1.task_stack_trace
+                   t1.task_status, t1.workflow_operation, t1.task_stack_trace, t1.modal_html
             FROM   ${PipelineRunTasks.tableName} t1
             JOIN   tasks t2
             ON     t1.task_id = t2.task_id
@@ -75,6 +77,7 @@ class PipelineRunTask private constructor(
         private const val TASK_STATUS = 13
         private const val WORKFLOW_OPERATION = 14
         private const val TASK_STACK_TRACE = 15
+        private const val MODAL_HTML = 16
 
         /** Function used to process a [ResultSet] into a result record */
         fun fromResultSet(rs: ResultSet): PipelineRunTask {
@@ -97,6 +100,7 @@ class PipelineRunTask private constructor(
                 taskStatus = rs.getString(TASK_STATUS),
                 workflowOperation = rs.getString(WORKFLOW_OPERATION),
                 taskStackTrace = rs.getString(TASK_STACK_TRACE),
+                modalHtml = rs.getString(MODAL_HTML),
             )
         }
     }
