@@ -20,6 +20,7 @@ import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 import me.geoflow.core.database.tables.records.Action
 import me.geoflow.core.database.tables.records.CollectionUser
+import me.geoflow.core.database.tables.records.ColumnComparison
 import me.geoflow.core.database.tables.records.DataSource
 import me.geoflow.core.database.tables.records.DataSourceContact
 import me.geoflow.core.database.tables.records.NextTask
@@ -36,6 +37,7 @@ import me.geoflow.core.database.tables.records.ResponseUser
 import me.geoflow.core.database.tables.records.Role
 import me.geoflow.core.database.tables.records.SourceTable
 import me.geoflow.core.database.tables.records.SourceTableColumn
+import me.geoflow.core.database.tables.records.TableCountComparison
 import me.geoflow.core.database.tables.records.WorkflowOperation
 import me.geoflow.core.mongo.MongoDb
 
@@ -102,6 +104,24 @@ sealed interface ApiResponse {
     ): Success<SourceTable> {
         @SerialName("object")
         override val responseObject: String = "source_table"
+    }
+
+    /** API response for a list of table count comparison records */
+    @Serializable
+    class TableCountComparisonsResponse(
+        override val payload: List<TableCountComparison>,
+    ): Success<List<TableCountComparison>> {
+        @SerialName("object")
+        override val responseObject: String = "table_count_comparison"
+    }
+
+    /** API response for a list of column comparison records */
+    @Serializable
+    class ColumnComparisonsResponse(
+        override val payload: List<ColumnComparison>,
+    ): Success<List<ColumnComparison>> {
+        @SerialName("object")
+        override val responseObject: String = "column_comparison"
     }
 
     /** API response for a list of records from [internal_users][InternalUsers] */
