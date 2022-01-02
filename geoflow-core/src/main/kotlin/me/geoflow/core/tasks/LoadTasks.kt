@@ -2,10 +2,8 @@
 package me.geoflow.core.tasks
 
 import me.geoflow.core.loading.AnalyzeResult
-import me.geoflow.core.loading.LoadingInfo
 import me.geoflow.core.loading.analyzeFile
 import me.geoflow.core.loading.loadFile
-import me.geoflow.core.database.extensions.runBatchUpdate
 import me.geoflow.core.database.tables.PipelineRuns
 import me.geoflow.core.database.tables.SourceTableColumns
 import me.geoflow.core.database.tables.SourceTables
@@ -15,9 +13,12 @@ import kotlinx.coroutines.flow.collect
 import kotlinx.coroutines.flow.flowOn
 import me.geoflow.core.database.extensions.executeNoReturn
 import me.geoflow.core.database.extensions.queryFirstOrNull
+import me.geoflow.core.database.extensions.runUpdate
 import me.geoflow.core.database.extensions.submitQuery
 import me.geoflow.core.database.tables.PipelineRunTasks
 import me.geoflow.core.database.tables.records.PipelineRunTask
+import me.geoflow.core.web.html.SubTableDetails
+import me.geoflow.core.web.html.basicTable
 import java.io.File
 import java.sql.Connection
 import java.time.Instant
@@ -28,6 +29,18 @@ import java.time.ZoneId
  */
 @UserTask(taskName = "Recollect Data")
 const val RECOLLECT_DATA: Long = 16L
+
+/**
+ * User task with a modal window showing table stats collected by the parent task
+ */
+@UserTask(taskName = "Table Stats (INFO)")
+const val TABLE_STATS: Long = 18L
+
+/**
+ * User task when the data source has not been loaded before so no comparison is required
+ */
+@UserTask(taskName = "No Table Stats Comparison Required")
+const val NO_COMPARISON_REQUIRED: Long = 19L
 
 /**
  * System task to analyze all the source files for a pipeline run that are marked to be analyzed.
@@ -64,26 +77,24 @@ suspend fun analyzeFiles(connection: Connection, prTask: PipelineRunTask) {
 @SystemTask(taskId = 13, taskName = "Load Files")
 suspend fun loadFiles(connection: Connection, prTask: PipelineRunTask) {
     val pipelineRun = PipelineRuns.getRun(connection, prTask.runId)
-    val updateSql = "UPDATE ${SourceTables.tableName} SET load = false WHERE st_oid = ?"
     for (file in SourceTables.filesToLoad(connection, prTask.runId)) {
         for (loadingInfo in file.loaders) {
-            createSourceTable(connection, loadingInfo)
+            connection.executeNoReturn("DROP TABLE IF EXISTS ${loadingInfo.tableName}")
+            connection.executeNoReturn(loadingInfo.createStatement)
         }
         connection.loadFile(
             file = File(pipelineRun.runFilesLocation, file.fileName),
             loaders = file.loaders,
         )
-        connection.runBatchUpdate(
-            sql = updateSql,
-            parameters = file.loaders.map { it.stOid }
+        connection.runUpdate(
+            sql = """
+                UPDATE ${SourceTables.tableName}
+                SET    load = false
+                WHERE  st_oid = (${"?,".repeat(file.loaders.size).trim(',')})
+            """.trimIndent(),
+            file.loaders.map { it.stOid },
         )
     }
-}
-
-/** Utility function to create source table using the provided [loadingInfo]. Drops table if it already exists */
-private fun createSourceTable(connection: Connection, loadingInfo: LoadingInfo) {
-    connection.executeNoReturn("DROP TABLE IF EXISTS ${loadingInfo.tableName}")
-    connection.executeNoReturn(loadingInfo.createStatement)
 }
 
 /**
@@ -132,5 +143,32 @@ fun checkIfDataIsOld(connection: Connection, prTask: PipelineRunTask) {
     val currentDay = Instant.now().atZone(ZoneId.systemDefault()).toLocalDate()
     if (pipelineRun.recordLocalDate.plusDays(DAYS_OLD).isBefore(currentDay)) {
         PipelineRunTasks.addTask(connection, prTask.pipelineRunTaskId, RECOLLECT_DATA)
+    }
+}
+
+/**
+ * System task to check if the record date of the collected data is outside the threshold for relevant data. Spawns
+ * User tasks to alert the user that the data is old.
+ */
+@SystemTask(taskId = 17, taskName = "Check Table Stats")
+fun checkTableStats(connection: Connection, prTask: PipelineRunTask) {
+    val lastRun = PipelineRuns.lastRun(connection, prTask.pipelineRunTaskId)
+    if (lastRun == null) {
+        PipelineRunTasks.addTask(connection, prTask.pipelineRunTaskId, NO_COMPARISON_REQUIRED)
+        return
+    }
+    PipelineRunTasks.addTask(connection, prTask.pipelineRunTaskId, TABLE_STATS) {
+        basicTable(
+            tableId = "tableCounts",
+            fields = SourceTables.tableCountComparisonFields,
+            dataUrl = "/source-tables/comparisons/${prTask.runId}",
+            dataField = "payload",
+            subTableDetails = SubTableDetails(
+                url = "/source-table-columns/comparison/{id}",
+                idField = "st_oid",
+                fields = SourceTableColumns.columnComparisonFields,
+            ),
+            clickableRows = false,
+        )
     }
 }
