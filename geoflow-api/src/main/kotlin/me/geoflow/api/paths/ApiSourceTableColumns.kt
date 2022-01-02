@@ -14,6 +14,7 @@ object ApiSourceTableColumns : ApiPath(path = "/source-table-columns") {
 
     override fun Route.registerEndpoints() {
         getSourceTableColumns(this)
+        getColumnComparisons(this)
     }
 
     /** Returns a list of all source table columns for a provided stOid */
@@ -21,6 +22,14 @@ object ApiSourceTableColumns : ApiPath(path = "/source-table-columns") {
         parent.apiCallPostgres(httpMethod = HttpMethod.Get, path = "/{stOid}") { _, connection ->
             val payload = SourceTableColumns.getRecords(connection, call.parameters.getOrFail<Long>("stOid"))
             ApiResponse.SourceTableColumnsResponse(payload)
+        }
+    }
+
+    /** Returns a list of column comparisons for a provided stOid */
+    private fun getColumnComparisons(parent: Route) {
+        parent.apiCallPostgres(httpMethod = HttpMethod.Get, path = "/comparisons/{stOid}") { _, connection ->
+            val payload = SourceTableColumns.getComparison(connection, call.parameters.getOrFail<Long>("stOid"))
+            ApiResponse.ColumnComparisonsResponse(payload)
         }
     }
 

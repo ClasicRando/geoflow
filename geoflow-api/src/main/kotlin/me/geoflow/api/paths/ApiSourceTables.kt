@@ -19,6 +19,7 @@ object ApiSourceTables : ApiPath(path = "/source-tables") {
         updateSourceTable(this)
         createSourceTable(this)
         deleteSourceTable(this)
+        sourceTableComparison(this)
     }
 
     /** Returns list of source table records for the given runId */
@@ -64,6 +65,17 @@ object ApiSourceTables : ApiPath(path = "/source-tables") {
             val stOid = call.parameters.getOrFail<Long>("stOid")
             SourceTables.deleteSourceTable(connection, stOid, userOid)
             ApiResponse.MessageResponse("Deleted source table record ($stOid)")
+        }
+    }
+
+    /**
+     * Requests the table comparison details for the specified runId. Compares to the previous runId for the same dsId
+     */
+    private fun sourceTableComparison(parent: Route) {
+        parent.apiCallPostgres(httpMethod = HttpMethod.Get, path = "/comparisons/{runId}") { _, connection ->
+            val runId = call.parameters.getOrFail<Long>("runId")
+            val payload = SourceTables.tableCountComparison(connection, runId)
+            ApiResponse.TableCountComparisonsResponse(payload)
         }
     }
 
