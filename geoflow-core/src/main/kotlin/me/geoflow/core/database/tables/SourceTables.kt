@@ -1,6 +1,8 @@
 package me.geoflow.core.database.tables
 
 import me.geoflow.core.database.errors.NoRecordAffected
+import me.geoflow.core.database.errors.NoRecordFound
+import me.geoflow.core.database.extensions.queryFirstOrNull
 import me.geoflow.core.loading.AnalyzeResult
 import me.geoflow.core.database.extensions.runReturningFirstOrNull
 import me.geoflow.core.database.extensions.useMultipleStatements
@@ -64,6 +66,14 @@ object SourceTables : DbTable("source_tables"), ApiExposed {
             OIDS = FALSE
         );
     """.trimIndent()
+
+    /**
+     * Returns a JSON serializable response of a single record specified by the [stOid]
+     */
+    fun getRunId(connection: Connection, stOid: Long): Long {
+        return connection.queryFirstOrNull(sql = "SELECT run_id FROM $tableName WHERE st_oid = ?", stOid)
+            ?: throw NoRecordFound(tableName, "Could not find a record for st_oid = $stOid")
+    }
 
     /**
      * Returns JSON serializable response of all source tables linked to a given [runId]. Returns an empty list when
