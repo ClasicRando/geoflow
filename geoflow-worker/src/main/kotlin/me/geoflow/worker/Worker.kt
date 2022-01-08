@@ -75,18 +75,16 @@ suspend fun JobContextWithProps<SystemJob>.executeSystemJob(kJob: KJob) {
         val runId = props[SystemJob.runId]
         when (val result = runTask(pipelineRunTaskId)) {
             is TaskResult.Success -> {
-                Database.runWithConnection {
+                Database.runWithConnectionAsync { connection ->
                     PipelineRunTasks.update(
-                        it,
+                        connection,
                         pipelineRunTaskId,
                         taskMessage = result.message,
                         taskStatus = TaskStatus.Complete,
                         taskCompleted = Instant.now(),
                         taskStackTrace = null
                     )
-                }
-                if (props[SystemJob.runNext]) {
-                    Database.runWithConnectionAsync { connection ->
+                    if (props[SystemJob.runNext]) {
                         PipelineRunTasks.getNextTask(connection, props[SystemJob.runId])?.let { nextTask ->
                             if (nextTask.taskRunType == TaskRunType.System) {
                                 kJob.schedule(SystemJob) {
