@@ -12,10 +12,11 @@ import kotlinx.coroutines.flow.buffer
 import kotlinx.coroutines.flow.collect
 import kotlinx.coroutines.flow.flowOn
 import me.geoflow.core.database.extensions.executeNoReturn
-import me.geoflow.core.database.extensions.queryFirstOrNull
 import me.geoflow.core.database.extensions.runUpdate
 import me.geoflow.core.database.extensions.submitQuery
 import me.geoflow.core.database.tables.PipelineRunTasks
+import me.geoflow.core.database.tables.PlottingFields
+import me.geoflow.core.database.tables.PlottingMethods
 import me.geoflow.core.database.tables.records.PipelineRunTask
 import me.geoflow.core.web.html.SubTableDetails
 import me.geoflow.core.web.html.basicTable
@@ -41,6 +42,30 @@ const val TABLE_STATS: Long = 18L
  */
 @UserTask(taskName = "No Table Stats Comparison Required")
 const val NO_COMPARISON_REQUIRED: Long = 19L
+
+/**
+ * User task when the data source has not been loaded before so plotting fields must be set manually
+ */
+@UserTask(taskName = "Manually Set Plotting Fields")
+const val MANUALLY_SET_PLOTTING_FIELDS: Long = 21L
+
+/**
+ * User task notifying the user to check the modal output to verify the plotting field selections
+ */
+@UserTask(taskName = "Verify Plotting Fields (INFO)")
+const val VERIFY_PLOTTING_FIELDS: Long = 22L
+
+/**
+ * User task when the data source has not been loaded before so plotting methods must be set manually
+ */
+@UserTask(taskName = "Manually Set Plotting Methods")
+const val MANUALLY_SET_PLOTTING_METHODS: Long = 24L
+
+/**
+ * User task notifying the user to check the modal output to verify the plotting method selections
+ */
+@UserTask(taskName = "Verify Plotting Methods (INFO)")
+const val VERIFY_PLOTTING_METHODS: Long = 25L
 
 /**
  * System task to analyze all the source files for a pipeline run that are marked to be analyzed.
@@ -90,7 +115,7 @@ suspend fun loadFiles(connection: Connection, prTask: PipelineRunTask) {
             sql = """
                 UPDATE ${SourceTables.tableName}
                 SET    load = false
-                WHERE  st_oid = (${"?,".repeat(file.loaders.size).trim(',')})
+                WHERE  st_oid IN (${"?,".repeat(file.loaders.size).trim(',')})
             """.trimIndent(),
             file.loaders.map { it.stOid },
         )
@@ -103,21 +128,11 @@ suspend fun loadFiles(connection: Connection, prTask: PipelineRunTask) {
  */
 @SystemTask(taskId = 14, taskName = "Backup Old Tables")
 fun backupOldTables(connection: Connection, prTask: PipelineRunTask): String {
-    val lastRunId = connection.queryFirstOrNull<Long>(
-        sql = """
-            SELECT t1.run_id
-            FROM   ${PipelineRuns.tableName} t1
-            JOIN  (SELECT ds_id, run_id FROM ${PipelineRuns.tableName} WHERE run_id = ?) t2
-            ON     t1.ds_id = t2.ds_id
-            AND    t1.run_id != t2.run_id
-            ORDER BY t1.record_date desc
-            LIMIT 1
-        """.trimIndent(),
-        prTask.runId,
-    ) ?: return "This is the first run for the data source so no need to backup previous load tables"
+    val lastRunId = PipelineRuns.lastRun(connection, prTask.runId)
+        ?: return "This is the first run for the data source so no need to backup previous load tables"
     val tableNames = connection.submitQuery<String>(
         sql = """
-            SELECT table_name
+            SELECT lower(table_name)
             FROM   ${SourceTables.tableName}
             WHERE  run_id = ?
         """.trimIndent(),
@@ -152,7 +167,7 @@ fun checkIfDataIsOld(connection: Connection, prTask: PipelineRunTask) {
  */
 @SystemTask(taskId = 17, taskName = "Check Table Stats")
 fun checkTableStats(connection: Connection, prTask: PipelineRunTask) {
-    val lastRun = PipelineRuns.lastRun(connection, prTask.pipelineRunTaskId)
+    val lastRun = PipelineRuns.lastRun(connection, prTask.runId)
     if (lastRun == null) {
         PipelineRunTasks.addTask(connection, prTask.pipelineRunTaskId, NO_COMPARISON_REQUIRED)
         return
@@ -171,4 +186,103 @@ fun checkTableStats(connection: Connection, prTask: PipelineRunTask) {
             clickableRows = false,
         )
     }
+}
+
+/**
+ * System task to bring forward past plotting fields by linking to old file_ids. If no past loads for the data source,
+ * a user task will be generated. Either way, a verification task is created to show the current state of the plotting
+ * fields in the output modal
+ */
+@SystemTask(taskId = 20, taskName = "Set Plotting Fields")
+fun setPlottingFields(connection: Connection, prTask: PipelineRunTask) {
+    val lastRun = PipelineRuns.lastRun(connection, prTask.runId)
+    if (lastRun == null) {
+        PipelineRunTasks.addTask(connection, prTask.pipelineRunTaskId, MANUALLY_SET_PLOTTING_FIELDS)
+    } else {
+        connection.executeNoReturn(
+            sql = """
+                WITH last_run AS (
+                    SELECT *
+                    FROM   ${PlottingFields.tableName}
+                    WHERE  run_id = ?
+                ), current_run AS (
+                    SELECT file_id
+                    FROM   ${SourceTables.tableName}
+                    WHERE  run_id = ?
+                )
+                INSERT INTO ${PlottingFields.tableName}(
+                        run_id,file_id,name,address_line1,address_line2,city,alternate_cities,mailing_code,latitude,
+                        longitude,prov,clean_address,clean_city
+                )
+                SELECT t2.run_id,t1.file_id,name,address_line1,address_line2,city,alternate_cities,mailing_code,
+                       latitude,longitude,prov,clean_address,clean_city
+                FROM   last_run t1
+                JOIN   current_run t2
+                ON     t1.file_id = t2.file_id;
+            """.trimIndent(),
+            lastRun,
+            prTask.runId,
+        )
+    }
+    PipelineRunTasks.addTask(connection, prTask.pipelineRunTaskId, VERIFY_PLOTTING_FIELDS) {
+        basicTable<PlottingFields>(
+            tableId = "plottingFields",
+            dataUrl = "/plotting-fields/${prTask.runId}",
+            dataField = "payload",
+            clickableRows = false,
+        )
+    }
+}
+
+/**
+ * System task to bring forward past plotting methods. If no past loads for the data source, a user task will be
+ * generated. Either way, a verification task is created to show the current state of the plotting methods in the output
+ * modal
+ */
+@SystemTask(taskId = 23, taskName = "Set Plotting Methods")
+fun setPlottingMethods(connection: Connection, prTask: PipelineRunTask) {
+    val lastRun = PipelineRuns.lastRun(connection, prTask.runId)
+    if (lastRun == null) {
+        PipelineRunTasks.addTask(connection, prTask.pipelineRunTaskId, MANUALLY_SET_PLOTTING_METHODS)
+    } else {
+        connection.executeNoReturn(
+            sql = """
+                WITH last_run AS (
+                    SELECT *
+                    FROM   ${PlottingMethods.tableName}
+                    WHERE  run_id = ?
+                ), current_run AS (
+                    SELECT file_id
+                    FROM   ${SourceTables.tableName}
+                    WHERE  run_id = ?
+                )
+                INSERT INTO ${PlottingMethods.tableName}(
+                        run_id,plotting_order,method_type,file_id
+                )
+                SELECT t2.run_id,plotting_order,method_type,t2.file_id
+                FROM   last_run t1
+                JOIN   current_run t2
+                ON     t1.file_id = t2.file_id;
+            """.trimIndent(),
+            lastRun,
+            prTask.runId,
+        )
+    }
+    PipelineRunTasks.addTask(connection, prTask.pipelineRunTaskId, VERIFY_PLOTTING_METHODS) {
+        basicTable<PlottingFields>(
+            tableId = "plottingMethods",
+            dataUrl = "/plotting-methods/${prTask.runId}",
+            dataField = "payload",
+            clickableRows = false,
+        )
+    }
+}
+
+/**
+ * System task to generate the steps required to set up the loading logic for the current run
+ */
+@SystemTask(taskId = 26, taskName = "Set Loading Logic")
+fun setLoadingLogic(connection: Connection, prTask: PipelineRunTask) {
+    PipelineRunTasks.addTask(connection, prTask.pipelineRunTaskId, getTaskIdFromFunction(::setPlottingFields))
+    PipelineRunTasks.addTask(connection, prTask.pipelineRunTaskId, getTaskIdFromFunction(::setPlottingMethods))
 }
