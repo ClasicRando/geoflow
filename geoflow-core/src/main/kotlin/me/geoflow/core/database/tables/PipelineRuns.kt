@@ -161,23 +161,20 @@ object PipelineRuns : DbTable("pipeline_runs"), ApiExposed, Triggers {
     }
 
     /**
-     * Returns the last runId for the data source linked to the pipeline run task. If a past run cannot be found, null
-     * is returned
+     * Returns the last runId for the data source linked to the [runId]. If a past run cannot be found, null is returned
      */
-    fun lastRun(connection: Connection, pipelineRunTaskId: Long): Long? {
+    fun lastRun(connection: Connection, runId: Long): Long? {
         return connection.queryFirstOrNull(
             sql = """
-                SELECT t3.run_id
+                SELECT t1.run_id
                 FROM   $tableName t1
-                JOIN   ${PipelineRunTasks.tableName} t2
-                ON     t1.run_id = t2.run_id
-                LEFT JOIN $tableName t3
-                ON     t1.ds_id = t3.ds_id
-                WHERE  t2.pr_task_id = ?
-                ORDER BY 1 DESC
-                LIMIT  1 OFFSET 1
+                JOIN  (SELECT ds_id, run_id FROM $tableName WHERE run_id = ?) t2
+                ON     t1.ds_id = t2.ds_id
+                AND    t1.run_id != t2.run_id
+                ORDER BY t1.record_date desc
+                LIMIT 1
             """.trimIndent(),
-            pipelineRunTaskId,
+            runId,
         )
     }
 
