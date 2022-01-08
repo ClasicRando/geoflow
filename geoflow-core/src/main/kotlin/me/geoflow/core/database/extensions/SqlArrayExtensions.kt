@@ -1,5 +1,6 @@
 package me.geoflow.core.database.extensions
 
+import java.sql.Connection
 import kotlin.reflect.typeOf
 
 /**
@@ -29,4 +30,18 @@ inline fun <reified T> java.sql.Array.getListWithNulls(): List<T?> {
     return arrayTyped.map {
         if (it is T?) it else throw IllegalStateException("SQL array must be of type ${typeOf<T>()}")
     }
+}
+
+/**
+ * Returns an [Array][java.sql.Array] instance using the contents of this [List] that can be used perform sql operations
+ */
+inline fun <reified T> List<T>.getSqlArray(connection: Connection): java.sql.Array {
+    val type = when(T::class) {
+        String::class -> "text"
+        Long::class -> "bigint"
+        Int::class -> "int"
+        Boolean::class -> "bool"
+        else -> throw IllegalArgumentException("Array type ${T::class.java} is not supported")
+    }
+    return connection.createArrayOf(type, toTypedArray())
 }
