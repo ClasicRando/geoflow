@@ -42,6 +42,9 @@ data class ResponsePrTask(
     /** Stack trace for the exception thrown (if any) during task run */
     @SerialName("task_stack_trace")
     val taskStackTrace: String?,
+    /** HTML used in the task output modal */
+    @SerialName("modal_html")
+    val modalHtml: String?,
     /** Name of the underlining task run */
     @SerialName("task_name")
     val taskName: String,
@@ -51,7 +54,4 @@ data class ResponsePrTask(
     /** Run type of the underling task. Name of the enum value */
     @SerialName("task_run_type")
     val taskRunType: String,
-    /** HTML used in the task output modal */
-    @SerialName("modal_html")
-    val modalHtml: String?,
 )
