@@ -9,11 +9,19 @@ import me.geoflow.core.web.html.tabNav
 import me.geoflow.core.web.html.tableButton
 import kotlinx.html.FlowContent
 import kotlinx.html.STYLE
+import kotlinx.html.div
+import kotlinx.html.id
+import kotlinx.html.label
 import kotlinx.html.script
+import kotlinx.html.select
 import kotlinx.html.unsafe
+import me.geoflow.core.database.tables.PlottingFields
+import me.geoflow.core.database.tables.PlottingMethods
 import me.geoflow.core.web.html.SubTableDetails
 import me.geoflow.core.web.html.basicTable
+import me.geoflow.core.web.html.confirmModal
 import me.geoflow.core.web.html.emptyModal
+import me.geoflow.core.web.html.formModal
 
 /**
  * Page for pipeline task operations
@@ -65,7 +73,127 @@ class PipelineTasks(
             tabNav(label = "Source Tables") {
                 sourceTables(runId)
             },
+            tabNav(label = "Plotting Fields") {
+                basicTable<PlottingFields>(
+                    tableId = PLOTTING_FIELDS_TABLE,
+                    dataUrl = "plotting-fields/${runId}",
+                    dataField = "payload",
+                    clickableRows = false,
+                )
+                confirmModal(
+                    confirmModalId = CONFIRM_DELETE_PLOTTING_FIELDS,
+                    confirmMessage = "Are you sure you want to delete a plotting fields record?",
+                    resultFunction = "deletePlottingFields()",
+                )
+            },
+            tabNav(label = "Plotting Methods") {
+                basicTable<PlottingMethods>(
+                    tableId =  PLOTTING_METHODS_TABLE,
+                    dataUrl = "plotting-methods/${runId}",
+                    dataField = "payload",
+                    tableButtons = plottingMethodButtons,
+                    clickableRows = false,
+                )
+            }
         )
+        formModal(
+            modalId = PLOTTING_FIELDS_MODAL,
+            headerText = "Plotting Fields",
+            okClickFunction = "submitPlottingFields($('#${PLOTTING_FIELDS_MODAL}'))",
+            resetFormButton = true,
+        ) {
+            div(classes = "form-group") {
+                label {
+                    htmlFor = "companyName"
+                    +"Company Name"
+                }
+                select(classes = "custom-select") {
+                    id = "companyName"
+                    name = "companyName"
+                }
+            }
+            div(classes = "form-group") {
+                label {
+                    htmlFor = "addressLine1"
+                    +"Address Line 1"
+                }
+                select(classes = "custom-select") {
+                    id = "addressLine1"
+                    name = "addressLine1"
+                }
+            }
+            div(classes = "form-group") {
+                label {
+                    htmlFor = "addressLine2"
+                    +"Address Line 2"
+                }
+                select(classes = "custom-select") {
+                    id = "addressLine2"
+                    name = "addressLine2"
+                }
+            }
+            div(classes = "form-group") {
+                label {
+                    htmlFor = "city"
+                    +"City"
+                }
+                select(classes = "custom-select") {
+                    id = "city"
+                    name = "city"
+                }
+            }
+            div(classes = "form-group") {
+                label {
+                    htmlFor = "alternateCities"
+                    +"Alternate Cities"
+                }
+                select(classes = "custom-select") {
+                    id = "alternateCities"
+                    name = "alternateCities"
+                    multiple = true
+                }
+            }
+            div(classes = "form-group") {
+                label {
+                    htmlFor = "mailCode"
+                    +"Mail Code"
+                }
+                select(classes = "custom-select") {
+                    id = "mailCode"
+                    name = "mailCode"
+                }
+            }
+            div(classes = "form-group") {
+                label {
+                    htmlFor = "prov"
+                    +"Prov/State"
+                }
+                select(classes = "custom-select") {
+                    id = "prov"
+                    name = "prov"
+                }
+            }
+            div(classes = "form-group") {
+                label {
+                    htmlFor = "latitude"
+                    +"Latitude"
+                }
+                select(classes = "custom-select") {
+                    id = "latitude"
+                    name = "latitude"
+                }
+            }
+            div(classes = "form-group") {
+                label {
+                    htmlFor = "longitude"
+                    +"Longitude"
+                }
+                select(classes = "custom-select") {
+                    id = "longitude"
+                    name = "longitude"
+                }
+            }
+        }
         emptyModal(
             modalId = TASK_OUTPUT_MODAL,
             headerText = "Task Output",
@@ -80,6 +208,9 @@ class PipelineTasks(
                 "taskDataModalId" to TASK_DATA_MODAL_ID,
                 "types" to FileCollectType.values(),
                 "taskOutputId" to TASK_OUTPUT_MODAL,
+                "plottingFieldsModalId" to PLOTTING_FIELDS_MODAL,
+                "plottingFieldsTableId" to PLOTTING_FIELDS_TABLE,
+                "confirmDeletePlottingFieldsId" to CONFIRM_DELETE_PLOTTING_FIELDS,
             )
         }
         script {
@@ -92,6 +223,19 @@ class PipelineTasks(
         private const val TASK_DATA_MODAL_ID = "taskData"
         private const val TASKS_TABLE_ID = "tasksTable"
         private const val TASK_OUTPUT_MODAL = "taskOutput"
+        private const val PLOTTING_METHODS_TABLE = "plottingMethodsTable"
+        private const val PLOTTING_FIELDS_MODAL = "plottingFieldsModal"
+        private const val PLOTTING_FIELDS_TABLE = "plottingFieldsTable"
+        private const val CONFIRM_DELETE_PLOTTING_FIELDS = "confirmDeletePlottingFields"
+        private val plottingMethodButtons = listOf(
+            tableButton(
+                name = "btnEditPlottingMethods",
+                text = "Edit Plotting Methods",
+                icon = "edit",
+                event = "editPlottingMethods()",
+                title = "Edit the current plotting methods for the run",
+            )
+        )
         private val tableButtons = listOf(
             tableButton(
                 name = "btnTimeUnit",

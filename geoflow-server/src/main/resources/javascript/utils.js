@@ -266,7 +266,77 @@ function boolFormatter(value, row) {
 }
 
 function actionFormatter(value, row) {
-    return `<span style="display: inline;"><i class="fas fa-edit p-1 inTableButton" onclick="editSourceTableRow(${row.st_oid})"></i><i class="fas fa-trash p-1 inTableButton" onclick="confirmSourceTableDelete(${row.st_oid})"></i></span>`;
+    const editButton = `<i class="fas fa-edit p-1 inTableButton" onclick="editSourceTableRow(${row.st_oid})"></i>`;
+    const deleteButton = `<i class="fas fa-trash p-1 inTableButton" onclick="confirmSourceTableDelete(${row.st_oid})"></i>`;
+    const plottingButton = `<i class="fas fa-map-marker-alt p-1 inTableButton" onclick="plottingFields(${row.st_oid})"></i>`;
+    return `<span style="display: inline;">${editButton}${deleteButton}${plottingButton}</span>`;
+}
+
+var plottingFieldsStOid = null;
+
+async function plottingFields(stOid) {
+    const $modal = $(`#${plottingFieldsModalId}`);
+    const fieldsResponse = await fetch(`/data/plotting-fields/source-table/${stOid}`);
+    let payload = {};
+    if (fieldsResponse.status === 200) {
+        const json = await fieldsResponse.json();
+        payload = json.payload[0]||{};
+    }
+    const columnsResponse = await fetch(`/data/source-table-columns/${stOid}`);
+    if (columnsResponse.status !== 200) {
+        showToast('Error', `Could not find source columns for st_oid = ${stOid}`);
+        return;
+    }
+    const columnsJson = await columnsResponse.json();
+    if (typeof columnsJson.payload === "undefined") {
+        showToast('Error', `Could not find source columns for st_oid = ${stOid}`);
+        return;
+    }
+    plottingFieldsStOid = stOid;
+    populatePlottingFieldsModal($modal, columnsJson.payload);
+    $modal.find('#companyName').val(payload.name||'');
+    $modal.find('#addressLine1').val(payload.address_line1||'');
+    $modal.find('#addressLine2').val(payload.address_line2||'');
+    $modal.find('#city').val(payload.city||'');
+    $modal.find('#alternateCities').val(payload.alternate_cities||[]);
+    $modal.find('#mailCode').val(payload.mail_code||'');
+    $modal.find('#prov').val(payload.prov||'');
+    $modal.find('#latitude').val(payload.latitude||'');
+    $modal.find('#longitude').val(payload.longitude||'');
+    $modal.modal('show');
+}
+
+function populatePlottingFieldsModal($modal, columns) {
+    const options = columns.map(column => `<option value="${column.name}">${column.name}</option>`).join('');
+    $modal.find('select:not([multiple=multiple])').append(`<option value=""></option>${options}`);
+    $modal.find('select[multiple=multiple]').append(options);
+}
+
+async function submitPlottingFields($modal) {
+    const plottingFields = {
+        st_oid: plottingFieldsStOid,
+        name: $modal.find('#companyName').val(),
+        address_line1: $modal.find('#addressLine1').val(),
+        address_line2: $modal.find('#addressLine2').val(),
+        city: $modal.find('#city').val(),
+        alternate_cities: $modal.find('#alternateCities').val(),
+        mail_code: $modal.find('#mailCode').val(),
+        prov: $modal.find('#prov').val(),
+        latitude: $modal.find('#latitude').val(),
+        longitude: $modal.find('#longitude').val(),
+        clean_address: null,
+        clean_city: null,
+    }
+    const response = await fetchPOST('/data/plotting-fields', plottingFields);
+    const json = await response.json();
+    if ('errors' in json) {
+        $(`#${plottingFieldsModalId}ResponseErrorMessage`).text(formatErrors(json.errors));
+    } else {
+        $(`#${plottingFieldsTableId}`).bootstrapTable('refresh');
+        $(`#${plottingFieldsModalId}`).modal('hide');
+        showToast('Set Plotting Fields', `Set plotting fields for st_oid = ${plottingFieldsStOid}`);
+        plottingFieldsStOid = null;
+    }
 }
 
 function clickableTd(value, row, index) {
@@ -331,4 +401,20 @@ function titleCase(title) {
         'Id',
         'ID'
     );
+}
+
+function alternateCitiesFormatter(value, row) {
+    return value.join(',');
+}
+
+function resetForm($modal) {
+    $modal.find('input[type=text]').val('');
+    $modal.find('input[type=password]').val('');
+    $modal.find('select').each(() => {
+        const $el = $(this);
+        $el.val($el.find(':first-child').val());
+    });
+    $modal.find('input[type=checkbox]').prop('checked', false);
+    $modal.find('input[type=date]').val('');
+    $('p.invalidInput').text('');
 }

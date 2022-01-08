@@ -2,6 +2,7 @@ let tasksSubscriber;
 let runId = -1;
 let waitingForUpdate = false;
 let timeUnit = 'mins';
+let deletePlottingFieldsStOid = null;
 $(document).ready(() => {
     tasksSubscriber = subscriberTables[taskTableId];
     tasksSubscriber.socket.addEventListener('message', (e) => { waitingForUpdate = false; })
@@ -150,8 +151,39 @@ function changeTimeUnit() {
 }
 
 function showOutputModal(prTaskId) {
+    const $modal = $(`#${taskOutputId}`);
     const $modalBody = $(`#${taskOutputId}Body`);
-    const modalHtml = tasksSubscriber.$table.bootstrapTable('getData').filter(row => row.pipeline_run_task_id === prTaskId).modal_html;
+    const modalHtml = tasksSubscriber.$table.bootstrapTable('getData').find(row => row.pipeline_run_task_id === prTaskId).modal_html;
     $modalBody.empty();
     $modalBody.append(modalHtml);
+    $modalBody.find('table').bootstrapTable();
+    $modal.modal('show');
+}
+
+function editPlottingMethods() {
+    return '';
+}
+
+function plottingFieldsActions(value, row) {
+    const editButton = `<i class="fas fa-edit p-1 inTableButton" onClick="plottingFields(${row.st_oid})"></i>`;
+    const deleteButton = `<i class="fas fa-trash p-1 inTableButton" onClick="confirmDeletePlottingFields(${row.st_oid})"></i>`;
+    return `<span style="display: inline;">${editButton}${deleteButton}</span>`;
+}
+
+function confirmDeletePlottingFields(stOid) {
+    deletePlottingFieldsStOid = stOid;
+    $(`#${confirmDeletePlottingFieldsId}`).modal('show');
+}
+
+async function deletePlottingFields() {
+    const response = await fetchDELETE(`/data/plotting-fields/${deletePlottingFieldsStOid}`);
+    const json = await response.json();
+    if ('errors' in json) {
+        showToast('Error', formatErrors(json.errors));
+    } else {
+        $(`#${plottingFieldsTableId}`).bootstrapTable('refresh');
+        showToast('Deleted Plotting Fields', `Deleted plotting fields for st_oid = ${deletePlottingFieldsStOid}`);
+        deletePlottingFieldsStOid = null;
+    }
+    $(`#${confirmDeletePlottingFieldsId}`).modal('hide');
 }
