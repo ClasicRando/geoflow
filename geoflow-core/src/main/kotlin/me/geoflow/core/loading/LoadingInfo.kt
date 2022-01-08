@@ -17,9 +17,9 @@ data class LoadingInfo(
 ) {
     /** column names extracted from the CREATE statement. Used to set up the COPY command */
     val columns: List<String> = createStatement
-        .replace(Regex("^CREATE TABLE [A-Z0-9_]+ \\("), "")
-        .replace(Regex(" text\\("), "")
-        .replace(" text,", ",")
+        .replace(Regex("^CREATE\\s+TABLE\\s+[A-Z0-9_]+\\s+\\(", RegexOption.IGNORE_CASE), "")
+        .replace(Regex(" text\\)", RegexOption.IGNORE_CASE), "")
+        .replace(" text,", ",", ignoreCase = true)
         .split(",")
         .map { it.trim() }
 }
