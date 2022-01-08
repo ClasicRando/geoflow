@@ -26,6 +26,7 @@ data class AnalyzeResult(
                     name = columnStats.name,
                     maxLength = max(columnStats.maxLength, currentStats.maxLength),
                     minLength = Integer.min(columnStats.minLength, currentStats.minLength),
+                    type = columnStats.type,
                     index = columnStats.index,
                 )
             },
