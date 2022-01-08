@@ -244,8 +244,8 @@ object PipelineRunTasks: DbTable("pipeline_run_tasks"), ApiExposed, Triggers {
             sql = sql,
             TaskStatus.Waiting.pgObject,
             taskId,
+            modal,
             parentTaskId,
-            modal
         ) ?: throw NoRecordAffected(tableName, "Did not insert a record as a child task to id = $parentTaskId")
     }
 
