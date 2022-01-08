@@ -7,9 +7,8 @@ import io.ktor.routing.Route
 import io.ktor.util.getOrFail
 import me.geoflow.api.utils.ApiResponse
 import me.geoflow.api.utils.apiCallPostgres
-import me.geoflow.core.database.Database
 import me.geoflow.core.database.tables.PlottingMethods
-import me.geoflow.core.database.tables.records.PlottingMethod
+import me.geoflow.core.database.tables.records.PlottingMethodRequest
 
 /** Plotting methods API route */
 @Suppress("unused")
@@ -23,9 +22,7 @@ object ApiPlottingMethods : ApiPath(path = "/plotting-methods") {
     /** Returns a list of plotting method records for the given runId */
     private fun getPlottingMethods(parent: Route) {
         parent.apiCallPostgres(httpMethod = HttpMethod.Get, path = "/{runId}") { _, connection ->
-            val payload = Database.runWithConnection {
-                PlottingMethods.getRecords(connection, call.parameters.getOrFail<Long>("runId"))
-            }
+            val payload = PlottingMethods.getRecords(connection, call.parameters.getOrFail<Long>("runId"))
             ApiResponse.PlottingMethodsResponse(payload)
         }
     }
@@ -38,7 +35,7 @@ object ApiPlottingMethods : ApiPath(path = "/plotting-methods") {
      */
     private fun setPlottingMethods(parent: Route) {
         parent.apiCallPostgres(httpMethod = HttpMethod.Post, path = "/{runId}") { userOid, connection ->
-            val body = call.receive<List<PlottingMethod>>()
+            val body = call.receive<List<PlottingMethodRequest>>()
             val (delete, insert) = PlottingMethods.setRecords(
                 connection,
                 userOid,

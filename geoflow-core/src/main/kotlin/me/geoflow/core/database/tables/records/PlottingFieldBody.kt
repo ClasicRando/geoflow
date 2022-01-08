@@ -6,11 +6,12 @@ import kotlinx.serialization.Serializable
 /** API response body for [PlottingFields][me.geoflow.core.database.tables.PlottingFields] */
 @Serializable
 data class PlottingFieldBody(
-    /** ID of pipeline run that owns this record */
-    val runId: Long,
-    /** File ID for the pipeline run that owns this record */
-    @SerialName("file_id")
-    val fileId: String,
+    /** Unique ID for the source table that owns this record */
+    @SerialName("st_oid")
+    val stOid: Long,
+    /** Table name for the source table linked with [stOid] */
+    @SerialName("table_name")
+    val tableName: String,
     /** Company name source field */
     val name: String?,
     /** Address1 source field */

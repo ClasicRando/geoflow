@@ -4,6 +4,7 @@ import me.geoflow.core.database.extensions.runUpdate
 import me.geoflow.core.database.extensions.submitQuery
 import me.geoflow.core.database.functions.UserHasRun
 import me.geoflow.core.database.tables.records.PlottingMethod
+import me.geoflow.core.database.tables.records.PlottingMethodRequest
 import me.geoflow.core.utils.requireNotEmpty
 import java.sql.Connection
 
@@ -23,10 +24,10 @@ object PlottingMethods : DbTable("plotting_methods"), Triggers, ApiExposed {
             method_type integer NOT NULL REFERENCES public.plotting_method_types (method_id) MATCH SIMPLE
                 ON UPDATE CASCADE
                 ON DELETE CASCADE,
-            file_id text COLLATE pg_catalog."default" NOT NULL CHECK (check_not_blank_or_empty(file_id)),
+            st_oid bigint NOT NULL,
             CONSTRAINT plotting_methods_pkey PRIMARY KEY (run_id, plotting_order),
-            CONSTRAINT plotting_methods_st_fkey FOREIGN KEY (file_id, run_id)
-                REFERENCES public.source_tables (file_id, run_id) MATCH SIMPLE
+            CONSTRAINT plotting_methods_st_fkey FOREIGN KEY (st_oid)
+                REFERENCES public.source_tables (st_oid) MATCH SIMPLE
                 ON UPDATE CASCADE
                 ON DELETE CASCADE
         )
@@ -38,7 +39,7 @@ object PlottingMethods : DbTable("plotting_methods"), Triggers, ApiExposed {
     override val tableDisplayFields: Map<String, Map<String, String>> = mapOf(
         "order" to mapOf(),
         "method_type" to mapOf("title" to "Name", "formatter" to "methodTypeFormatter"),
-        "file_id" to mapOf("title" to "File ID"),
+        "table_name" to mapOf(),
     )
 
     override val triggers: List<Trigger> = listOf(
@@ -88,7 +89,14 @@ object PlottingMethods : DbTable("plotting_methods"), Triggers, ApiExposed {
     /** Returns a list of [PlottingMethod] records for the given [runId] */
     fun getRecords(connection: Connection, runId: Long): List<PlottingMethod> {
         return connection.submitQuery(
-            sql = "SELECT * FROM $tableName WHERE run_id = ? ORDER BY plotting_order",
+            sql = """
+                SELECT t1.run_id, t1.plotting_order, t1.method_type, t1.st_oid, t2.table_name
+                FROM   $tableName t1
+                JOIN   ${SourceTables.tableName} t2
+                ON     t1.st_oid = t2.st_oid
+                WHERE  t1.run_id = ?
+                ORDER BY plotting_order
+            """.trimIndent(),
             runId,
         )
     }
@@ -109,7 +117,7 @@ object PlottingMethods : DbTable("plotting_methods"), Triggers, ApiExposed {
         connection: Connection,
         userOid: Long,
         runId: Long,
-        methods: List<PlottingMethod>,
+        methods: List<PlottingMethodRequest>,
     ): Pair<Int, Int> {
         requireNotEmpty(methods) { "Methods provided must be a non-empty list" }
         UserHasRun.requireUserRun(connection, userOid, runId)
@@ -119,10 +127,10 @@ object PlottingMethods : DbTable("plotting_methods"), Triggers, ApiExposed {
         )
         val insertCount = connection.runUpdate(
             sql = """
-                INSERT INTO $tableName(run_id,plotting_order,method_type,file_id)
+                INSERT INTO $tableName(run_id,plotting_order,method_type,st_oid)
                 VALUES${"(?,?,?,?),".repeat(methods.size).trimEnd(',')}
             """.trimIndent(),
-            methods.flatMap { listOf(it.runId, it.order, it.methodType, it.fileId) }
+            methods.flatMap { listOf(it.runId, it.order, it.methodType, it.stOid) }
         )
         return deleteCount to insertCount
     }

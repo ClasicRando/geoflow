@@ -18,9 +18,13 @@ data class PlottingMethod(
     @SerialName("method_type")
     val methodType: Int,
     /**
-     * File ID to reference for the plotting method. Links to a fileId from the
-     * [SourceTables][me.geoflow.core.database.tables.SourceTables] table for the specified [runId]
+     * Unique ID in reference to [SourceTables][me.geoflow.core.database.tables.SourceTables] for the specified [runId]
      */
-    @SerialName("file_id")
-    val fileId: String,
+    @SerialName("st_oid")
+    val stOid: Long,
+    /**
+     * Name of table referenced in [SourceTables][me.geoflow.core.database.tables.SourceTables]
+     */
+    @SerialName("table_name")
+    val tableName: String,
 )

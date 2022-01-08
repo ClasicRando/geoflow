@@ -8,7 +8,7 @@ import io.ktor.util.getOrFail
 import me.geoflow.api.utils.ApiResponse
 import me.geoflow.api.utils.apiCallPostgres
 import me.geoflow.core.database.tables.PlottingFields
-import me.geoflow.core.database.tables.records.PlottingFieldBody
+import me.geoflow.core.database.tables.records.PlottingFieldsRequest
 
 /** Plotting fields API route */
 @Suppress("unused")
@@ -16,8 +16,7 @@ object ApiPlottingFields : ApiPath("/plotting-fields") {
 
     override fun Route.registerEndpoints() {
         getPlottingFields(this)
-        createPlottingFields(this)
-        updatePlottingFields(this)
+        setPlottingFields(this)
         deletePlottingFields(this)
     }
 
@@ -27,34 +26,29 @@ object ApiPlottingFields : ApiPath("/plotting-fields") {
             val payload = PlottingFields.getRecords(connection, call.parameters.getOrFail<Long>("runId"))
             ApiResponse.PlottingFieldsResponse(payload)
         }
-    }
-
-    /** Attempts to create a new plotting field record with the provided body */
-    private fun createPlottingFields(parent: Route) {
-        parent.apiCallPostgres(httpMethod = HttpMethod.Post) { userOid, connection ->
-            val body = call.receive<PlottingFieldBody>()
-            PlottingFields.createRecord(connection, userOid, body)
-            val payload = "Successfully created record for runId = ${body.runId} & file_id = ${body.fileId}"
-            ApiResponse.MessageResponse(payload)
+        parent.apiCallPostgres(httpMethod = HttpMethod.Get, path = "/source-table/{stOid}") { _, connection ->
+            val stOid = call.parameters.getOrFail<Long>("stOid")
+            val payload = PlottingFields.getSourceTableRecords(connection, stOid)
+            ApiResponse.PlottingFieldsResponse(payload)
         }
     }
 
-    /** Attempts to perform a full update on an existing plotting field record with the provided body */
-    private fun updatePlottingFields(parent: Route) {
-        parent.apiCallPostgres(httpMethod = HttpMethod.Put) { userOid, connection ->
-            val body = call.receive<PlottingFieldBody>()
-            val payload = PlottingFields.updateRecord(connection, userOid, body)
-            ApiResponse.PlottingFieldsSingle(payload)
+    /** Attempts to create a new plotting field record with the provided body */
+    private fun setPlottingFields(parent: Route) {
+        parent.apiCallPostgres(httpMethod = HttpMethod.Post) { userOid, connection ->
+            val body = call.receive<PlottingFieldsRequest>()
+            PlottingFields.setRecord(connection, userOid, body)
+            val payload = "Successfully set record for st_oid = ${body.stOid}"
+            ApiResponse.MessageResponse(payload)
         }
     }
 
     /** Attempts to delete an existing plotting field record with the provided runId and fileId in the path */
     private fun deletePlottingFields(parent: Route) {
-        parent.apiCallPostgres(httpMethod = HttpMethod.Delete, path = "/{runId}/{fileId}") { userOid, connection ->
-            val runId = call.parameters.getOrFail<Long>("runId")
-            val fileId = call.parameters.getOrFail("fileId")
-            PlottingFields.deleteRecord(connection, userOid, runId, fileId)
-            val payload = "Successfully deleted record for runId = $runId & file_id = $fileId"
+        parent.apiCallPostgres(httpMethod = HttpMethod.Delete, path = "/{stOid}") { userOid, connection ->
+            val stOid = call.parameters.getOrFail<Long>("stOid")
+            PlottingFields.deleteRecord(connection, userOid, stOid)
+            val payload = "Successfully deleted record for st_oid = $stOid"
             ApiResponse.MessageResponse(payload)
         }
     }
