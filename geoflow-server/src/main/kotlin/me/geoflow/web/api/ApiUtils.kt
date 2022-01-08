@@ -196,7 +196,7 @@ inline fun <reified B> Route.apiCall(
             call.application.log.info(call.request.path(), t)
             """
                 {
-                    "errors": "${t.message}"
+                    "errors": ["${t.message}"]
                 }
             """.trimIndent()
         }
