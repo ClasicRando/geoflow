@@ -8,6 +8,8 @@ import io.ktor.routing.route
 import me.geoflow.core.database.tables.records.DataSourceContact
 import me.geoflow.core.database.tables.records.DataSourceRequest
 import me.geoflow.core.database.tables.records.Pipeline
+import me.geoflow.core.database.tables.records.PlottingFieldsRequest
+import me.geoflow.core.database.tables.records.PlottingMethod
 import me.geoflow.core.database.tables.records.RequestUser
 import me.geoflow.core.database.tables.records.SourceTable
 import me.geoflow.core.mongo.MongoDb
@@ -29,6 +31,9 @@ fun Route.data() {
         dataSourceContacts()
         recordWarehouseTypes()
         pipelines()
+        plottingFields()
+        plottingMethods()
+        plottingMethodTypes()
     }
 }
 
@@ -233,6 +238,57 @@ private fun Route.sourceTableColumns() {
         apiCall<NoBody>(
             path = "/comparisons/{stOid}",
             apiEndPoint = "source-table-columns/comparisons/{stOid}",
+            httpMethod = HttpMethod.Get,
+        )
+    }
+}
+
+/** Plotting fields API route */
+private fun Route.plottingFields() {
+    route(path = "/plotting-fields") {
+        apiCall<NoBody>(
+            path = "/{runId}",
+            apiEndPoint = "plotting-fields/{runId}",
+            httpMethod = HttpMethod.Get,
+        )
+        apiCall<NoBody>(
+            path = "/source-table/{stOid}",
+            apiEndPoint = "plotting-fields/source-table/{stOid}",
+            httpMethod = HttpMethod.Get,
+        )
+        apiCall<PlottingFieldsRequest>(
+            apiEndPoint = "plotting-fields",
+            httpMethod = HttpMethod.Post,
+        )
+        apiCall<NoBody>(
+            path = "/{stOid}",
+            apiEndPoint = "plotting-fields/{stOid}",
+            httpMethod = HttpMethod.Delete,
+        )
+    }
+}
+
+/** Plotting methods API route */
+private fun Route.plottingMethods() {
+    route(path = "/plotting-methods") {
+        apiCall<NoBody>(
+            path = "/{runId}",
+            apiEndPoint = "plotting-methods/{runId}",
+            httpMethod = HttpMethod.Get,
+        )
+        apiCall<List<PlottingMethod>>(
+            path = "/{runId}",
+            apiEndPoint = "plotting-methods/{runId}",
+            httpMethod = HttpMethod.Post,
+        )
+    }
+}
+
+/** Plotting method types API route */
+private fun Route.plottingMethodTypes() {
+    route(path = "/plotting-method-types") {
+        apiCall<NoBody>(
+            apiEndPoint = "plotting-method-types",
             httpMethod = HttpMethod.Get,
         )
     }
