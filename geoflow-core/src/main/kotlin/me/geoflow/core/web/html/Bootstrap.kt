@@ -54,10 +54,12 @@ fun FlowContent.emptyModal(
 }
 
 /** Generic modal with the ability to add a custom form body */
+@Suppress("LongParameterList")
 inline fun FlowContent.formModal(
     modalId: String,
     headerText: String,
     okClickFunction: String,
+    resetFormButton: Boolean = false,
     size: String = "",
     crossinline body: FORM.() -> Unit,
 ) {
@@ -89,6 +91,13 @@ inline fun FlowContent.formModal(
                         type = ButtonType.button
                         attributes["data-dismiss"] = "modal"
                         +"Close"
+                    }
+                    if (resetFormButton) {
+                        button(classes = "btn btn-secondary") {
+                            type = ButtonType.button
+                            onClick = "resetForm($('#${modalId}'))"
+                            +"Reset"
+                        }
                     }
                     button(classes = "btn btn-secondary") {
                         type = ButtonType.button
