@@ -40,7 +40,7 @@ object Constraints {
         DECLARE
         	val text;
         BEGIN
-        	IF array_length($1, 1) = 0 THEN
+        	IF $1 = '{}' THEN
         		RETURN false;
         	END IF;
         	FOREACH val IN ARRAY $1
