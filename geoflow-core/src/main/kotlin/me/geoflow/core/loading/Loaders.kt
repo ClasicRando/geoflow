@@ -25,7 +25,7 @@ import java.time.LocalDateTime
 import java.time.LocalTime
 import java.time.ZoneOffset
 import java.time.format.DateTimeFormatter
-import java.util.*
+import java.util.Date
 
 /** postgresql column max length is 63 bytes so 60 characters should be good */
 const val MAX_COLUMN_NAME_LENGTH: Int = 60
@@ -56,7 +56,8 @@ fun getCopyCommand(
         WITH (
             FORMAT csv,
             DELIMITER '$delimiter',
-            HEADER $header
+            HEADER $header,
+            NULL ''
             ${if (qualified) ", QUOTE '\"', ESCAPE '\"'" else ""}
         )
     """.trimIndent()
@@ -79,7 +80,7 @@ fun formatObject(value: Any?): String {
         is Time -> value.toLocalTime().format(DateTimeFormatter.ISO_LOCAL_TIME)
         is Date -> value.toInstant().atOffset(ZoneOffset.UTC).format(DateTimeFormatter.ISO_DATE_TIME)
         else -> value.toString()
-    }
+    }.trim()
 }
 
 /** Converts an array of String values to a ByteArray that reflects a CSV record. Used to pipe output to COPY command */
@@ -89,7 +90,7 @@ fun recordToCsvBytes(record: Array<String>): ByteArray {
     }.toByteArray()
 }
 
-/** Transforms a source column name to a valid PostgreSQL column name */
+/** Transforms a source column name to a valid Postgresql column name */
 fun formatColumnName(name: String): String {
     return name.trim()
         .replace("#", "NUM")
