@@ -266,10 +266,22 @@ function boolFormatter(value, row) {
 }
 
 function actionFormatter(value, row) {
-    const editButton = `<i class="fas fa-edit p-1 inTableButton" onclick="editSourceTableRow(${row.st_oid})"></i>`;
-    const deleteButton = `<i class="fas fa-trash p-1 inTableButton" onclick="confirmSourceTableDelete(${row.st_oid})"></i>`;
-    const plottingButton = `<i class="fas fa-map-marker-alt p-1 inTableButton" onclick="plottingFields(${row.st_oid})"></i>`;
-    return `<span style="display: inline;">${editButton}${deleteButton}${plottingButton}</span>`;
+    const editButton = `
+        <a class="p-2" href="javascript:void(0)" onclick="editSourceTableRow(${row.st_oid})">
+            <i class="fas fa-edit" ></i>
+        </a>
+    `;
+    const deleteButton = `
+        <a class="p-2" href="javascript:void(0)" onclick="confirmSourceTableDelete(${row.st_oid})">
+            <i class="fas fa-trash"></i>
+        </a>
+    `;
+    const plottingButton = `
+        <a class="p-2" href="javascript:void(0)" onclick="plottingFields(${row.st_oid})">
+            <i class="fas fa-map-marker-alt"></i>
+        </a>
+    `;
+    return `${editButton}${deleteButton}${plottingButton}`;
 }
 
 var plottingFieldsStOid = null;

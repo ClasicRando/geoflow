@@ -65,19 +65,15 @@ function showBackModal(value) {
     $(`#${confirmBackId}`).modal('show');
 }
 
-function enterRun(value) {
-    redirect(`/tasks/${value}`);
-}
-
 function actionsFormatter(value, row) {
     const userId = row[`${code}_user`];
-    const backButton = `<i class="fas fa-redo p-1 inTableButton" onClick="showBackModal(${row.run_id})"></i>`;
+    const backButton = `<a class="p-2" href="javascript:void(0)" onClick="showBackModal(${row.run_id})"><i class="fas fa-redo"></i></a>`;
     if (userId === null) {
-        const pickupButton = `<i class="fas fa-play p-1 inTableButton" onClick="showPickupModal(${row.run_id})"></i>`;
-        return `<span style="display: inline;">${pickupButton}${backButton}</span>`;
+        const pickupButton = `<a class="p-2" href="javascript:void(0)" onClick="showPickupModal(${row.run_id})"><i class="fas fa-play"></i></a>`;
+        return `${pickupButton}${backButton}`;
     } else {
-        const forwardButton = row.operation_state === 'Active' ? `<i class="fas fa-fast-forward p-1 inTableButton" onClick="showForwardModal(${row.run_id})"></i>` : '';
-        const enterButton = `<i class="fas fa-sign-in-alt p-1 inTableButton" onClick="enterRun(${row.run_id})"></i>`;
-        return `<span style="display: inline;">${enterButton}${forwardButton}${backButton}</span>`;
+        const forwardButton = row.operation_state === 'Active' ? `<a href="javascript:void(0)" onClick="showForwardModal(${row.run_id})"><i class="fas fa-fast-forward"></i></a>` : '';
+        const enterButton = `<a class="p-2" href="/tasks/${row.run_id}"><i class="fas fa-sign-in-alt"></i></a>`;
+        return `${enterButton}${forwardButton}${backButton}`;
     }
 }

@@ -187,15 +187,15 @@ function setProvSelect($provSelect, countryCode) {
 }
 
 function dataSourceActionsFormatter(value, row) {
-    const editButton = `<i class="fas fa-edit p-1 inTableButton" onclick="editDataSource(${row.ds_id})"></i>`;
-    const addButton = `<i class="fas fa-plus p-1 inTableButton" onclick="newContact(${row.ds_id})"></i>`;
-    return `<span style="display: inline;">${editButton}${addButton}</span>`;
+    const editButton = `<a class="p-1" href="javascript:void(0)" onclick="editDataSource(${row.ds_id})"><i class="fas fa-edit"></i></a>`;
+    const addButton = `<a class="p-1" href="javascript:void(0)" onclick="newContact(${row.ds_id})"><i class="fas fa-plus"></i></a>`;
+    return `${editButton}${addButton}`;
 }
 
 function dataSourceContactActionsFormatter(value, row) {
-    const editButton = `<i class="fas fa-edit p-1 inTableButton" onclick="editContact('${JSON.stringify(row, null, null)}')"></i>`
-    const deleteButton = `<i class="fas fa-trash p-1 inTableButton" onclick="confirmDeleteContact(${row.contact_id})"></i>`;
-    return `<span style="display: inline;">${editButton}${deleteButton}</span>`;
+    const editButton = `<a class="p-1" href="javascript:void(0)" onclick="editContact('${JSON.stringify(row, null, null)}')"><i class="fas fa-edit"></i></a>`
+    const deleteButton = `<a class="p-1" href="javascript:void(0)" onclick="confirmDeleteContact(${row.contact_id})"><i class="fas fa-trash"></i></a>`;
+    return `${editButton}${deleteButton}`;
 }
 
 function newDataSource() {

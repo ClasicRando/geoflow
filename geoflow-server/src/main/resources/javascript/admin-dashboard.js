@@ -116,7 +116,7 @@ function isAdminFormatter(value, row) {
 }
 
 function editFormatter(value, row) {
-    return value ? `<span style="display: inline;"><i class="fas fa-edit p-1 inTableButton" onClick="openEditUserModal(${row.user_oid})"></i></span>` : '';
+    return value ? `<a href="javascript:void(0)" onClick="openEditUserModal(${row.user_oid})"><i class="fas fa-edit"></i></a>` : '';
 }
 
 function openNewUserModal() {

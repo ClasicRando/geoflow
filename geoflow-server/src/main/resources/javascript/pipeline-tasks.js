@@ -138,9 +138,17 @@ async function reworkTask(prTaskId) {
 
 function taskActionFormatter(value, row) {
     const prTaskId = row.pipeline_run_task_id;
-    const outputButton = row.modal_html !== null ? `<i class="fas fa-table p-1 inTableButton" onClick="showOutputModal(${prTaskId})"></i>` : '';
-    const redoButton = row.task_status === 'Complete' || row.task_status === 'Failed' ? `<i class="fas fa-redo p-1 inTableButton" onClick="reworkTask(${prTaskId})"></i>` : '';
-    return `<span style="display: inline;">${redoButton}${outputButton}</span>`;
+    const outputButton = row.modal_html === null ? '' : `
+        <a class="p-2" href="javascript:void(0)" onClick="showOutputModal(${prTaskId})">
+            <i class="fas fa-table"></i>
+        </a>
+    `;
+    const redoButton = row.task_status !== 'Complete' && row.task_status !== 'Failed' ? '' : `
+        <a class="p-2" href="javascript:void(0)" onClick="reworkTask(${prTaskId})">
+            <i class="fas fa-redo"></i>
+        </a>
+    `;
+    return `${redoButton}${outputButton}`;
 }
 
 function changeTimeUnit() {
@@ -165,9 +173,17 @@ function editPlottingMethods() {
 }
 
 function plottingFieldsActions(value, row) {
-    const editButton = `<i class="fas fa-edit p-1 inTableButton" onClick="plottingFields(${row.st_oid})"></i>`;
-    const deleteButton = `<i class="fas fa-trash p-1 inTableButton" onClick="confirmDeletePlottingFields(${row.st_oid})"></i>`;
-    return `<span style="display: inline;">${editButton}${deleteButton}</span>`;
+    const editButton = `
+        <a class="p-2" href="javascript:void(0)" onClick="plottingFields(${row.st_oid})">
+            <i class="fas fa-edit"></i>
+        </a>
+    `;
+    const deleteButton = `
+        <a class="p-2" href="javascript:void(0)" onClick="confirmDeletePlottingFields(${row.st_oid})">
+            <i class="fas fa-trash"></i>
+        </a>
+    `;
+    return `${editButton}${deleteButton}`;
 }
 
 function confirmDeletePlottingFields(stOid) {
