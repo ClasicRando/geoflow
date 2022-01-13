@@ -26,7 +26,7 @@ object ApiPipelineRunTasks : ApiPath(path = "/pipeline-run-tasks") {
     /** Publisher method using a websocket to provided updates to the user about the provided table and listenId */
     private fun getTasks(parent: Route) {
         parent.postgresPublisher(channelName = "pipelineRunTasks", listenId = "runId") { message, connection ->
-            PipelineRunTasks.getOrderedTasks(connection, message.toLong())
+            PipelineRunTasks.getOrderedTasksNew(connection, message.toLong())
         }
     }
 
