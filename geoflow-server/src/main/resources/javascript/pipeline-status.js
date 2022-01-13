@@ -3,14 +3,21 @@ let code;
 const operations = JSON.parse(operationsJson);
 
 $(document).ready(function() {
-    code = window.location.href.match(/(?<=\/)[^/]+$/g);
+    const params = new URLSearchParams(window.location.search);
+    code = params.get('code');
     const $status = $(`#${statusSelectId}`);
     for (const operation of operations.payload||[]) {
         $status.append(`<option value="${operation.href}">${operation.name}</option>`);
     }
-    $status.val(`/pipeline-status/${code}`);
-    $status.change((e) => {
-        redirect($(e.target).val())
+    $status.val(`/pipeline-status?code=${code}`);
+    $status.change((e) => { 
+        const href = $(e.target).val();
+        console.log(href);
+        const code = href.match(/(?<=\?code=).+/g)[0];
+        console.log(code);
+        $(`#${tableId}`).bootstrapTable('refreshOptions', {
+            url: `http://localhost:8080/data/pipeline-runs/${code}`,
+        });
     });
 });
 
