@@ -48,7 +48,7 @@ object GetTasksOrdered : PlPgSqlTableFunction(
     override val functionCode: String = """
         CREATE OR REPLACE FUNCTION public.get_tasks_ordered(
             p_run_id bigint,
-			workflow_operation text default null,
+            p_workflow_operation text DEFAULT NULL::text,
             OUT task_order bigint,
             OUT pr_task_id bigint,
             OUT run_id bigint,
@@ -66,15 +66,24 @@ object GetTasksOrdered : PlPgSqlTableFunction(
             OUT task_description text,
             OUT task_run_type task_run_type)
             RETURNS SETOF record 
-            LANGUAGE 'sql'
+            LANGUAGE 'plpgsql'
             COST 100
             VOLATILE PARALLEL UNSAFE
             ROWS 1000
         
         AS ${'$'}BODY${'$'}
-            with run_tasks as (
-                select pr_task_id, row_number() over () task_order
-                from   get_task_children($1,0)
+        declare
+            operation text := ${'$'}2;
+        begin
+            if operation is null then
+                select t1.workflow_operation into operation
+                from   pipeline_runs t1
+                where  t1.run_id = ${'$'}1;
+            end if;
+            
+            return query with run_tasks as (
+                select t1.pr_task_id, row_number() over () task_order
+                from   get_task_children(${'$'}1,0,operation) t1
             )
             select t1.task_order, t2.*, t3.name, t3.description, t3.task_run_type
             from   run_tasks t1
@@ -82,10 +91,9 @@ object GetTasksOrdered : PlPgSqlTableFunction(
             on     t1.pr_task_id = t2.pr_task_id
             join   tasks t3
             on     t2.task_id = t3.task_id
-			join   pipeline_runs t4
-			on     t2.run_id = t4.run_id
-			where  t2.workflow_operation = coalesce($2,t4.workflow_operation)
             order by 1;
+        
+        end;
         ${'$'}BODY${'$'};
     """.trimIndent()
 
@@ -94,6 +102,7 @@ object GetTasksOrdered : PlPgSqlTableFunction(
             CREATE OR REPLACE FUNCTION public.get_task_children(
                 p_run_id bigint,
                 p_parent_task_id bigint,
+	            operation text,
                 OUT pr_task_id bigint)
                 RETURNS SETOF bigint 
                 LANGUAGE 'plpgsql'
@@ -116,12 +125,13 @@ object GetTasksOrdered : PlPgSqlTableFunction(
                           on     t1.task_id = t3.task_id
                           where  t1.run_id = $1
                           and    t1.parent_task_id = $2
+                          and    t1.workflow_operation = $3
                           order by t1.parent_task_order)
                 loop
                     pr_task_id := r.pr_task_id;
                     return next;
                     if r.has_children then
-                        for i in (select * from get_task_children($1, r.pr_task_id))
+                        for i in (select * from get_task_children($1, r.pr_task_id, $3))
                         loop
                             pr_task_id := i.pr_task_id;
                             return next;
