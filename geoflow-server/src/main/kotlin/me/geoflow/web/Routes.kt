@@ -138,8 +138,8 @@ fun Route.index() {
  * if operation cannot complete successfully. If successful, the user if redirected to appropriate route.
  */
 fun Route.pipelineStatus() {
-    get(path = "/pipeline-status/{code}") {
-        val code = call.parameters.getOrFail("code")
+    get(path = "/pipeline-status") {
+        val code = call.request.queryParameters.getOrFail("code")
         call.respondHtml {
             pipelineStatus(code, call)
         }
