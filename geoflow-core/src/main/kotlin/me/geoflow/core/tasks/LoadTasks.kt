@@ -50,22 +50,10 @@ const val NO_COMPARISON_REQUIRED: Long = 19L
 const val MANUALLY_SET_PLOTTING_FIELDS: Long = 21L
 
 /**
- * User task notifying the user to check the modal output to verify the plotting field selections
- */
-@UserTask(taskName = "Verify Plotting Fields (INFO)")
-const val VERIFY_PLOTTING_FIELDS: Long = 22L
-
-/**
  * User task when the data source has not been loaded before so plotting methods must be set manually
  */
 @UserTask(taskName = "Manually Set Plotting Methods")
 const val MANUALLY_SET_PLOTTING_METHODS: Long = 24L
-
-/**
- * User task notifying the user to check the modal output to verify the plotting method selections
- */
-@UserTask(taskName = "Verify Plotting Methods (INFO)")
-const val VERIFY_PLOTTING_METHODS: Long = 25L
 
 /**
  * System task to analyze all the source files for a pipeline run that are marked to be analyzed.
@@ -224,14 +212,6 @@ fun setPlottingFields(connection: Connection, prTask: PipelineRunTask) {
             prTask.runId,
         )
     }
-    PipelineRunTasks.addTask(connection, prTask.pipelineRunTaskId, VERIFY_PLOTTING_FIELDS) {
-        basicTable<PlottingFields>(
-            tableId = "plottingFields",
-            dataUrl = "/plotting-fields/${prTask.runId}",
-            dataField = "payload",
-            clickableRows = false,
-        )
-    }
 }
 
 /**
@@ -266,14 +246,6 @@ fun setPlottingMethods(connection: Connection, prTask: PipelineRunTask) {
             """.trimIndent(),
             lastRun,
             prTask.runId,
-        )
-    }
-    PipelineRunTasks.addTask(connection, prTask.pipelineRunTaskId, VERIFY_PLOTTING_METHODS) {
-        basicTable<PlottingFields>(
-            tableId = "plottingMethods",
-            dataUrl = "/plotting-methods/${prTask.runId}",
-            dataField = "payload",
-            clickableRows = false,
         )
     }
 }
