@@ -95,14 +95,6 @@ abstract class BasePage : Template<HTML> {
                         .clickCell {
                             cursor: pointer;
                         }
-                        .inTableButton {
-                            display: inline;
-                            border: none;
-                            background: none;
-                        }
-                        .inTableButton:hover {
-                            border: 1px solid;
-                        }
                         .validInput {
                             border-color: #28a745;
                         }
