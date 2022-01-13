@@ -14,6 +14,7 @@ import me.geoflow.core.database.extensions.runReturningFirstOrNull
 import me.geoflow.core.database.extensions.runUpdate
 import me.geoflow.core.database.functions.UserHasRun
 import me.geoflow.core.database.errors.TaskRunningException
+import me.geoflow.core.database.extensions.submitQuery
 import me.geoflow.core.database.tables.records.NextTask
 import me.geoflow.core.database.tables.records.PipelineRunTask
 import me.geoflow.core.database.tables.records.ResponsePrTask
@@ -255,6 +256,36 @@ object PipelineRunTasks: DbTable("pipeline_run_tasks"), ApiExposed, Triggers {
      */
     fun getOrderedTasks(connection: Connection, runId: Long): List<ResponsePrTask> {
         return GetTasksOrdered.getTasks(connection, runId)
+    }
+
+    /**
+     * Returns all the tasks associated with the provided [runId], ordered by the parent child relationships and
+     * relative ordering within those relationships
+     */
+    fun getOrderedTasksNew(connection: Connection, runId: Long): List<ResponsePrTask> {
+        return connection.submitQuery(
+            sql = """
+                with t1 as (
+                    select tasks.*,
+                           sum(case
+                                when coalesce(last_parent_id,0) > parent_task_id then -1
+                                when coalesce(last_parent_id,0) = parent_task_id then 0
+                                else 1
+                               end)
+                           over (rows unbounded preceding) current_level
+                    from  (select tasks.*,
+                                  lag(parent_task_id) over () last_parent_id
+                           from   ${GetTasksOrdered.name}(?) tasks) tasks
+                )
+                select task_order, pr_task_id, run_id, task_start, task_completed, task_id, task_message, task_status,
+                       parent_task_id, parent_task_order, workflow_operation, task_stack_trace, modal_html,
+                       ltrim(repeat('--'::text,current_level::int)||'> '||task_name,'> ') task_name,
+                       task_description,
+                       task_run_type
+                from   t1;
+            """.trimIndent(),
+            runId,
+        )
     }
 
     /**
