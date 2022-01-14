@@ -8,13 +8,13 @@ import me.geoflow.core.database.errors.NoRecordFound
 import me.geoflow.core.database.enums.TaskRunType
 import me.geoflow.core.database.enums.TaskStatus
 import me.geoflow.core.database.functions.GetTasksOrdered
-import me.geoflow.core.database.procedures.DeleteRunTaskChildren
 import me.geoflow.core.database.extensions.queryFirstOrNull
 import me.geoflow.core.database.extensions.runReturningFirstOrNull
 import me.geoflow.core.database.extensions.runUpdate
 import me.geoflow.core.database.functions.UserHasRun
 import me.geoflow.core.database.errors.TaskRunningException
 import me.geoflow.core.database.extensions.submitQuery
+import me.geoflow.core.database.procedures.ResetTask
 import me.geoflow.core.database.tables.records.NextTask
 import me.geoflow.core.database.tables.records.PipelineRunTask
 import me.geoflow.core.database.tables.records.ResponsePrTask
@@ -182,30 +182,10 @@ object PipelineRunTasks: DbTable("pipeline_run_tasks"), ApiExposed, Triggers {
      */
     fun resetRecord(connection: Connection, userOid: Long, pipelineRunTaskId: Long) {
         requireTaskNotRunningId(connection, pipelineRunTaskId)
-        val sql = """
-            UPDATE $tableName
-            SET    task_status = 'Waiting'::task_status,
-                   task_completed = null,
-                   task_start = null,
-                   task_message = null,
-                   task_stack_trace = null
-            WHERE  pr_task_id = ?
-            AND    task_status != 'Waiting'::task_status
-            AND    user_has_run(?, run_id)
-        """.trimIndent()
-        val updateCount = connection.runUpdate(
-            sql = sql,
-            pipelineRunTaskId,
-            userOid,
-        )
-        if (updateCount == 1) {
-            DeleteRunTaskChildren.call(connection, pipelineRunTaskId)
-        } else {
-            throw NoRecordAffected(
-                tableName,
-                "No records were reset. Make sure the provided run_id matches the task"
-            )
-        }
+        val runId = getRecord(connection, pipelineRunTaskId)?.runId
+            ?: throw NoRecordFound(tableName, "Could not find record for pr_task_id = $pipelineRunTaskId")
+        UserHasRun.requireUserRun(connection, userOid, runId)
+        ResetTask.call(connection, pipelineRunTaskId)
     }
 
     private val emptyLambda: DIV.() -> Unit = {}
