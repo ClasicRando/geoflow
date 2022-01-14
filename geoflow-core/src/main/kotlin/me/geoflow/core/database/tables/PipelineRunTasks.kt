@@ -125,12 +125,10 @@ object PipelineRunTasks: DbTable("pipeline_run_tasks"), ApiExposed, Triggers {
                 JOIN   $tableName t2
                 ON     t1.run_id = t2.run_id
                 WHERE  t2.pr_task_id = ?
-                AND    t1.task_status in (?,?)
+                AND    t1.task_status IN ('Running'::task_status,'Scheduled'::task_status)
                 LIMIT  1
             """.trimIndent(),
             pipelineRunTaskId,
-            TaskStatus.Running.pgObject,
-            TaskStatus.Scheduled.pgObject,
         )
         if (runningId != null) {
             throw TaskRunningException(runningId)
@@ -229,7 +227,7 @@ object PipelineRunTasks: DbTable("pipeline_run_tasks"), ApiExposed, Triggers {
         val sql = """
             INSERT INTO $tableName(run_id,task_status,task_id,parent_task_id,parent_task_order,workflow_operation,
                                    modal_html) 
-            SELECT distinct t1.run_id, ?, ?, t1.pr_task_id,
+            SELECT distinct t1.run_id, 'Waiting'::task_status, ?, t1.pr_task_id,
                    COALESCE(
                       MAX(t2.parent_task_order) OVER (PARTITION BY t2.parent_task_id ) + 1,
                       1
@@ -243,7 +241,6 @@ object PipelineRunTasks: DbTable("pipeline_run_tasks"), ApiExposed, Triggers {
         """.trimIndent()
         return connection.runReturningFirstOrNull(
             sql = sql,
-            TaskStatus.Waiting.pgObject,
             taskId,
             modal,
             parentTaskId,
@@ -254,7 +251,7 @@ object PipelineRunTasks: DbTable("pipeline_run_tasks"), ApiExposed, Triggers {
      * Returns all the tasks associated with the provided [runId], ordered by the parent child relationships and
      * relative ordering within those relationships
      */
-    fun getOrderedTasks(connection: Connection, runId: Long): List<ResponsePrTask> {
+    private fun getOrderedTasks(connection: Connection, runId: Long): List<ResponsePrTask> {
         return GetTasksOrdered.getTasks(connection, runId)
     }
 
