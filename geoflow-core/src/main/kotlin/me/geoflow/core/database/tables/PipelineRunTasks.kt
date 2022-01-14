@@ -80,10 +80,11 @@ object PipelineRunTasks: DbTable("pipeline_run_tasks"), ApiExposed, Triggers {
     override val triggers: List<Trigger> = listOf(
         Trigger(
             trigger = """
-                CREATE TRIGGER record_event
-                    AFTER UPDATE OR INSERT OR DELETE
-                    ON public.pipeline_run_Tasks
-                    FOR EACH ROW
+                CREATE TRIGGER delete_event
+                    AFTER DELETE
+                    ON public.pipeline_run_tasks
+                    REFERENCING OLD TABLE AS old_table
+                    FOR EACH STATEMENT
                     EXECUTE FUNCTION public.pipeline_run_tasks_event();
             """.trimIndent(),
             triggerFunction = """
@@ -93,16 +94,112 @@ object PipelineRunTasks: DbTable("pipeline_run_tasks"), ApiExposed, Triggers {
                     COST 100
                     VOLATILE NOT LEAKPROOF
                 AS ${'$'}BODY${'$'}
+                DECLARE
+                    runId bigint;
                 BEGIN
+                    IF TG_OP = 'INSERT' THEN
+                      SELECT DISTINCT run_id
+                      INTO   runId
+                      FROM   new_table;
+                    ELSIF TG_OP = 'DELETE' THEN
+                      SELECT DISTINCT run_id
+                      INTO   runId
+                      FROM   old_table;
+                    ELSE
+                      SELECT DISTINCT run_id
+                      INTO   runId
+                      FROM   new_table;
+                    END IF;
                     PERFORM pg_notify(
                       'pipelineruntasks',
-                      NEW.run_id::TEXT
+                      runId::text
                     );
-                    RETURN NEW;
+                    RETURN NULL;
                 END;
                 ${'$'}BODY${'$'};
             """.trimIndent()
-        )
+        ),
+        Trigger(
+            trigger = """
+                CREATE TRIGGER insert_event
+                    AFTER INSERT
+                    ON public.pipeline_run_tasks
+                    REFERENCING NEW TABLE AS new_table
+                    EXECUTE FUNCTION public.pipeline_run_tasks_event();
+            """.trimIndent(),
+            triggerFunction = """
+                CREATE OR REPLACE FUNCTION public.pipeline_run_tasks_event()
+                    RETURNS trigger
+                    LANGUAGE 'plpgsql'
+                    COST 100
+                    VOLATILE NOT LEAKPROOF
+                AS ${'$'}BODY${'$'}
+                DECLARE
+                    runId bigint;
+                BEGIN
+                    IF TG_OP = 'INSERT' THEN
+                      SELECT DISTINCT run_id
+                      INTO   runId
+                      FROM   new_table;
+                    ELSIF TG_OP = 'DELETE' THEN
+                      SELECT DISTINCT run_id
+                      INTO   runId
+                      FROM   old_table;
+                    ELSE
+                      SELECT DISTINCT run_id
+                      INTO   runId
+                      FROM   new_table;
+                    END IF;
+                    PERFORM pg_notify(
+                      'pipelineruntasks',
+                      runId::text
+                    );
+                    RETURN NULL;
+                END;
+                ${'$'}BODY${'$'};
+            """.trimIndent()
+        ),
+        Trigger(
+            trigger = """
+                CREATE TRIGGER update_event
+                    AFTER UPDATE
+                    ON public.pipeline_run_tasks
+                    REFERENCING NEW TABLE AS new_table OLD TABLE AS old_table
+                    FOR EACH STATEMENT
+                    EXECUTE FUNCTION public.pipeline_run_tasks_event();
+            """.trimIndent(),
+            triggerFunction = """
+                CREATE OR REPLACE FUNCTION public.pipeline_run_tasks_event()
+                    RETURNS trigger
+                    LANGUAGE 'plpgsql'
+                    COST 100
+                    VOLATILE NOT LEAKPROOF
+                AS ${'$'}BODY${'$'}
+                DECLARE
+                    runId bigint;
+                BEGIN
+                    IF TG_OP = 'INSERT' THEN
+                      SELECT DISTINCT run_id
+                      INTO   runId
+                      FROM   new_table;
+                    ELSIF TG_OP = 'DELETE' THEN
+                      SELECT DISTINCT run_id
+                      INTO   runId
+                      FROM   old_table;
+                    ELSE
+                      SELECT DISTINCT run_id
+                      INTO   runId
+                      FROM   new_table;
+                    END IF;
+                    PERFORM pg_notify(
+                      'pipelineruntasks',
+                      runId::text
+                    );
+                    RETURN NULL;
+                END;
+                ${'$'}BODY${'$'};
+            """.trimIndent()
+        ),
     )
 
     private fun requireTaskNotRunning(connection: Connection, runId: Long) {
