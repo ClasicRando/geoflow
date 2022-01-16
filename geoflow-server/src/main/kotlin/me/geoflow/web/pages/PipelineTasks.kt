@@ -1,5 +1,6 @@
 package me.geoflow.web.pages
 
+import kotlinx.html.ButtonType
 import me.geoflow.core.database.enums.FileCollectType
 import me.geoflow.core.database.tables.PipelineRunTasks
 import me.geoflow.core.web.html.addParamsAsJsGlobalVariables
@@ -9,15 +10,20 @@ import me.geoflow.core.web.html.tabNav
 import me.geoflow.core.web.html.tableButton
 import kotlinx.html.FlowContent
 import kotlinx.html.STYLE
+import kotlinx.html.button
 import kotlinx.html.div
+import kotlinx.html.i
 import kotlinx.html.id
 import kotlinx.html.label
+import kotlinx.html.ol
+import kotlinx.html.onClick
 import kotlinx.html.script
 import kotlinx.html.select
 import kotlinx.html.unsafe
 import me.geoflow.core.database.tables.PlottingFields
 import me.geoflow.core.database.tables.PlottingMethods
 import me.geoflow.core.web.html.SubTableDetails
+import me.geoflow.core.web.html.basicModal
 import me.geoflow.core.web.html.basicTable
 import me.geoflow.core.web.html.confirmModal
 import me.geoflow.core.web.html.emptyModal
@@ -118,6 +124,16 @@ class PipelineTasks(
             okClickFunction = "submitPlottingFields($('#${PLOTTING_FIELDS_MODAL}'))",
             resetFormButton = true,
         ) {
+            div(classes = "form-group") {
+                label {
+                    htmlFor = "mergeKey"
+                    +"Merge Key"
+                }
+                select(classes = "custom-select") {
+                    id = "mergeKey"
+                    name = "mergeKey"
+                }
+            }
             div(classes = "form-group") {
                 label {
                     htmlFor = "companyName"
