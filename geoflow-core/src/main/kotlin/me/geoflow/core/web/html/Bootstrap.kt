@@ -55,6 +55,53 @@ fun FlowContent.emptyModal(
 
 /** Generic modal with the ability to add a custom form body */
 @Suppress("LongParameterList")
+inline fun FlowContent.basicModal(
+    modalId: String,
+    headerText: String,
+    okClickFunction: String,
+    size: String = "",
+    crossinline body: DIV.() -> Unit,
+) {
+    div(classes = "modal fade") {
+        id = modalId
+        attributes["data-backdrop"] = "static"
+        attributes["data-keyboard"] = "false"
+        attributes["tabindex"] = "-1"
+        attributes["aria-labelledby"] = "staticBackdropLabel"
+        attributes["aria-hidden"] = "true"
+        div(classes = "modal-dialog modal-dialog-centered modal-dialog-scrollable $size") {
+            div(classes = "modal-content") {
+                div(classes = "modal-header") {
+                    h5(classes = "modal-title") {
+                        id = "staticBackdropLabel"
+                        +headerText
+                    }
+                }
+                div(classes = "modal-body") {
+                    body()
+                }
+                div(classes = "modal-footer") {
+                    p(classes = "invalidInput") {
+                        id = "${modalId}ResponseErrorMessage"
+                    }
+                    button(classes = "btn btn-secondary") {
+                        type = ButtonType.button
+                        attributes["data-dismiss"] = "modal"
+                        +"Close"
+                    }
+                    button(classes = "btn btn-secondary") {
+                        type = ButtonType.button
+                        onClick = okClickFunction
+                        +"OK"
+                    }
+                }
+            }
+        }
+    }
+}
+
+/** Generic modal with the ability to add a custom form body */
+@Suppress("LongParameterList")
 inline fun FlowContent.formModal(
     modalId: String,
     headerText: String,
