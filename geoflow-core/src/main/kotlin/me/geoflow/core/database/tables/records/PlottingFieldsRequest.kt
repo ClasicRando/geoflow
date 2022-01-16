@@ -9,6 +9,9 @@ data class PlottingFieldsRequest(
     /** Unique ID for the source table that owns this record */
     @SerialName("st_oid")
     val stOid: Long,
+    /** Merge key source field. Used to link to other tables to merge data */
+    @SerialName("merge_key")
+    val mergeKey: String?,
     /** Company name source field */
     val name: String?,
     /** Address1 source field */

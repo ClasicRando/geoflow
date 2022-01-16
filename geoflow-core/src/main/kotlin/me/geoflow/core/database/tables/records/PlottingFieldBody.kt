@@ -12,6 +12,9 @@ data class PlottingFieldBody(
     /** Table name for the source table linked with [stOid] */
     @SerialName("table_name")
     val tableName: String,
+    /** Merge key source field. Used to link to other tables to merge data */
+    @SerialName("merge_key")
+    val mergeKey: String?,
     /** Company name source field */
     val name: String?,
     /** Address1 source field */

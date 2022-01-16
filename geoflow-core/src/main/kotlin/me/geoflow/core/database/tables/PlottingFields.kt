@@ -23,6 +23,7 @@ object PlottingFields : DbTable("plotting_fields"), ApiExposed, Triggers {
             st_oid bigint NOT NULL REFERENCES public.source_tables (st_oid) MATCH SIMPLE
                 ON UPDATE CASCADE
                 ON DELETE CASCADE,
+            merge_key text COLLATE pg_catalog."default" CHECK (check_not_blank_or_empty(merge_key)),
             name text COLLATE pg_catalog."default" CHECK (check_not_blank_or_empty(name)),
             address_line1 text COLLATE pg_catalog."default" CHECK (check_not_blank_or_empty(address_line1)),
             address_line2 text COLLATE pg_catalog."default" CHECK (check_not_blank_or_empty(address_line2)),
@@ -43,6 +44,7 @@ object PlottingFields : DbTable("plotting_fields"), ApiExposed, Triggers {
 
     override val tableDisplayFields: Map<String, Map<String, String>> = mapOf(
         "table_name" to mapOf(),
+        "merge_key" to mapOf(),
         "name" to mapOf("title" to "Company Name"),
         "address_line1" to mapOf("title" to "Address Line 1"),
         "address_line2" to mapOf("title" to "Address Line 2"),
@@ -86,7 +88,7 @@ object PlottingFields : DbTable("plotting_fields"), ApiExposed, Triggers {
                     where  t2.st_oid = new.st_oid;
                     
                     select array_agg(col_name) into col_names
-                    from  (select unnest(array[new.name, new.address_line1, new.address_line2, new.city,
+                    from  (select unnest(array[new.name, new.merge_key, new.address_line1, new.address_line2, new.city,
                                                new.mailing_code, new.prov, new.latitude, new.longitude]) col_name
                            union all
                            select unnest(new.alternate_citites)
@@ -129,8 +131,8 @@ object PlottingFields : DbTable("plotting_fields"), ApiExposed, Triggers {
     fun getRecords(connection: Connection, runId: Long): List<PlottingFieldBody> {
         return connection.submitQuery(
             sql = """
-                SELECT t1.st_oid,t2.table_name,t1.name,t1.address_line1,t1.address_line2,t1.city,t1.alternate_cities,
-                       t1.mail_code,t1.latitude,t1.longitude,t1.prov,t1.clean_address,t1.clean_city
+                SELECT t1.st_oid,t2.table_name,t1.merge_key,t1.name,t1.address_line1,t1.address_line2,t1.city,
+                       t1.alternate_cities,t1.mail_code,t1.latitude,t1.longitude,t1.prov,t1.clean_address,t1.clean_city
                 FROM   $tableName t1
                 JOIN   ${SourceTables.tableName} t2
                 ON     t1.st_oid = t2.st_oid
@@ -143,8 +145,8 @@ object PlottingFields : DbTable("plotting_fields"), ApiExposed, Triggers {
     fun getSourceTableRecords(connection: Connection, stOid: Long): List<PlottingFieldBody> {
         return connection.submitQuery(
             sql = """
-                SELECT t1.st_oid,t2.table_name,t1.name,t1.address_line1,t1.address_line2,t1.city,t1.alternate_cities,
-                       t1.mail_code,t1.latitude,t1.longitude,t1.prov,t1.clean_address,t1.clean_city
+                SELECT t1.st_oid,t2.table_name,t1.merge_key,t1.name,t1.address_line1,t1.address_line2,t1.city,
+                       t1.alternate_cities,t1.mail_code,t1.latitude,t1.longitude,t1.prov,t1.clean_address,t1.clean_city
                 FROM   $tableName t1
                 JOIN   ${SourceTables.tableName} t2
                 ON     t1.st_oid = t2.st_oid
@@ -165,10 +167,11 @@ object PlottingFields : DbTable("plotting_fields"), ApiExposed, Triggers {
         requireUserRun(connection, userOid, runId)
         connection.runReturningFirstOrNull<Long>(
             sql = """
-                INSERT INTO $tableName(st_oid,name,address_line1,address_line2,city,alternate_cities,mail_code,
-                                       latitude,longitude,prov,clean_address,clean_city)
-                VALUES(?,?,?,?,?,?,?,?,?,?,?,?)
-                ON CONFLICT (st_oid) DO UPDATE SET name = ?,
+                INSERT INTO $tableName(st_oid,merge_key,name,address_line1,address_line2,city,alternate_cities,
+                                       mail_code,latitude,longitude,prov,clean_address,clean_city)
+                VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?)
+                ON CONFLICT (st_oid) DO UPDATE SET merge_key = ?,
+                                                   name = ?,
                                                    address_line1 = ?,
                                                    address_line2 = ?,
                                                    city = ?,
@@ -182,6 +185,7 @@ object PlottingFields : DbTable("plotting_fields"), ApiExposed, Triggers {
                 RETURNING st_oid
             """.trimIndent(),
             record.stOid,
+            record.mergeKey?.takeIf { it.isNotBlank() },
             record.name?.takeIf { it.isNotBlank() },
             record.addressLine1?.takeIf { it.isNotBlank() },
             record.addressLine2?.takeIf { it.isNotBlank() },
@@ -193,6 +197,7 @@ object PlottingFields : DbTable("plotting_fields"), ApiExposed, Triggers {
             record.prov?.takeIf { it.isNotBlank() },
             record.cleanCity?.takeIf { it.isNotBlank() },
             record.cleanCity?.takeIf { it.isNotBlank() },
+            record.mergeKey?.takeIf { it.isNotBlank() },
             record.name?.takeIf { it.isNotBlank() },
             record.addressLine1?.takeIf { it.isNotBlank() },
             record.addressLine2?.takeIf { it.isNotBlank() },
