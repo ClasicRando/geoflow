@@ -38,7 +38,7 @@ object PlottingMethods : DbTable("plotting_methods"), Triggers, ApiExposed {
 
     override val tableDisplayFields: Map<String, Map<String, String>> = mapOf(
         "order" to mapOf(),
-        "method_type" to mapOf("title" to "Name", "formatter" to "methodTypeFormatter"),
+        "method_name" to mapOf(),
         "table_name" to mapOf(),
     )
 
@@ -90,10 +90,12 @@ object PlottingMethods : DbTable("plotting_methods"), Triggers, ApiExposed {
     fun getRecords(connection: Connection, runId: Long): List<PlottingMethod> {
         return connection.submitQuery(
             sql = """
-                SELECT t1.run_id, t1.plotting_order, t1.method_type, t1.st_oid, t2.table_name
+                SELECT t1.run_id, t1.plotting_order, t1.method_type, t3.name, t1.st_oid, t2.table_name
                 FROM   $tableName t1
                 JOIN   ${SourceTables.tableName} t2
                 ON     t1.st_oid = t2.st_oid
+                JOIN   ${PlottingMethodTypes.tableName} t3
+                ON     t1.method_type = t3.method_id
                 WHERE  t1.run_id = ?
                 ORDER BY plotting_order
             """.trimIndent(),

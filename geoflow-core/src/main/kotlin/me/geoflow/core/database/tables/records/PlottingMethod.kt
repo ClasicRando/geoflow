@@ -17,6 +17,9 @@ data class PlottingMethod(
      */
     @SerialName("method_type")
     val methodType: Int,
+    /** Plotting method name from [PlottingMethodTypes][me.geoflow.core.database.tables.PlottingMethodTypes] table */
+    @SerialName("method_name")
+    val methodName: String,
     /**
      * Unique ID in reference to [SourceTables][me.geoflow.core.database.tables.SourceTables] for the specified [runId]
      */
