@@ -12,9 +12,7 @@ $(document).ready(function() {
     $status.val(`/pipeline-status?code=${code}`);
     $status.change((e) => { 
         const href = $(e.target).val();
-        console.log(href);
         const code = href.match(/(?<=\?code=).+/g)[0];
-        console.log(code);
         $(`#${tableId}`).bootstrapTable('refreshOptions', {
             url: `http://localhost:8080/data/pipeline-runs/${code}`,
         });

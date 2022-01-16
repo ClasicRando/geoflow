@@ -168,7 +168,110 @@ function showOutputModal(prTaskId) {
     $modal.modal('show');
 }
 
-function editPlottingMethods() {
+let methodTypeOptions = null;
+let tableNameOptions = null;
+let $list = null;
+let methodsCount = 0;
+async function editPlottingMethods() {
+    const response = await fetchGET(`/data/plotting-methods/${runId}`);
+    if (!response.success) {
+        showToast('Error', response.response);
+        return;
+    }
+    const plottingMethodTypesResponse = await fetchGET('/data/plotting-method-types');
+    if (!plottingMethodTypesResponse.success) {
+        showToast('Error', plottingMethodTypesResponse.response);
+        return;
+    }
+    methodTypeOptions = plottingMethodTypesResponse.response.payload.map(method => `<option value="${method.method_id}">${method.name}</option>`).join('');
+    const sourceTablesResponse = await fetchGET(`/data/source-tables/${runId}`);
+    if (!sourceTablesResponse.success) {
+        showToast('Error', sourceTablesResponse.response);
+        return;
+    }
+    tableNameOptions = sourceTablesResponse.response.payload.map(sourceTable => `<option value="${sourceTable.st_oid}">${sourceTable.table_name}</option>`).join('');
+    const $modal = $(`#${plottingMethodsModalId}`);
+    $list = $modal.find('ol');
+    $list.empty();
+    methodsCount = response.response.payload.length;
+    const options = (new Array(methodsCount)).fill(undefined).map((_, i) => `<option value="${i + 1}">${i + 1}</option>`).join('');
+    for(const [i, method] of response.response.payload.entries()) {
+        const index = i + 1;
+        $list.append(`
+            <li id="${index}" class="list-group-item">
+                <div class="row">
+                    <div class="col-2">
+                        <label for="order${index}">Order</label>
+                        <select id="order${index}" name="order" class="custom-select">
+                            ${options}
+                        </select>
+                    </div>
+                    <div class="col">
+                        <label for="sourceTable${index}">Source Table</label>
+                        <select id="sourceTable${index}" name="sourceTable" class="custom-select">
+                            ${tableNameOptions}
+                        </select>
+                    </div>
+                    <div class="col">
+                        <label for="method${index}">Method</label>
+                        <select id="method${index}" name="method" class="custom-select">
+                            ${methodTypeOptions}
+                        </select>
+                    </div>
+                </div>
+            </li>
+        `);
+        $(`#sourceTable${index}`).val(method.st_oid);
+        $(`#method${index}`).val(method.method_type);
+        $(`#order${index}`).val(method.order);
+    }
+    $modal.modal('show');
+}
+
+function addPlottingMethod() {
+    const lastIndex = $list.find('li').length + 1;
+    $list.append(`
+        <li id="${lastIndex}" class="list-group-item">
+            <div class="row">
+                <div class="col-2">
+                    <label for="order${lastIndex}">Order</label>
+                    <select id="order${lastIndex}" name="order" class="custom-select">
+                    </select>
+                </div>
+                <div class="col">
+                    <label for="sourceTable${lastIndex}">Source Table</label>
+                    <select id="sourceTable${lastIndex}" name="sourceTable" class="custom-select">
+                        ${tableNameOptions}
+                    </select>
+                </div>
+                <div class="col">
+                    <label for="method${lastIndex}">Method</label>
+                    <select id="method${lastIndex}" name="method" class="custom-select">
+                        ${methodTypeOptions}
+                    </select>
+                </div>
+            </div>
+        </li>
+    `);
+    setOrderNumberOptions();
+}
+
+function setOrderNumberOptions() {
+    let options = '';
+    const optionCount = $list.find('li').length;
+    $list.find('select[name=order]').each((_, el) => {
+        const $select = $(el);
+        if (optionCount !== $select.find('option').length) {
+            const value = $select.val();
+            if (options === '') {
+                options = (new Array(optionCount)).fill(undefined).map((_, i) => `<option value="${i + 1}">${i + 1}</option>`).join('');
+            }
+            $select.empty().append(options).val(value);
+        }
+    });
+}
+
+async function setPlottingFields($modal) {
     return '';
 }
 

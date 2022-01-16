@@ -99,6 +99,31 @@ function redirect(route) {
     window.location.assign(route);
 }
 
+async function fetchGET(url) {
+    const response = await fetch(url);
+    if (response.status !== 200) {
+        return {
+            success: false,
+            status: response.status,
+            response: response.statusText,
+        };
+    }
+    try {
+        const json = await response.json();
+        return {
+            success: true,
+            status: response.status,
+            response: json,
+        }
+    } catch {
+        return {
+            success: false,
+            status: response.status,
+            response: await response.text(),
+        };
+    }
+}
+
 function fetchJSON(method, url, data) {
     const options = {
         method: method,
@@ -306,6 +331,7 @@ async function plottingFields(stOid) {
     }
     plottingFieldsStOid = stOid;
     populatePlottingFieldsModal($modal, columnsJson.payload);
+    $modal.find('#mergeKey').val(payload.merge_key||'');
     $modal.find('#companyName').val(payload.name||'');
     $modal.find('#addressLine1').val(payload.address_line1||'');
     $modal.find('#addressLine2').val(payload.address_line2||'');
@@ -327,6 +353,7 @@ function populatePlottingFieldsModal($modal, columns) {
 async function submitPlottingFields($modal) {
     const plottingFields = {
         st_oid: plottingFieldsStOid,
+        merge_key: $modal.find('#mergeKey').val(),
         name: $modal.find('#companyName').val(),
         address_line1: $modal.find('#addressLine1').val(),
         address_line2: $modal.find('#addressLine2').val(),
