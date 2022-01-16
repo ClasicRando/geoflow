@@ -94,6 +94,22 @@ class PipelineTasks(
                     tableButtons = plottingMethodButtons,
                     clickableRows = false,
                 )
+                basicModal(
+                    modalId = PLOTTING_METHODS_MODAL,
+                    headerText = "Plotting Methods",
+                    okClickFunction = "setPlottingFields($('#${PLOTTING_METHODS_MODAL}'))",
+                    size = "modal-xl",
+                ) {
+                    button(classes = "btn btn-secondary") {
+                        type = ButtonType.button
+                        onClick = "addPlottingMethod()"
+                        +"Add Method"
+                        i(classes = "fas fa-plus p-1")
+                    }
+                    ol(classes = "list-group") {
+
+                    }
+                }
             }
         )
         formModal(
@@ -211,6 +227,7 @@ class PipelineTasks(
                 "plottingFieldsModalId" to PLOTTING_FIELDS_MODAL,
                 "plottingFieldsTableId" to PLOTTING_FIELDS_TABLE,
                 "confirmDeletePlottingFieldsId" to CONFIRM_DELETE_PLOTTING_FIELDS,
+                "plottingMethodsModalId" to PLOTTING_METHODS_MODAL,
             )
         }
         script {
@@ -224,6 +241,7 @@ class PipelineTasks(
         private const val TASKS_TABLE_ID = "tasksTable"
         private const val TASK_OUTPUT_MODAL = "taskOutput"
         private const val PLOTTING_METHODS_TABLE = "plottingMethodsTable"
+        private const val PLOTTING_METHODS_MODAL = "plottingMethodsModal"
         private const val PLOTTING_FIELDS_MODAL = "plottingFieldsModal"
         private const val PLOTTING_FIELDS_TABLE = "plottingFieldsTable"
         private const val CONFIRM_DELETE_PLOTTING_FIELDS = "confirmDeletePlottingFields"
