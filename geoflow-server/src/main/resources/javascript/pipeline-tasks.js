@@ -173,23 +173,23 @@ let tableNameOptions = null;
 let $list = null;
 let methodsCount = 0;
 async function editPlottingMethods() {
-    const response = await fetchGET(`/data/plotting-methods/${runId}`);
+    const response = await fetchApiGET(`/plotting-methods/${runId}`);
     if (!response.success) {
         showToast('Error', response.response);
         return;
     }
-    const plottingMethodTypesResponse = await fetchGET('/data/plotting-method-types');
+    const plottingMethodTypesResponse = await fetchApiGET('/plotting-method-types');
     if (!plottingMethodTypesResponse.success) {
-        showToast('Error', plottingMethodTypesResponse.response);
+        showToast('Error', plottingMethodTypesResponse.errors);
         return;
     }
-    methodTypeOptions = plottingMethodTypesResponse.response.payload.map(method => `<option value="${method.method_id}">${method.name}</option>`).join('');
-    const sourceTablesResponse = await fetchGET(`/data/source-tables/${runId}`);
+    methodTypeOptions = plottingMethodTypesResponse.payload.map(method => `<option value="${method.method_id}">${method.name}</option>`).join('');
+    const sourceTablesResponse = await fetchApiGET(`/source-tables/${runId}`);
     if (!sourceTablesResponse.success) {
-        showToast('Error', sourceTablesResponse.response);
+        showToast('Error', sourceTablesResponse.errors);
         return;
     }
-    tableNameOptions = sourceTablesResponse.response.payload.map(sourceTable => `<option value="${sourceTable.st_oid}">${sourceTable.table_name}</option>`).join('');
+    tableNameOptions = sourceTablesResponse.payload.map(sourceTable => `<option value="${sourceTable.st_oid}">${sourceTable.table_name}</option>`).join('');
     const $modal = $(`#${plottingMethodsModalId}`);
     $list = $modal.find('ol');
     $list.empty();

@@ -99,27 +99,36 @@ function redirect(route) {
     window.location.assign(route);
 }
 
-async function fetchGET(url) {
-    const response = await fetch(url);
+async function fetchApiGET(url) {
+    const response = await fetch(url.startsWith('/data') ? url : `/data/${url.trimStart('/')}`);
     if (response.status !== 200) {
         return {
             success: false,
             status: response.status,
-            response: response.statusText,
+            payload: null,
+            object: null,
+            errorCode: response.status,
+            errors: [{error: response.statusText}],
         };
     }
     try {
         const json = await response.json();
         return {
-            success: true,
+            success: 'payload' in json,
             status: response.status,
-            response: json,
+            payload: json.payload||null,
+            object: json.object||null,
+            errorCode: json.code||null,
+            errors: json.errors||null,
         }
     } catch {
         return {
             success: false,
             status: response.status,
-            response: await response.text(),
+            payload: null,
+            object: null,
+            errorCode: response.status,
+            errors: [{error: await response.text()}],
         };
     }
 }
