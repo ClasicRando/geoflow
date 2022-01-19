@@ -89,6 +89,9 @@ abstract class BasePage : Template<HTML> {
             script {
                 src = "/assets/utils.js"
             }
+            script {
+                src = "/assets/form-validator.js"
+            }
             style {
                 unsafe {
                     raw("""
