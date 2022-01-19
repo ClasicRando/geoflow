@@ -81,9 +81,9 @@ const warehouseTypes = JSON.parse(warehouseTypesJson).payload||[];
 const pipelines = JSON.parse(pipelinesJson).payload||[];
 
 $(document).ready(async () => {
-    const $assingedUserSelect = $('select[name=assignedUser]');
+    const $assignedUserSelect = $('select[name=assignedUser]');
     for (const user of collectionUsers) {
-        $assingedUserSelect.append(`<option value="${user.user_id}">${user.name}</option>`)
+        $assignedUserSelect.append(`<option value="${user.user_id}">${user.name}</option>`)
     }
     const $selectCountries = $('select[name=country]');
     for (const country of countries) {

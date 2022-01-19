@@ -13,7 +13,7 @@ $(document).ready(() => {
         } else {
             const isActive = await tasksSubscriber.attemptRestart();
             if (isActive) {
-                showToast('Reconnected', 'Connected to subsriber!');
+                showToast('Reconnected', 'Connected to subscriber!');
             } else {
                 showToast('Error', 'Attempted restart of subscriber failed');
             }
