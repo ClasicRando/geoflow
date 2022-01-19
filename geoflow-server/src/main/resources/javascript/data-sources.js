@@ -324,7 +324,7 @@ async function deleteContact() {
         $(`#${dataSourceTableId}`).bootstrapTable('refresh');
         showToast('Updated Contact', json.payload);
     } else {
-        showToast('Error Updating Contact', formatErrors(json.errors));
+        showToast('Error Updating Contact', json.errors);
     }
     $(`#${confirmDeleteContactId}`).modal('hide');
 }

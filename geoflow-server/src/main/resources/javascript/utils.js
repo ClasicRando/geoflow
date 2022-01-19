@@ -191,7 +191,7 @@ async function commitSourceTableChanges(method) {
             response = await fetchDELETE(`/data/source-tables/${sourceTableRecord.st_oid}`);
             json = await response.json();
             if ('errors' in json) {
-                showToast('Error Deleting Source Table', formatErrors(json.errors));
+                showToast('Error Deleting Source Table', json.errors);
             } else {
                 showToast('Deleted Source Table', json.payload);
             }
@@ -412,6 +412,7 @@ function addValidFeedback($control, message) {
 function showToast(title, message) {
     const container = document.getElementById('toasts');
     const toastDiv = document.createElement('div');
+    const toastBody = Array.isArray(message) ? formatErrors(message) : message;
     toastDiv.innerHTML = `
     <div class="toast hide" role="alert" data-delay="10000" aria-live="assertive" aria-atomic="true">
         <div class="toast-header">
@@ -423,7 +424,7 @@ function showToast(title, message) {
             </button>
         </div>
         <div class="toast-body">
-            ${message}
+            ${toastBody}
         </div>
     </div>
     `;

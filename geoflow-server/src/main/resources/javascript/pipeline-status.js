@@ -27,7 +27,7 @@ async function pickup() {
         $(`#${tableId}`).bootstrapTable('refresh');
         showToast('Run Picked Up', json.payload);
     } else {
-        showToast('Error During Pickup', formatErrors(json.errors));
+        showToast('Error During Pickup', json.errors);
     }
 }
 
@@ -39,7 +39,7 @@ async function forward() {
         $(`#${tableId}`).bootstrapTable('refresh');
         showToast('Run Moved Forward', json.payload);
     } else {
-        showToast('Error During Move Forward', formatErrors(json.errors));
+        showToast('Error During Move Forward', json.errors);
     }
 }
 
@@ -51,7 +51,7 @@ async function back() {
         $(`#${tableId}`).bootstrapTable('refresh');
         showToast('Run Moved Back', json.payload);
     } else {
-        showToast('Error During Move Back', formatErrors(json.errors));
+        showToast('Error During Move Back', json.errors);
     }
 }
 

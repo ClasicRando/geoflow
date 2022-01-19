@@ -45,7 +45,7 @@ async function clickRunTask() {
     const response = await fetchPOST(`/data/pipeline-run-tasks/run-next/${runId}`);
     const json = await response.json();
     if ('errors' in json) {
-        showToast('Error', formatErrors(json.errors));
+        showToast('Error', json.errors);
         waitingForUpdate = false;
     } else {
         showToast('Next Task Scheduled', `Successfully scheduled ${json.payload.pipeline_run_task_id} to run`);
@@ -77,7 +77,7 @@ async function clickRunAllTasks() {
     const response = await fetchPOST(`/data/pipeline-run-tasks/run-all/${runId}`);
     const json = await response.json();
     if ('errors' in json) {
-        showToast('Error', formatErrors(json.errors));
+        showToast('Error', json.errors);
         waitingForUpdate = false;
     } else {
         showToast('Run All Scheduled', `Successfully scheduled to run all tasks`);
@@ -129,7 +129,7 @@ async function reworkTask(prTaskId) {
     const response = await fetchPOST(`/data/pipeline-run-tasks/reset-task/${prTaskId}`);
     const json = await response.json();
     if ('errors' in json) {
-        showToast('Error', formatErrors(json.errors));
+        showToast('Error', json.errors);
         waitingForUpdate = false;
     } else {
         showToast('Task Reworked', `Successfully reworked ${prTaskId}`);
@@ -298,7 +298,7 @@ async function deletePlottingFields() {
     const response = await fetchDELETE(`/data/plotting-fields/${deletePlottingFieldsStOid}`);
     const json = await response.json();
     if ('errors' in json) {
-        showToast('Error', formatErrors(json.errors));
+        showToast('Error', json.errors);
     } else {
         $(`#${plottingFieldsTableId}`).bootstrapTable('refresh');
         showToast('Deleted Plotting Fields', `Deleted plotting fields for st_oid = ${deletePlottingFieldsStOid}`);
