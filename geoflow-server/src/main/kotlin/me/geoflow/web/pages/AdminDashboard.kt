@@ -22,11 +22,7 @@ import me.geoflow.core.web.html.basicTable
 object AdminDashboard : BasePage() {
 
     private const val USER_TABLE_ID = "users"
-    private const val USER_CREATE_MODAL = "userCreate"
     private const val USER_EDIT_MODAL = "userEdit"
-    private const val IS_ADMIN = "isAdmin"
-    private const val ROLES_SELECT = "roles"
-    private const val CREATE_USER_FORM_ID = "createUserForm"
     private const val EDIT_USER_FORM_ID = "editUserForm"
 
     private val tableButtons = listOf(
@@ -34,7 +30,7 @@ object AdminDashboard : BasePage() {
             name = "btnCreate",
             text = "Create New User",
             icon = "fa-plus",
-            event = "openNewUserModal()",
+            event = "openUserEditModal()",
             title = "Create new user for the application in a modal window",
         ),
     )
@@ -52,11 +48,11 @@ object AdminDashboard : BasePage() {
                     clickableRows = false,
                 )
                 formModal(
-                    modalId = USER_CREATE_MODAL,
+                    modalId = USER_EDIT_MODAL,
                     headerText = "Create User",
-                    okClickFunction = "createUser()",
+                    okClickFunction = "submitEditUser(document.querySelector('#${EDIT_USER_FORM_ID}'))",
                 ) {
-                    id = CREATE_USER_FORM_ID
+                    id = EDIT_USER_FORM_ID
                     action = ""
                     div(classes = "form-group") {
                         label {
@@ -70,23 +66,23 @@ object AdminDashboard : BasePage() {
                     }
                     div(classes = "form-group") {
                         label {
-                            htmlFor = ROLES_SELECT
+                            htmlFor = "roles"
                             +"Roles"
                         }
                         select(classes = "custom-select required") {
-                            id = ROLES_SELECT
-                            name = ROLES_SELECT
+                            id = "roles"
+                            name = "roles"
                             multiple = true
                         }
                     }
                     div(classes = "form-group") {
                         checkBoxInput {
-                            id = IS_ADMIN
-                            name = IS_ADMIN
+                            id = "isAdmin"
+                            name = "isAdmin"
                             checked = false
                         }
                         label {
-                            htmlFor = IS_ADMIN
+                            htmlFor = "isAdmin"
                             +"Is Admin?"
                         }
                     }
@@ -121,55 +117,6 @@ object AdminDashboard : BasePage() {
                         }
                     }
                 }
-                formModal(
-                    modalId = USER_EDIT_MODAL,
-                    headerText = "Edit User",
-                    okClickFunction = "editUser()",
-                ) {
-                    id = EDIT_USER_FORM_ID
-                    action = ""
-                    div(classes = "form-group") {
-                        label {
-                            htmlFor = "fullName"
-                            +"Full Name"
-                        }
-                        textInput(classes = "form-control") {
-                            id = "fullName"
-                            name = "fullName"
-                        }
-                    }
-                    div(classes = "form-group") {
-                        label {
-                            htmlFor = ROLES_SELECT
-                            +"Roles"
-                        }
-                        select(classes = "custom-select required") {
-                            id = ROLES_SELECT
-                            name = ROLES_SELECT
-                            multiple = true
-                        }
-                    }
-                    div(classes = "form-group") {
-                        checkBoxInput {
-                            id = IS_ADMIN
-                            name = IS_ADMIN
-                        }
-                        label {
-                            htmlFor = IS_ADMIN
-                            +"Is Admin?"
-                        }
-                    }
-                    div(classes = "form-group") {
-                        label {
-                            htmlFor = "username"
-                            +"Username"
-                        }
-                        textInput(classes = "form-control") {
-                            id = "username"
-                            name = "username"
-                        }
-                    }
-                }
             }
         }
     }
@@ -178,8 +125,6 @@ object AdminDashboard : BasePage() {
         script {
             addParamsAsJsGlobalVariables(
                 "userTable" to USER_TABLE_ID,
-                "userCreateModal" to USER_CREATE_MODAL,
-                "userCreateForm" to CREATE_USER_FORM_ID,
                 "userEditModal" to USER_EDIT_MODAL,
                 "userEditForm" to EDIT_USER_FORM_ID,
             )
