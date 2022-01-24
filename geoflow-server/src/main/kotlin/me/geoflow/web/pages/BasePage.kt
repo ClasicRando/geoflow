@@ -83,9 +83,6 @@ abstract class BasePage : Template<HTML> {
                 attributes["data-auto-replace-svg"] = "nest"
             }
             script {
-                src = "https://cdn.jsdelivr.net/npm/lodash@4.17.21/lodash.min.js"
-            }
-            script {
                 src = "https://cdn.jsdelivr.net/npm/jquery/dist/jquery.min.js"
             }
             script {
@@ -95,7 +92,7 @@ abstract class BasePage : Template<HTML> {
                 src = "/assets/utils.js"
             }
             script {
-                src = "/assets/form-validator.js"
+                src = "/assets/form-handler.js"
             }
             style {
                 unsafe {
