@@ -1,5 +1,6 @@
 package me.geoflow.core.web.html
 
+import kotlinx.html.DIV
 import kotlinx.html.FlowContent
 import kotlinx.html.SCRIPT
 import kotlinx.html.TABLE
@@ -131,6 +132,19 @@ fun SCRIPT.addTableButtons(tableId: String, tableButtons: List<String>) {
     }
 }
 
+/** Registers a javascript callback function to add the number of ending columns that should be frozen */
+fun DIV.addEndColumnFreeze(tableId: String, freezeCount: Int) {
+    script {
+        unsafe {
+            raw("""
+                document.addEventListener('DOMContentLoaded', () => {
+                    ${'$'}('#$tableId').bootstrapTable('refreshOptions', {fixedRightNumber: $freezeCount});
+                });
+            """.trimIndent())
+        }
+    }
+}
+
 /** */
 val emptyToolbar: UL.() -> Unit = {}
 
@@ -152,6 +166,8 @@ inline fun <reified T: ApiExposed> FlowContent.basicTable(
     clickableRows: Boolean = true,
     subscriber: String = "",
     subTableDetails: SubTableDetails? = null,
+    freezeColumnsStart: Int? = null,
+    freezeColumnsEnd: Int? = null,
     noinline toolbar: UL.() -> Unit = emptyToolbar,
 ) {
     if (toolbar !== emptyToolbar) {
@@ -181,8 +197,9 @@ inline fun <reified T: ApiExposed> FlowContent.basicTable(
                 attributes["data-sub"] = "true"
                 attributes["data-sub-url"] = subscriber
             }
-            if (subTableDetails != null) {
-                applySubTabDetails(subTableDetails)
+            freezeColumnsStart?.let {
+                attributes["data-fixed-columns"] = "true"
+                attributes["data-fixed-number"] = it.toString()
             }
             attributes["data-classes"] = "table table-bordered${if (clickableRows) " table-hover" else ""}"
             attributes["data-thead-classes"] = "thead-dark"
@@ -202,6 +219,7 @@ inline fun <reified T: ApiExposed> FlowContent.basicTable(
                 }
             }
         }
+        freezeColumnsEnd?.let { addEndColumnFreeze(tableId, it) }
     }
 }
 
