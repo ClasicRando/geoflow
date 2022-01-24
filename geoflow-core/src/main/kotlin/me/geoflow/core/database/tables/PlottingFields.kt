@@ -79,6 +79,7 @@ object PlottingFields : DbTable("plotting_fields"), ApiExposed, Triggers {
                 declare
                     source_table_cols text[];
                     col_names text[];
+                    bad_fields text;
                     duplicates boolean;
                 begin
                     select array_agg(t1.name) into source_table_cols
