@@ -1,70 +1,19 @@
-const createContactValidationRules = {
-    email: {
-        email: true,
-    },
+const sourceValidatorOptions = {
+    'code': ValidatorTypes.notEmpty,
+    'radius': [
+        ValidatorTypes.notEmpty,
+        ValidatorTypes.number,
+    ],
+    'reportType': ValidatorTypes.notEmpty,
+    'fileLocation': ValidatorTypes.notEmpty,
+    'description': ValidatorTypes.notEmpty,
 };
-const createContactValidationMessages = {
-    email: {
-        email: 'Email field must be a valid email address if not empty'
-    },
-};
-let createContactValidator = null;
+const sourceFormHandler = new FormHandler(sourceForm, sourceValidatorOptions);
 
-const editContactValidationRules = {
-    email: {
-        email: true,
-    },
+const contactValidatorOptions = {
+    'email': ValidatorTypes.email,
 };
-const editContactValidationMessages = {
-    email: {
-        email: 'Email field must be a valid email address if not empty'
-    },
-};
-let editContactValidator = null;
-
-const createSourceValidationRules = {
-    editCode: 'required',
-    editRadius: {
-        required: true,
-        number: true,
-    },
-    editReportType: 'required',
-    editFileLocation: 'required',
-    editDescription: 'required',
-};
-const createSourceValidationMessages = {
-    editCode: 'Source code cannot be empty',
-    editRadius: {
-        required: 'Radius value cannot be empty',
-        number: 'Radius value has be a number',
-    },
-    editReportType: 'Report type cannot be empty',
-    editFileLocation: 'File location cannot be empty',
-    editDescription: 'Description cannot be empty',
-};
-let createSourceValidator = null;
-
-const editSourceValidationRules = {
-    editCode: 'required',
-    editRadius: {
-        required: true,
-        number: true,
-    },
-    editReportType: 'required',
-    editFileLocation: 'required',
-    editDescription: 'required',
-};
-const editSourceValidationMessages = {
-    editCode: 'Source code cannot be empty',
-    editRadius: {
-        required: 'Radius value cannot be empty',
-        number: 'Radius value has be a number',
-    },
-    editReportType: 'Report type cannot be empty',
-    editFileLocation: 'File location cannot be empty',
-    editDescription: 'Description cannot be empty',
-};
-let editSourceValidator = null;
+const contactFormHandler = new FormHandler(contactForm, contactValidatorOptions);
 
 let requestDsId = null;
 let requestContactId = null;
@@ -79,241 +28,152 @@ const countries = Array.from(new Set(provs.map(prov => prov.country_code))).map(
 const collectionUsers = JSON.parse(collectionUsersJson).payload||[];
 const warehouseTypes = JSON.parse(warehouseTypesJson).payload||[];
 const pipelines = JSON.parse(pipelinesJson).payload||[];
+const selectPipelines = {
+    'collection': document.querySelector('select[name=collectionPipeline]'),
+    'load': document.querySelector('select[name=loadPipeline]'),
+    'check': document.querySelector('select[name=checkPipeline]'),
+    'qa': document.querySelector('select[name=qaPipeline]'),
+};
 
-$(document).ready(async () => {
-    const $assignedUserSelect = $('select[name=assignedUser]');
-    for (const user of collectionUsers) {
-        $assignedUserSelect.append(`<option value="${user.user_id}">${user.name}</option>`)
-    }
-    const $selectCountries = $('select[name=country]');
-    for (const country of countries) {
-        $selectCountries.append(`<option value="${country.code}">${country.name}</option>`);
-    }
-    setProvSelect($selectCountries.parents('form').find('select[name=prov]'), $selectCountries.val());
-    const $selectWarehouseTypes = $('select[name=warehouseType]');
-    for (const type of warehouseTypes) {
-        $selectWarehouseTypes.append(`<option value="${type.id}">${type.name}</option>`);
-    }
-    const $selectCollectionPipelines = $('select[name=collectionPipeline]');
-    const $selectLoadPipelines = $('select[name=loadPipeline]');
-    const $selectCheckPipelines = $('select[name=checkPipeline]');
-    const $selectQaPipelines = $('select[name=qaPipeline]');
+document.addEventListener('DOMContentLoaded', async () => {
+    addOptions('select[name=assignedUser]', collectionUsers, 'user_id', 'name');
+    const selectCountry = document.querySelector('select[name=country]');
+    addOptions(selectCountry, countries, 'code', 'name');
+    setProvSelect(selectCountry.value);
+    selectCountry.addEventListener('change', (e) => setProvSelect(e.target.value));
+    addOptions('select[name=warehouseType]', warehouseTypes, 'id', 'name');
     for (const pipeline of pipelines) {
         const isDefault = pipeline.name.includes('Default');
-        switch (pipeline.workflow_operation) {
-            case 'collection':
-                $selectCollectionPipelines.append(`<option value="${pipeline.pipeline_id}">${pipeline.name}</option>`);
-                if (isDefault) {
-                    $selectCollectionPipelines.val(pipeline.pipeline_id)
-                }
-                break;
-            case 'load':
-                $selectLoadPipelines.append(`<option value="${pipeline.pipeline_id}">${pipeline.name}</option>`);
-                if (isDefault) {
-                    $selectLoadPipelines.val(pipeline.pipeline_id)
-                }
-                break;
-            case 'check':
-                $selectCheckPipelines.append(`<option value="${pipeline.pipeline_id}">${pipeline.name}</option>`);
-                if (isDefault) {
-                    $selectCheckPipelines.val(pipeline.pipeline_id)
-                }
-                break;
-            case 'qa':
-                $selectQaPipelines.append(`<option value="${pipeline.pipeline_id}">${pipeline.name}</option>`);
-                if (isDefault) {
-                    $selectQaPipelines.val(pipeline.pipeline_id)
-                }
-                break;
+        const currentSelect = selectPipelines[pipeline.workflow_operation];
+        addOption(currentSelect, pipeline.pipeline_id, pipeline.name);
+        if (isDefault) {
+            currentSelect.value = pipeline.pipeline_id;
         }
     }
-    $('select[name=country]').change((e) => {
-        const $countrySelect = $(e.target);
-        const countryCode = $countrySelect.val();
-        const $provSelect = $countrySelect.parents('form').find('select[name=prov]');
-        setProvSelect($provSelect, countryCode);
-    });
-    $(`#${dataSourceTableId}`).on('expand-row.bs.table', (e, index, row, $detail) => {
+    $dataSourceTable.on('expand-row.bs.table', (e, index, row, $detail) => {
         expandedDsId = row.ds_id;
     });
-    $(`#${confirmDeleteContactId}`).on('hidden.bs.modal', (e) => {
+    $confirmDeleteContact.on('hidden.bs.modal', (e) => {
         requestDsId = null;
         requestContactId = null;
-    });
-    $(`#${createSourceModalId}`).on('hidden.bs.modal', (e) => {
-        requestDsId = null;
-        requestContactId = null;
-    });
-    $(`#${createContactModalId}`).on('hidden.bs.modal', (e) => {
-        requestDsId = null;
-        requestContactId = null;
-    });
-    createContactValidator = $(`#${createContactFormId}`).validate({
-        rules: createContactValidationRules,
-        messages: createContactValidationMessages,
-        errorClass: 'invalidInput',
-        validClass: 'validInput',
-        submitHandler: () => {},
-    });
-    editContactValidator = $(`#${editContactFormId}`).validate({
-        rules: editContactValidationRules,
-        messages: editContactValidationMessages,
-        errorClass: 'invalidInput',
-        validClass: 'validInput',
-        submitHandler: () => {},
-    });
-    createSourceValidator = $(`#${createSourceFormId}`).validate({
-        rules: createSourceValidationRules,
-        messages: createSourceValidationMessages,
-        errorClass: 'invalidInput',
-        validClass: 'validInput',
-        submitHandler: () => {},
-    });
-    editSourceValidator = $(`#${editSourceFormId}`).validate({
-        rules: editSourceValidationRules,
-        messages: editSourceValidationMessages,
-        errorClass: 'invalidInput',
-        validClass: 'validInput',
-        submitHandler: () => {},
     });
 });
 
-function setProvSelect($provSelect, countryCode) {
-    $provSelect.empty();
-    $provSelect.append('<option value="null">N/A</option>');
-    for (const prov of provs.filter(prov => prov.country_code === countryCode)) {
-        $provSelect.append(`<option value="${prov.prov_code}">${prov.name}</option>`);
-    }
+function setProvSelect(countryCode) {
+    const provSelect = document.querySelector('select[name=prov]');
+    removeAllChildren(provSelect);
+    const filteredProvs = [{prov_code: 'null', name: 'N/A'}, ...provs.filter(prov => prov.country_code === countryCode)];
+    addOptions(provSelect, filteredProvs, 'prov_code', 'name');
 }
 
 function dataSourceActionsFormatter(value, row) {
     const editButton = `<a class="p-1" href="javascript:void(0)" onclick="editDataSource(${row.ds_id})"><i class="fas fa-edit"></i></a>`;
-    const addButton = `<a class="p-1" href="javascript:void(0)" onclick="newContact(${row.ds_id})"><i class="fas fa-plus"></i></a>`;
-    return `${editButton}${addButton}`;
+    const contactsButton = `<a class="p-1" href="javascript:void(0)" onclick="showContacts(${row.ds_id})"><i class="fas fa-address-card"></i></a>`
+    return `${editButton}${contactsButton}`;
 }
 
 function dataSourceContactActionsFormatter(value, row) {
-    const editButton = `<a class="p-1" href="javascript:void(0)" onclick="editContact('${JSON.stringify(row, null, null)}')"><i class="fas fa-edit"></i></a>`
+    const editButton = `<a class="p-1" href="javascript:void(0)" onclick="editContact(${row.contact_id})"><i class="fas fa-edit"></i></a>`;
     const deleteButton = `<a class="p-1" href="javascript:void(0)" onclick="confirmDeleteContact(${row.contact_id})"><i class="fas fa-trash"></i></a>`;
     return `${editButton}${deleteButton}`;
 }
 
 function newDataSource() {
-    $(`#${createSourceFormId}ResponseErrorMessage`).text('');
-    $('#createCode').val('');
-    $('#createRadius').val('');
-    $('#createReportType').val('');
-    $('#createFileLocation').val('');
-    $('#createDescription').val('');
-    $('#createComments').val('');
-    setDefaultOption('#createCountry');
-    setDefaultOption('#createProv');
-    setDefaultOption('#createCollectionPipeline');
-    setDefaultOption('#createLoadPipeline');
-    setDefaultOption('#createCheckPipeline');
-    setDefaultOption('#createQaPipeline');
-    setDefaultOption('#createWarehouseType');
-    setDefaultOption('#createAssignedUser');
-    $(`#${createSourceModalId}`).modal('show');
+    sourceFormHandler.resetForm();
+    sourceModal.querySelector('.modal-title').textContent = 'Create Data Source';
+    $sourceModal.modal('show');
 }
 
 function editDataSource(dsId) {
-    const dataSource = $(`#${dataSourceTableId}`).bootstrapTable('getData').find(ds => ds.ds_id === dsId);
-    if (typeof dataSource === "undefined") {
+    const dataSource = $dataSourceTable.bootstrapTable('getData').find(ds => ds.ds_id === dsId);
+    if (typeof dataSource === 'undefined') {
         showToast('Error', 'Could not find the data source selected');
         return;
     }
-    setOptionByText('#editCollectionPipeline', dataSource.collection_pipeline);
-    setOptionByText('#editLoadPipeline', dataSource.load_pipeline);
-    setOptionByText('#editCheckPipeline', dataSource.check_pipeline);
-    setOptionByText('#editQaPipeline', dataSource.qa_pipeline);
-    setOptionByText('#editWarehouseType', dataSource.record_warehouse_type);
-    setOptionByText('#editAssignedUser', dataSource.assigned_user);
-    $('#editCode').val(dataSource.code);
-    $('#editRadius').val(dataSource.search_radius);
-    $('#editCountry').val(dataSource.country);
-    $('#editReportType').val(dataSource.reporting_type);
-    $('#editFileLocation').val(dataSource.files_location);
-    $('#editDescription').val(dataSource.description);
-    $('#editComments').val(dataSource.comments);
-    $('#editProv').val(dataSource.prov||'null');
+    sourceFormHandler.populateForm({
+        code: dataSource.code,
+        prov: dataSource.prov||'null',
+        country: dataSource.country,
+        description: dataSource.description,
+        fileLocation: dataSource.files_location,
+        comments: dataSource.comments,
+        assignedUser: dataSource.assigned_user,
+        radius: dataSource.search_radius,
+        warehouseType: dataSource.record_warehouse_type,
+        reportType: dataSource.reporting_type,
+        collectionPipeline: dataSource.collection_pipeline,
+        loadPipeline: dataSource.load_pipeline,
+        checkPipeline: dataSource.check_pipeline,
+        qaPipeline: dataSource.qa_pipeline,
+    });
     requestDsId = dsId;
-    $(`#${editSourceModalId}`).modal('show');
+    sourceModal.querySelector('.modal-title').textContent = 'Edit Data Source';
+    $sourceModal.modal('show');
 }
 
-function setDefaultOption(selector) {
-    const $el = $(selector);
-    $el.val($el.find(selector.includes('Pipeline') ? 'option:contains(Default)' : ':first-child').val());
-}
-
-function setOptionByText(selector, text) {
-    const $el = $(selector);
-    $el.val($el.find(`option:contains(${text})`).val());
-}
-
-function newContact(dsId) {
+function showContacts(dsId) {
+    $contactTable.bootstrapTable('refreshOptions', {url: `/data/data-source-contacts/${dsId}`}).bootstrapTable('refresh');
     requestDsId = dsId;
+    contactFormHandler.form.style = 'display: none;';
+    $contactModal.modal('show');
+}
+
+/**
+ * 
+ * @param {Event} event 
+ */
+function exitContacts(event) {
+    event.preventDefault();
+    contactFormHandler.form.style = 'display: none;';
+}
+
+function newContact() {
     requestContactId = null;
-    $(`#${createContactFormId}ResponseErrorMessage`).text('');
-    $('#createName').val('');
-    $('#createEmail').val('');
-    $('#createWebsite').val('');
-    $('#createType').val('');
-    $('#createNotes').val('');
-    $(`#${createContactModalId}`).modal('show');
+    contactFormHandler.resetForm();
+    contactFormHandler.form.style = '';
+    contactFormHandler.form.querySelector('h3').textContent = 'Create Contact';
 }
 
-function editContact(contactString) {
-    const contact = JSON.parse(contactString);
+/**
+ * 
+ * @param {string} contactString 
+ */
+function editContact(contactId) {
+    const contact = $contactTable.bootstrapTable('getData').find(row => row.contact_id === contactId);
     requestContactId = contact.contact_id;
-    requestDsId = expandedDsId;
-    $('#editName').val(contact.name);
-    $('#editEmail').val(contact.email);
-    $('#editWebsite').val(contact.country);
-    $('#editType').val(contact.type);
-    $('#editNotes').val(contact.notes);
-    $(`#${editContactModalId}`).modal('show');
+    contactFormHandler.populateForm(contact);
+    contactFormHandler.form.style = '';
+    contactFormHandler.form.querySelector('h3').textContent = 'Edit Contact';
 }
 
-function getContact($form) {
-    return {
+/**
+ * 
+ * @param {Event} event 
+ */
+async function submitContact(event) {
+    event.preventDefault();
+    if (!contactFormHandler.validate()) {
+        return;
+    }
+    const formData = new FormData(contactFormHandler.form);
+    const contact = {
         contact_id: requestContactId,
         ds_id: requestDsId,
-        name: $form.find('input[name=name]').val(),
-        email: $form.find('input[name=email]').val(),
-        website: $form.find('input[name=website]').val(),
-        type: $form.find('input[name=type]').val(),
-        notes: $form.find('textarea[name=notes]').val(),
-    }
-}
-
-async function postContact($form) {
-    if ($form.valid()) {
-        const contact = getContact($form);
-        const response = await fetchPOST('/data/data-source-contacts', contact);
-        const json = await response.json();
-        if ('payload' in json) {
-            $(`#${dataSourceTableId}`).bootstrapTable('refresh');
-            $(`#${createContactModalId}`).modal('hide');
-            showToast('Created Contact', `Successful created contact_id = ${json.payload}`);
-        } else {
-            $(`#${createContactModalId}ResponseErrorMessage`).text(formatErrors(json.errors));
-        }
-    }
-}
-
-async function putContact($form) {
-    if ($form.valid()) {
-        const contact = getContact($form);
-        const response = await fetchPATCH('/data/data-source-contacts', contact);
-        const json = await response.json();
-        if ('payload' in json) {
-            $(`#${dataSourceTableId}`).bootstrapTable('refresh');
-            $(`#${editContactModalId}`).modal('hide');
-            showToast('Updated Contact', `Successful updated contact_id = ${json.payload.contact_id}`);
-        } else {
-            $(`#${editContactModalId}ResponseErrorMessage`).text(formatErrors(json.errors));
-        }
+        name: formData.get('name'),
+        email: formData.get('email'),
+        website: formData.get('website'),
+        type: formData.get('type'),
+        notes: formData.get('notes'),
+    };
+    const response = contact.contact_id === null ? await fetchPOST('/data/data-source-contacts', contact) : await fetchPATCH('/data/data-source-contacts', contact);
+    const json = await response.json();
+    if ('payload' in json) {
+        $contactTable.bootstrapTable('refresh');
+        contactFormHandler.form.style = 'display: none;';
+        showToast('Created Contact', `Successful created contact_id = ${json.payload}`);
+        requestContactId = null;
+    } else {
+        contactFormHandler.form.querySelector('p.invalidInput').textContent = formatErrors(json.errors);
     }
 }
 
@@ -321,67 +181,52 @@ async function deleteContact() {
     const response = await fetchDELETE(`/data/data-source-contacts/${requestContactId}`);
     const json = await response.json();
     if ('payload' in json) {
-        $(`#${dataSourceTableId}`).bootstrapTable('refresh');
+        $contactTable.bootstrapTable('refresh');
         showToast('Updated Contact', json.payload);
     } else {
         showToast('Error Updating Contact', json.errors);
     }
-    $(`#${confirmDeleteContactId}`).modal('hide');
+    requestContactId = null;
+    $confirmDeleteContact.modal('hide');
 }
 
 function confirmDeleteContact(contactId) {
     requestContactId = contactId;
-    $(`#${confirmDeleteContactId}`).modal('show');
+    $confirmDeleteContact.modal('show');
 }
 
-function getDataSource($form) {
-    const prov = $form.find('select[name=prov]').val();
-    return {
+async function submitSource() {
+    if (!sourceFormHandler.validate()) {
+        return;
+    }
+    const prov = formData.get('prov');
+    const formData = new FormData(sourceFormHandler.form);
+    const source = {
         ds_id: requestDsId,
-        code: $form.find('input[name=code]').val(),
+        code: formData.get('code'),
         prov: prov === 'null' ? null : prov,
-        country: $form.find('select[name=country]').val(),
-        description: $form.find('textarea[name=description]').val(),
-        files_location: $form.find('input[name=fileLocation]').val(),
+        country: formData.get('country'),
+        description: formData.get('description'),
+        files_location: formData.get('fileLocation'),
         prov_level: prov !== 'null',
-        comments: $form.find('textarea[name=comments]').val(),
-        assigned_user: $form.find('select[name=assignedUser]').val(),
-        search_radius: $form.find('input[name=radius]').val(),
-        record_warehouse_type: $form.find('select[name=warehouseType]').val(),
-        reporting_type: $form.find('input[name=reportType]').val(),
-        collection_pipeline: $form.find('select[name=collectionPipeline]').val(),
-        load_pipeline: $form.find('select[name=loadPipeline]').val(),
-        check_pipeline: $form.find('select[name=checkPipeline]').val(),
-        qa_pipeline: $form.find('select[name=qaPipeline]').val(),
-    }
-}
-
-async function postDataSource($form) {
-    if ($form.valid()) {
-        const dataSource = getDataSource($form);
-        const response = await fetchPOST('/data/data-sources', dataSource);
-        const json = await response.json();
-        if ('payload' in json) {
-            $(`#${dataSourceTableId}`).bootstrapTable('refresh');
-            $(`#${editSourceModalId}`).modal('hide');
-            showToast('Updated User', `Successful created ds_id = ${json.payload}`);
-        } else {
-            $(`#${editSourceModalId}ResponseErrorMessage`).text(formatErrors(json.errors));
-        }
-    }
-}
-
-async function patchDataSource($form) {
-    if ($form.valid()) {
-        const dataSource = getDataSource($form);
-        const response = await fetchPATCH('/data/data-sources', dataSource);
-        const json = await response.json();
-        if ('payload' in json) {
-            $(`#${dataSourceTableId}`).bootstrapTable('refresh');
-            $(`#${editSourceModalId}`).modal('hide');
-            showToast('Updated User', `Successful updated ds_id = ${json.payload.ds_id}`);
-        } else {
-            $(`#${editSourceModalId}ResponseErrorMessage`).text(formatErrors(json.errors));
-        }
+        comments: formData.get('comments'),
+        assigned_user: formData.get('assignedUser'),
+        search_radius: formData.get('radius'),
+        record_warehouse_type: formData.get('warehouseType'),
+        reporting_type: formData.get('reportType'),
+        collection_pipeline: formData.get('collectionPipeline'),
+        load_pipeline: formData.get('loadPipeline'),
+        check_pipeline: formData.get('checkPipeline'),
+        qa_pipeline: formData.get('qaPipeline'),
+    };
+    const response = source.ds_id === null ? await fetchPOST('/data/data-sources', source) : await fetchPATCH('/data/data-sources', source);
+    const json = await response.json();
+    if ('payload' in json) {
+        $dataSourceTable.bootstrapTable('refresh');
+        $sourceModal.modal('hide');
+        showToast('Updated User', `Successful created ds_id = ${json.payload}`);
+        requestContactId = null;
+    } else {
+        sourceFormHandler.form.querySelector('p.invalidInput').textContent = formatErrors(json.errors);
     }
 }

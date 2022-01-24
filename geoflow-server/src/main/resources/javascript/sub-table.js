@@ -1,5 +1,8 @@
-$(document).ready(function() {
-    for (element of document.querySelectorAll('[data-detail-view=true]')) {
+document.addEventListener('DOMContentLoaded', async () => {
+    const elements = document.querySelectorAll('[data-detail-view=true]');
+    const elementsCount = elements.length;
+    for (let i = 0; i < elementsCount; i++) {
+        const element = elements[i];
         const dataUrl = element.attributes['data-sub-table-url'];
         const idField = element.attributes['data-sub-table-id'];
         const columns = [];
@@ -19,7 +22,7 @@ $(document).ready(function() {
         }
         $(element).on('expand-row.bs.table', async (e, index, row, $detail) => {
             if (dataUrl !== undefined) {
-                getData(dataUrl.value, row[idField.value], columns, $detail)
+                await getData(dataUrl.value, row[idField.value], columns, $detail);
             } else {
                 $detail.html('<table></table>').find('table').bootstrapTable({
                     columns: columns,
@@ -30,19 +33,23 @@ $(document).ready(function() {
     }
 });
 
+/**
+ * 
+ * @param {string} url 
+ * @param {string} idField 
+ * @param {Object.<string, string>} columns 
+ * @param {JQuery} $detail 
+ * @returns 
+ */
 async function getData(url, idField, columns, $detail) {
-    const response = await fetch(url.replace('{id}', idField));
-    if (response.status !== 200) {
-        console.log(await response.text());
-        return;
-    }
-    const json = await response.json();
-    if (!('payload' in json)) {
-        console.log(json);
+    // const response = await fetch(url.replace('{id}', idField));
+    const response = await fetchApiGET(url.replace('{id}', idField));
+    if (!response.success) {
+        console.log(response);
         return;
     }
     $detail.html('<table></table>').find('table').bootstrapTable({
         columns: columns,
-        data: json.payload,
+        data: response.payload,
     });
 }

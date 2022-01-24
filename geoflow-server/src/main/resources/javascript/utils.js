@@ -456,14 +456,40 @@ function alternateCitiesFormatter(value, row) {
     return value.join(',');
 }
 
-function resetForm($modal) {
-    $modal.find('input[type=text]').val('');
-    $modal.find('input[type=password]').val('');
-    $modal.find('select').each(() => {
-        const $el = $(this);
-        $el.val($el.find(':first-child').val());
-    });
-    $modal.find('input[type=checkbox]').prop('checked', false);
-    $modal.find('input[type=date]').val('');
-    $('p.invalidInput').text('');
+/**
+ * @param {!HTMLSelectElement} selectElement
+ * @param {string} value
+ * @param {string} text
+ */
+function addOption(selectElement, value, text) {
+    const optionElement = document.createElement('option');
+    optionElement.value = value;
+    optionElement.textContent = text;
+    selectElement.appendChild(optionElement);
+}
+
+/**
+ * @param {!HTMLSelectElement|!string} selectElement
+ * @param {Array.<Object.<string, string>>} objects
+ * @param {string} valueField
+ * @param {string} textField
+ */
+function addOptions(selectElement, objects, valueField, textField) {
+    const element = typeof selectElement === 'string' ? document.querySelector(selectElement) : selectElement;
+    const objectsLength = objects.length;
+    for (let i = 0; i < objectsLength; i++) {
+        const optionElement = document.createElement('option');
+        optionElement.value = objects[i][valueField];
+        optionElement.textContent = objects[i][textField];
+        element.appendChild(optionElement);
+    }
+}
+
+/**
+ * @param {HTMLElement} element
+ */
+function removeAllChildren(element) {
+    while (element.lastChild) {
+        element.removeChild(element.lastChild);
+    }
 }

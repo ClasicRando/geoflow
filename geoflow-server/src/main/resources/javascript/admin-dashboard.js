@@ -1,29 +1,11 @@
 let currentUserOid = null;
 const validatorOptions = {
-    'fullName': {
-        'type': ValidatorTypes.notEmpty,
-        'message': 'Cannot be empty',
-    },
+    'fullName': ValidatorTypes.notEmpty,
     'username': [
-        {
-            'type': ValidatorTypes.notEmpty,
-            'message': 'Cannot be empty',
-        },
-        {
-            'type': ValidatorTypes.noWhitespace,
-            'message': 'Cannot contain whitespace',
-        },
+        ValidatorTypes.notEmpty,
+        ValidatorTypes.noWhitespace,
     ],
-    'password': [
-        {
-            'type': ValidatorTypes.notEmpty,
-            'message': 'Cannot be empty',
-        },
-        {
-            'type': ValidatorTypes.noWhitespace,
-            'message': 'Cannot contain whitespace',
-        },
-    ],
+    'password': ValidatorTypes.password,
     'repeatPassword': {
         'type': ValidatorTypes.matches,
         'match': 'password',
@@ -36,9 +18,9 @@ const validatorOptions = {
         'message': 'User must have at least 1 role or the admin role',
     },
 };
-const validator = new FormValidator(`#${userEditForm}`, validatorOptions);
+const userFormHandler = new FormHandler(userForm, validatorOptions);
 
-$(document).ready(async () => {
+document.addEventListener('DOMContentLoaded', async () => {
     const response = await fetchApiGET('/data/roles');
     if (response.success) {
         for (const select of document.getElementsByName('roles')) {
@@ -74,52 +56,81 @@ $(document).ready(async () => {
     });
 });
 
+/**
+ * 
+ * @param {Event} event
+ * @param {HTMLButtonElement} btnElement
+ */
+function togglePasswordView(event, btnElement) {
+    event.preventDefault();
+    const inputField = btnElement.parentNode.parentNode.querySelector('input');
+    const svgTag = btnElement.querySelector('svg');
+    if (inputField.type === 'text') {
+        inputField.type = 'password';
+        svgTag.classList.replace('fa-eye','fa-eye-slash');
+    } else {
+        inputField.type = 'text';
+        svgTag.classList.replace('fa-eye-slash','fa-eye');
+    }
+}
+
+/**
+ * 
+ * @param {object} value 
+ * @param {Object.<string, object>} row 
+ * @returns {string}
+ */
 function isAdminFormatter(value, row) {
     return row.roles.includes('admin') ? '<i class="fas fa-check"></i>' : '';
 }
 
+/**
+ * 
+ * @param {object} value 
+ * @param {Object.<string, object>} row 
+ * @returns {string}
+ */
 function editFormatter(value, row) {
-    return value ? `<a href="javascript:void(0)" onClick="openUserEditModal(${row.user_oid})"><i class="fas fa-edit"></i></a>` : '';
+    return value ? `<a href="javascript:void(0)" onClick="openUserModal(${row.user_oid})"><i class="fas fa-edit"></i></a>` : '';
 }
 
-function openUserEditModal(userOid=null) {
+/**
+ * 
+ * @param {number?} userOid 
+ */
+function openUserModal(userOid=null) {
     currentUserOid = userOid;
-    const row = $(`#${userTable}`).bootstrapTable('getData').find(row => row.user_oid === userOid)||{};
-    const roles = row.roles||'';
-    const modal = document.querySelector(`#${userEditModal}`);
-    const form = modal.querySelector('form');
-    form.querySelector('#fullName').value = row.name||'';
-    form.querySelector('#username').value = row.username||'';
-    for (const option of form.querySelectorAll('#roles option')) {
-        option.selected = roles.includes(option.value);
-    }
-    form.querySelector('#isAdmin').checked = roles.includes('admin');
-    const passwordLabel = form.querySelector('label[for=password]');
-    const password = form.querySelector('#password');
-    const repeatPasswordLabel = form.querySelector('label[for=repeatPassword]');
-    const repeatPassword = form.querySelector('#repeatPassword');
+    userFormHandler.resetForm();
+    const passwordGroup = userFormHandler.form.querySelector('label[for=password]').parentNode;
+    const repeatPasswordGroup = userFormHandler.form.querySelector('label[for=repeatPassword]').parentNode;
     if (currentUserOid === null) {
-        modal.querySelector('.modal-title').textContent = 'Create User';
-        password.value = '';
-        passwordLabel.style.display = '';
-        password.style.display = '';
-        repeatPassword.value = '';
-        repeatPasswordLabel.style.display = '';
-        repeatPassword.style.display = '';
+        userModal.querySelector('.modal-title').textContent = 'Create User';
+        passwordGroup.style.display = '';
+        repeatPasswordGroup.style.display = '';
     } else {
-        modal.querySelector('.modal-title').textContent = 'Edit User';
-        password.value = '';
-        passwordLabel.style.display = 'none';
-        password.style.display = 'none';
-        repeatPassword.value = '';
-        repeatPasswordLabel.style.display = 'none';
-        repeatPassword.style.display = 'none';
+        const row = $userTable.bootstrapTable('getData').find(row => row.user_oid === currentUserOid);
+        const roles = row.roles;
+        userFormHandler.form.querySelector('#fullName').value = row.name;
+        userFormHandler.form.querySelector('#username').value = row.username;
+        const options = userFormHandler.form.querySelectorAll('#roles option');
+        const optionsCount = options.length;
+        for (let i = 0; i < optionsCount; i++) {
+            options[i].selected = roles.includes(options[i].value);
+        }
+        userFormHandler.form.querySelector('#isAdmin').checked = roles.includes('admin');
+        userModal.querySelector('.modal-title').textContent = 'Edit User';
+        passwordGroup.style.display = 'none';
+        repeatPasswordGroup.style.display = 'none';
     }
-    $(modal).modal('show');
+    $userModal.modal('show');
 }
 
+/**
+ * 
+ * @param {HTMLFormElement} form 
+ */
 async function submitEditUser(form) {
-    if (!validator.validate()) {
+    if (!userFormHandler.validate()) {
         return;
     }
     const formData = new FormData(form);
@@ -133,11 +144,11 @@ async function submitEditUser(form) {
     const response = user.user_oid === null ? await fetchPOST('/data/users', user) : await fetchPUT('/data/users', user);
     const json = await response.json();
     if ('payload' in json) {
-        $(`#${userEditModal}`).modal('hide');
+        $userModal.modal('hide');
         showToast('Created User', `Created ${user.username} (${json.payload})`);
-        $(`#${userTable}`).bootstrapTable('refresh');
+        $userTable.bootstrapTable('refresh');
         currentUserOid = null;
     } else {
-        document.querySelector('div.modal-footer p.invalidInput').textContent(formatErrors(json.errors));
+        form.querySelector('p.invalidInput').textContent(formatErrors(json.errors));
     }
 }
