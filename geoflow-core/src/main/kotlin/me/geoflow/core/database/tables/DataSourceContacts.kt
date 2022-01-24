@@ -22,7 +22,7 @@ object DataSourceContacts: DbTable("data_source_contacts"), ApiExposed {
                 ON UPDATE CASCADE
                 ON DELETE CASCADE,
             name text COLLATE pg_catalog."default" CHECK(check_not_blank_or_empty(name)),
-            email email COLLATE pg_catalog."default",
+            email email_address COLLATE pg_catalog."default",
             website text COLLATE pg_catalog."default" CHECK(check_not_blank_or_empty(website)),
             type text COLLATE pg_catalog."default" CHECK(check_not_blank_or_empty(type)),
             notes text COLLATE pg_catalog."default" CHECK(check_not_blank_or_empty(notes))
@@ -71,8 +71,8 @@ object DataSourceContacts: DbTable("data_source_contacts"), ApiExposed {
             """.trimIndent(),
             contact.name?.takeIf { it.isNotBlank() },
             PGobject().apply {
-                type = "email"
-                value = contact.email
+                type = "email_address"
+                value = contact.email?.takeIf { it.isNotBlank() }
             },
             contact.website?.takeIf { it.isNotBlank() },
             contact.type?.takeIf { it.isNotBlank() },
@@ -109,8 +109,8 @@ object DataSourceContacts: DbTable("data_source_contacts"), ApiExposed {
             """.trimIndent(),
             contact.name?.takeIf { it.isNotBlank() },
             PGobject().apply {
-                type = "email"
-                value = contact.email
+                type = "email_address"
+                value = contact.email?.takeIf { it.isNotBlank() }
             },
             contact.website?.takeIf { it.isNotBlank() },
             contact.type?.takeIf { it.isNotBlank() },
