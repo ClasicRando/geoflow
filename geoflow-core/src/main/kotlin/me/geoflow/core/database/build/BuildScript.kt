@@ -1,5 +1,6 @@
 package me.geoflow.core.database.build
 
+import me.geoflow.core.database.domains.Domain
 import me.geoflow.core.database.extensions.executeNoReturn
 import me.geoflow.core.database.functions.Constraints
 import me.geoflow.core.database.functions.PlPgSqlFunction
@@ -29,7 +30,7 @@ object BuildScript {
      * Uses reflection to find all Enum classes and maps the class to a PostgresEnumType.
      */
     private val enums by lazy {
-        Reflections("database.enums")
+        Reflections("me.geoflow.core.database.enums")
             .get(SubTypes.of(Enum::class.java).asClass<Enum<*>>())
             .asSequence()
             .map { enum ->
@@ -39,7 +40,7 @@ object BuildScript {
 
     /** Lazy list of tables declared in the 'orm.tables' package. List items are the Object instances themselves. */
     private val tables by lazy {
-        Reflections("database.tables")
+        Reflections("me.geoflow.core.database.tables")
             .get(SubTypes.of(DbTable::class.java).asClass<DbTable>())
             .asSequence()
             .map { table -> table.getDeclaredField("INSTANCE").get(null)::class }
@@ -53,7 +54,7 @@ object BuildScript {
      * themselves.
      */
     private val procedures by lazy {
-        Reflections("database.procedures")
+        Reflections("me.geoflow.core.database.procedures")
             .get(SubTypes.of(SqlProcedure::class.java).asClass<SqlProcedure>())
             .asSequence()
             .map { procedure -> procedure.getDeclaredField("INSTANCE").get(null)::class }
@@ -66,7 +67,7 @@ object BuildScript {
      * instances themselves.
      */
     private val tableFunctions by lazy {
-        Reflections("database.functions")
+        Reflections("me.geoflow.core.database.functions")
             .get(SubTypes.of(PlPgSqlTableFunction::class.java).asClass<PlPgSqlTableFunction>())
             .asSequence()
             .map { procedure -> procedure.getDeclaredField("INSTANCE").get(null)::class }
@@ -79,12 +80,25 @@ object BuildScript {
      * instances themselves.
      */
     private val functions by lazy {
-        Reflections("database.functions")
+        Reflections("me.geoflow.core.database.functions")
             .get(SubTypes.of(PlPgSqlFunction::class.java).asClass<PlPgSqlFunction>())
             .asSequence()
             .map { procedure -> procedure.getDeclaredField("INSTANCE").get(null)::class }
             .filter { !it.isAbstract }
             .map { kClass -> kClass.objectInstance!! as PlPgSqlFunction }
+    }
+
+    /**
+     * Lazy sequence of domains declared in the 'database.domains' package. List items are the Object instances
+     * themselves.
+     */
+    private val domains by lazy {
+        Reflections("me.geoflow.core.database.domains")
+            .get(SubTypes.of(Domain::class.java).asClass<Domain>())
+            .asSequence()
+            .map { procedure -> procedure.getDeclaredField("INSTANCE").get(null)::class }
+            .filter { !it.isOpen }
+            .map { kClass -> kClass.objectInstance!! as Domain }
     }
 
     /** */
@@ -186,6 +200,14 @@ object BuildScript {
         }
     }
 
+    /** Create all domains  */
+    private fun createDomains(connection: Connection) {
+        for (domain in domains) {
+            logger.info("Creating ${domain.name}")
+            connection.executeNoReturn(domain.createStatement)
+        }
+    }
+
     /** Create all constraint functions */
     private fun createConstraintFunctions(connection: Connection) {
         for (constraint in Constraints.functions) {
@@ -236,6 +258,7 @@ object BuildScript {
         @Suppress("TooGenericExceptionCaught")
         try {
             createEnums(connection)
+            createDomains(connection)
             createConstraintFunctions(connection)
             createTables(connection, tables)
             createProcedures(connection)
