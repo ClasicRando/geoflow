@@ -100,8 +100,8 @@ object PipelineRuns : DbTable("pipeline_runs"), ApiExposed, Triggers {
                     FROM   data_sources
                     WHERE  ds_id = NEW.ds_id;
                     IF NEW.operation_state = 'Active' AND OLD.operation_state = 'Ready' AND NEW.workflow_operation = OLD.workflow_operation THEN
-                        INSERT INTO pipeline_run_tasks(run_id,task_id,parent_task_id,parent_task_order)
-                        SELECT NEW.run_id, t2.task_id, 0 t2.task_order
+                        INSERT INTO pipeline_run_tasks(run_id,workflow_operation,task_id,parent_task_id,parent_task_order)
+                        SELECT NEW.run_id, NEW.workflow_operation, t2.task_id, 0, t2.task_order
                         FROM   pipelines t1
                         JOIN   pipeline_tasks t2
                         ON	   t1.pipeline_id = t2.pipeline_id
