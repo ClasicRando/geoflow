@@ -1,19 +1,24 @@
 package me.geoflow.web.pages
 
+import kotlinx.html.ButtonType
 import me.geoflow.core.database.tables.InternalUsers
 import me.geoflow.core.web.html.addParamsAsJsGlobalVariables
 import me.geoflow.core.web.html.formModal
 import me.geoflow.core.web.html.tableButton
 import kotlinx.html.FlowContent
 import kotlinx.html.STYLE
+import kotlinx.html.button
 import kotlinx.html.checkBoxInput
 import kotlinx.html.div
+import kotlinx.html.i
 import kotlinx.html.id
 import kotlinx.html.label
+import kotlinx.html.onClick
 import kotlinx.html.passwordInput
 import kotlinx.html.script
 import kotlinx.html.select
 import kotlinx.html.textInput
+import me.geoflow.core.web.html.JSElement
 import me.geoflow.core.web.html.basicTable
 
 /**
@@ -101,9 +106,20 @@ object AdminDashboard : BasePage() {
                             htmlFor = "password"
                             +"Password"
                         }
-                        passwordInput(classes = "form-control") {
-                            id = "password"
-                            name = "password"
+                        div(classes = "input-group") {
+                            passwordInput(classes = "form-control") {
+                                id = "password"
+                                name = "password"
+                            }
+                            div(classes = "input-group-append") {
+                                button(classes = "btn btn-outline-secondary") {
+                                    onClick = "togglePasswordView(event,this)"
+                                    type = ButtonType.button
+                                    i(classes = "fas fa-eye-slash") {
+                                        attributes["aria-hidden"] = "true"
+                                    }
+                                }
+                            }
                         }
                     }
                     div(classes = "form-group") {
@@ -111,9 +127,20 @@ object AdminDashboard : BasePage() {
                             htmlFor = "repeatPassword"
                             +"Repeat Password"
                         }
-                        passwordInput(classes = "form-control") {
-                            id = "repeatPassword"
-                            name = "repeatPassword"
+                        div(classes = "input-group") {
+                            passwordInput(classes = "form-control") {
+                                id = "repeatPassword"
+                                name = "repeatPassword"
+                            }
+                            div(classes = "input-group-append") {
+                                button(classes = "btn btn-outline-secondary") {
+                                    onClick = "togglePasswordView(event,this)"
+                                    type = ButtonType.button
+                                    i(classes = "fas fa-eye-slash") {
+                                        attributes["aria-hidden"] = "true"
+                                    }
+                                }
+                            }
                         }
                     }
                 }
@@ -124,9 +151,9 @@ object AdminDashboard : BasePage() {
     override val script: FlowContent.() -> Unit = {
         script {
             addParamsAsJsGlobalVariables(
-                "userTable" to USER_TABLE_ID,
-                "userEditModal" to USER_EDIT_MODAL,
-                "userEditForm" to EDIT_USER_FORM_ID,
+                "userTable" to JSElement(query = "#$USER_TABLE_ID", makeSelector = false),
+                "userModal" to JSElement(query = "#$USER_EDIT_MODAL"),
+                "userForm" to JSElement(query = "#$EDIT_USER_FORM_ID", makeJQuery = false),
             )
         }
         script {
