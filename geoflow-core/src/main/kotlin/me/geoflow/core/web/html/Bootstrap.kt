@@ -58,7 +58,7 @@ fun FlowContent.emptyModal(
 inline fun FlowContent.basicModal(
     modalId: String,
     headerText: String,
-    okClickFunction: String,
+    okClickFunction: String = "",
     size: String = "",
     crossinline body: DIV.() -> Unit,
 ) {
@@ -89,10 +89,12 @@ inline fun FlowContent.basicModal(
                         attributes["data-dismiss"] = "modal"
                         +"Close"
                     }
-                    button(classes = "btn btn-secondary") {
-                        type = ButtonType.button
-                        onClick = okClickFunction
-                        +"OK"
+                    if (okClickFunction.isNotBlank()) {
+                        button(classes = "btn btn-secondary") {
+                            type = ButtonType.button
+                            onClick = okClickFunction
+                            +"OK"
+                        }
                     }
                 }
             }
