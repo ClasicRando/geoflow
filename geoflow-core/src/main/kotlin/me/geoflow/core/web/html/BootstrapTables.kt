@@ -2,7 +2,6 @@ package me.geoflow.core.web.html
 
 import kotlinx.html.DIV
 import kotlinx.html.FlowContent
-import kotlinx.html.SCRIPT
 import kotlinx.html.TABLE
 import kotlinx.html.THEAD
 import kotlinx.html.UL
@@ -120,15 +119,17 @@ fun TABLE.applySubTabDetails(details: SubTableDetails) {
 }
 
 /** Creates a javascript function that returns all the [tableButtons] provided. Function is named using the [tableId] */
-fun SCRIPT.addTableButtons(tableId: String, tableButtons: List<String>) {
-    unsafe {
-        raw("""
+fun TABLE.addTableButtons(tableId: String, tableButtons: List<String>) {
+    script {
+        unsafe {
+            raw("""
             function ${tableId}buttons() {
                 return {
                     ${tableButtons.joinToString()}
                 }
             }
         """.trimIndent())
+        }
     }
 }
 
@@ -201,6 +202,7 @@ inline fun <reified T: ApiExposed> FlowContent.basicTable(
                 attributes["data-fixed-columns"] = "true"
                 attributes["data-fixed-number"] = it.toString()
             }
+            subTableDetails?.let { applySubTabDetails(it) }
             attributes["data-classes"] = "table table-bordered${if (clickableRows) " table-hover" else ""}"
             attributes["data-thead-classes"] = "thead-dark"
             attributes["data-search"] = "true"
@@ -214,9 +216,7 @@ inline fun <reified T: ApiExposed> FlowContent.basicTable(
                 addFields(getObjectInstance<T>().tableDisplayFields, clickableRows)
             }
             if (tableButtons.isNotEmpty()) {
-                script {
-                    addTableButtons(tableId, tableButtons)
-                }
+                addTableButtons(tableId, tableButtons)
             }
         }
         freezeColumnsEnd?.let { addEndColumnFreeze(tableId, it) }
@@ -287,9 +287,7 @@ fun FlowContent.basicTable(
                 addFields(fields, clickableRows)
             }
             if (tableButtons.isNotEmpty()) {
-                script {
-                    addTableButtons(tableId, tableButtons)
-                }
+                addTableButtons(tableId, tableButtons)
             }
         }
     }
