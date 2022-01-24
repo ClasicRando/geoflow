@@ -73,6 +73,11 @@ abstract class BasePage : Template<HTML> {
                 rel = "stylesheet"
                 href = "https://unpkg.com/bootstrap-table@1.18.3/dist/bootstrap-table.min.css"
             }
+            @Suppress("MaxLineLength")
+            link {
+                rel = "stylesheet"
+                href = "https://unpkg.com/bootstrap-table@1.19.1/dist/extensions/fixed-columns/bootstrap-table-fixed-columns.min.css"
+            }
             script {
                 src = "https://use.fontawesome.com/releases/v5.15.4/js/all.js"
                 attributes["data-auto-replace-svg"] = "nest"
@@ -154,6 +159,10 @@ abstract class BasePage : Template<HTML> {
                 }
                 script {
                     src = "https://unpkg.com/bootstrap-table@1.18.3/dist/bootstrap-table.min.js"
+                }
+                @Suppress("MaxLineLength")
+                script {
+                    src = "https://unpkg.com/bootstrap-table@1.19.1/dist/extensions/fixed-columns/bootstrap-table-fixed-columns.min.js"
                 }
                 insert(scriptPlaceholder)
                 div {
