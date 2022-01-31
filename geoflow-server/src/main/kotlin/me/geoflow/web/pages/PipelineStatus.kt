@@ -9,6 +9,7 @@ import kotlinx.html.id
 import kotlinx.html.li
 import kotlinx.html.script
 import kotlinx.html.select
+import me.geoflow.core.web.html.JSElement
 import me.geoflow.web.api.NoBody
 import me.geoflow.web.api.makeApiCall
 import me.geoflow.core.web.html.basicTable
@@ -72,12 +73,12 @@ class PipelineStatus(
         )
         script {
             addParamsAsJsGlobalVariables(
-                "confirmPickupId" to CONFIRM_PICKUP,
-                "tableId" to TABLE_ID,
-                "confirmForwardId" to CONFIRM_FORWARD,
-                "confirmBackId" to CONFIRM_BACK,
+                "confirmPickup" to JSElement(query = "#$CONFIRM_PICKUP", makeJQuery = false),
+                "table" to JSElement(query = "#$TABLE_ID"),
+                "confirmForward" to JSElement(query = "#$CONFIRM_FORWARD"),
+                "confirmBack" to JSElement(query = "#$CONFIRM_BACK"),
                 "operationsJson" to operationsJson,
-                "statusSelectId" to STATUS_SELECT,
+                "statusSelect" to JSElement(query = "#$STATUS_SELECT", makeJQuery = false),
             )
         }
         script {

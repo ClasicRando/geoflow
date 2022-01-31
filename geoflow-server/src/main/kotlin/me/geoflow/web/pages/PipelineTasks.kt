@@ -2,13 +2,6 @@ package me.geoflow.web.pages
 
 import io.ktor.application.ApplicationCall
 import kotlinx.html.ButtonType
-import me.geoflow.core.database.enums.FileCollectType
-import me.geoflow.core.database.tables.PipelineRunTasks
-import me.geoflow.core.web.html.addParamsAsJsGlobalVariables
-import me.geoflow.web.html.sourceTables
-import me.geoflow.core.web.html.tabLayout
-import me.geoflow.core.web.html.tabNav
-import me.geoflow.core.web.html.tableButton
 import kotlinx.html.FlowContent
 import kotlinx.html.STYLE
 import kotlinx.html.button
@@ -21,9 +14,13 @@ import kotlinx.html.onClick
 import kotlinx.html.script
 import kotlinx.html.select
 import kotlinx.html.unsafe
+import me.geoflow.core.database.enums.FileCollectType
+import me.geoflow.core.database.tables.PipelineRunTasks
 import me.geoflow.core.database.tables.PlottingFields
 import me.geoflow.core.database.tables.PlottingMethods
+import me.geoflow.core.web.html.JSElement
 import me.geoflow.core.web.html.SubTableDetails
+import me.geoflow.core.web.html.addParamsAsJsGlobalVariables
 import me.geoflow.core.web.html.basicModal
 import me.geoflow.core.web.html.basicTable
 import me.geoflow.core.web.html.confirmModal
@@ -113,7 +110,7 @@ class PipelineTasks(
                 basicModal(
                     modalId = PLOTTING_METHODS_MODAL,
                     headerText = "Plotting Methods",
-                    okClickFunction = "setPlottingFields($('#${PLOTTING_METHODS_MODAL}'))",
+                    okClickFunction = "setPlottingFields()",
                     size = "modal-xl",
                 ) {
                     button(classes = "btn btn-secondary") {
@@ -131,9 +128,10 @@ class PipelineTasks(
         formModal(
             modalId = PLOTTING_FIELDS_MODAL,
             headerText = "Plotting Fields",
-            okClickFunction = "submitPlottingFields($('#${PLOTTING_FIELDS_MODAL}'))",
+            okClickFunction = "submitPlottingFields()",
             resetFormButton = true,
         ) {
+            id = PLOTTING_FIELDS_FORM
             div(classes = "form-group") {
                 label {
                     htmlFor = "mergeKey"
@@ -253,28 +251,33 @@ class PipelineTasks(
         script {
             addParamsAsJsGlobalVariables(
                 "taskTableId" to TASKS_TABLE_ID,
-                "taskDataModalId" to TASK_DATA_MODAL_ID,
                 "types" to FileCollectType.values(),
-                "taskOutputId" to TASK_OUTPUT_MODAL,
-                "plottingFieldsModalId" to PLOTTING_FIELDS_MODAL,
-                "plottingFieldsTableId" to PLOTTING_FIELDS_TABLE,
-                "confirmDeletePlottingFieldsId" to CONFIRM_DELETE_PLOTTING_FIELDS,
-                "plottingMethodsModalId" to PLOTTING_METHODS_MODAL,
+                "taskOutput" to JSElement(query = "#$TASK_OUTPUT_MODAL", makeSelector = false),
+                "plottingMethodsModal" to JSElement(query = "#${PLOTTING_METHODS_MODAL}"),
+                "plottingMethodTypes" to operationsJson,
+                "plottingFieldsTable" to JSElement(query = "#$PLOTTING_FIELDS_TABLE", makeSelector = false),
+                "confirmDeletePlottingFields" to JSElement(query = "#$CONFIRM_DELETE_PLOTTING_FIELDS"),
+                "plottingFieldsModal" to JSElement(query = "#${PLOTTING_FIELDS_MODAL}", makeSelector = false),
+                "plottingFieldsForm" to JSElement(query = "#${PLOTTING_FIELDS_FORM}", makeJQuery = false),
+                "plottingMethodsTable" to JSElement(query = "#$PLOTTING_METHODS_TABLE", makeSelector = false),
             )
         }
         script {
             src = "/assets/pipeline-tasks.js"
         }
+        script {
+            src = "/assets/plotting-fields.js"
+        }
     }
 
     companion object {
 
-        private const val TASK_DATA_MODAL_ID = "taskData"
         private const val TASKS_TABLE_ID = "tasksTable"
         private const val TASK_OUTPUT_MODAL = "taskOutput"
         private const val PLOTTING_METHODS_TABLE = "plottingMethodsTable"
         private const val PLOTTING_METHODS_MODAL = "plottingMethodsModal"
         private const val PLOTTING_FIELDS_MODAL = "plottingFieldsModal"
+        private const val PLOTTING_FIELDS_FORM = "plottingFieldsForm"
         private const val PLOTTING_FIELDS_TABLE = "plottingFieldsTable"
         private const val CONFIRM_DELETE_PLOTTING_FIELDS = "confirmDeletePlottingFields"
         private val plottingMethodButtons = listOf(
@@ -298,14 +301,14 @@ class PipelineTasks(
                 name = "btnRun",
                 text = "Run Next Task",
                 icon = "play",
-                event = "clickRunTask()",
+                event = "clickRunTask(false)",
                 title = "Run the next available task if there are no other tasks running",
             ),
             tableButton(
                 name = "btnRunAll",
                 text = "Run All Tasks",
                 icon = "fast-forward",
-                event = "clickRunAllTasks()",
+                event = "clickRunTask(true)",
                 title = """
                     Run the next available tasks if there are no other tasks running. Stops upon failure or User Task
                 """.trimIndent(),
