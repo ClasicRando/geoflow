@@ -18,7 +18,7 @@ fun HTML.pipelineStatus(workflowCode: String, call: ApplicationCall) {
 }
 
 /** PipelineTasks page with template created from [runId] */
-fun HTML.pipelineTasks(runId: Long): Unit = applyTemplate(PipelineTasks(runId))
+fun HTML.pipelineTasks(call: ApplicationCall, runId: Long): Unit = applyTemplate(PipelineTasks(call, runId))
 
 /** BasePage template with simple message inserted */
 fun HTML.errorPage(message: String): Unit = applyTemplate(ErrorPage(message))
