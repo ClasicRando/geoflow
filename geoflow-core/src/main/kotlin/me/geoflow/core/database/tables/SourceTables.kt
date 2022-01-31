@@ -120,7 +120,7 @@ object SourceTables : DbTable("source_tables"), ApiExposed {
                    load = ?
             WHERE  user_has_run(?,run_id)
             AND    st_oid = ?
-            RETURNING st_oid,table_name,file_id,file_name,sub_table,loader_type,delimiter,qualified,encoding,url,
+            RETURNING st_oid,table_name,file_id,file_name,sub_table,delimiter,qualified,encoding,url,
             comments,record_count,collect_type,analyze_table,load
         """.trimIndent()
         return connection.runReturningFirstOrNull(
