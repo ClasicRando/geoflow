@@ -10,11 +10,6 @@ class ValidatorTypes {
     static number = '#';
 }
 
-/**
- * 
- * @property {HTMLFormElement | string} form
- * @property {Object.<string, Object.<string, string | Function>>} fields
- */
 class FormHandler {
 
     /**
@@ -22,22 +17,15 @@ class FormHandler {
      * @param {HTMLFormElement | string} form 
      * @param {Object.<string, string | Function>} options 
      */
-    constructor(form, options) {
+    constructor(form, options={}) {
         if (typeof form === 'string') {
+            /** @type {HTMLFormElement} */
             this.form = document.querySelector(form);
         } else {
             this.form = form;
         }
+        /** @type {Object.<string, Object.<string, string | Function>>} */
         this.fields = {};
-        for (const field of this.form.querySelectorAll('input[type=text]')) {
-            if (field.name in options) {
-                this.fields[field.name] = {
-                    element: field,
-                    type: 'textInput',
-                    validator: options[field.name],
-                }
-            }
-        }
         for (const field of this.form.querySelectorAll('input[type=password]')) {
             if (field.name in options) {
                 this.fields[field.name] = {
@@ -53,46 +41,64 @@ class FormHandler {
                 }
             }
         }
-        for (const field of this.form.querySelectorAll('select:not([multiple=multiple])')) {
-            if (field.name in options) {
-                this.fields[field.name] = {
-                    element: field,
-                    type: 'singleSelect',
-                    validator: options[field.name],
+        if (Object.keys(options).length) {
+            for (const field of this.form.querySelectorAll('input[type=text]')) {
+                if (field.name in options) {
+                    this.fields[field.name] = {
+                        element: field,
+                        type: 'textInput',
+                        validator: options[field.name],
+                    }
                 }
             }
-        }
-        for (const field of this.form.querySelectorAll('select[multiple=multiple]')) {
-            if (field.name in options) {
-                this.fields[field.name] = {
-                    element: field,
-                    type: 'multiSelect',
-                    validator: options[field.name],
+            for (const field of this.form.querySelectorAll('select:not([multiple=multiple])')) {
+                if (field.name in options) {
+                    this.fields[field.name] = {
+                        element: field,
+                        type: 'singleSelect',
+                        validator: options[field.name],
+                    }
                 }
             }
-        }
-        for (const field of this.form.querySelectorAll('input[type=checkbox]')) {
-            if (field.name in options) {
-                this.fields[field.name] = {
-                    element: field,
-                    type: 'checkbox',
-                    validator: options[field.name],
+            for (const field of this.form.querySelectorAll('select[multiple=multiple]')) {
+                if (field.name in options) {
+                    this.fields[field.name] = {
+                        element: field,
+                        type: 'multiSelect',
+                        validator: options[field.name],
+                    }
                 }
             }
-        }
-        for (const field of this.form.querySelectorAll('textArea')) {
-            if (field.name in options) {
-                this.fields[field.name] = {
-                    element: field,
-                    type: 'textArea',
-                    validator: options[field.name],
+            for (const field of this.form.querySelectorAll('input[type=checkbox]')) {
+                if (field.name in options) {
+                    this.fields[field.name] = {
+                        element: field,
+                        type: 'checkbox',
+                        validator: options[field.name],
+                    }
+                }
+            }
+            for (const field of this.form.querySelectorAll('textArea')) {
+                if (field.name in options) {
+                    this.fields[field.name] = {
+                        element: field,
+                        type: 'textArea',
+                        validator: options[field.name],
+                    }
                 }
             }
         }
     }
 
+    /**
+     * @returns {FormData}
+     */
+    get formData() {
+        return new FormData(this.form);
+    }
+
     validate() {
-        const formData = new FormData(this.form);
+        const formData = this.formData;
         const handleValidator = (element, value, validator) => {
             const whitespaceCheck = /\s/g;
             const isMultipleValues = value.length > 1;
@@ -156,7 +162,7 @@ class FormHandler {
                     const password = value[0];
                     const containsChars = /[A-Z]/g.test(password) && /[a-z]/g.test(password) && /\d/g.test(password) && /[^A-Z0-9]/gi.test(password);
                     const isValidPassword = !whitespaceCheck.test(password) && password !== '' && password.length >= 8 && containsChars;
-                    const message = 'Passwords must be 8 or more non-whitespace characters, containing at least 1 uppper, lower, number and other character';
+                    const message = 'Passwords must be 8 or more non-whitespace characters, containing at least 1 upper, lower, number and other character';
                     return FormHandler.setFieldState(element, isValidPassword, message);
             }
         };
@@ -253,6 +259,7 @@ class FormHandler {
      * @param {Object.<string, object>} obj 
      */
     populateForm(obj) {
+        this.resetForm();
         for (const [key, value] of Object.entries(obj)) {
             const element = this.form.querySelector(`[name=${key}]`);
             if (element === null) {

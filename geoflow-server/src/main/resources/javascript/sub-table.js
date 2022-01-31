@@ -1,4 +1,4 @@
-document.addEventListener('DOMContentLoaded', async () => {
+document.addEventListener('DOMContentLoaded', () => {
     const elements = document.querySelectorAll('[data-detail-view=true]');
     const elementsCount = elements.length;
     for (let i = 0; i < elementsCount; i++) {
@@ -42,8 +42,7 @@ document.addEventListener('DOMContentLoaded', async () => {
  * @returns 
  */
 async function getData(url, idField, columns, $detail) {
-    // const response = await fetch(url.replace('{id}', idField));
-    const response = await fetchApiGET(url.replace('{id}', idField));
+    const response = await fetchApi(url.replace('{id}', idField), FetchMethods.GET);
     if (!response.success) {
         console.log(response);
         return;

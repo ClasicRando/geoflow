@@ -2,29 +2,30 @@ let runId = -1;
 let code;
 const operations = JSON.parse(operationsJson);
 
-$(document).ready(function() {
+document.addEventListener('DOMContentLoaded', () => {
     const params = new URLSearchParams(window.location.search);
     code = params.get('code');
-    const $status = $(`#${statusSelectId}`);
-    for (const operation of operations.payload||[]) {
-        $status.append(`<option value="${operation.href}">${operation.name}</option>`);
-    }
-    $status.val(`/pipeline-status?code=${code}`);
-    $status.change((e) => { 
-        const href = $(e.target).val();
+    addOptions(statusSelect, operations.payload||[], 'href', 'name');
+    // const $status = $(`#${statusSelectId}`);
+    // for (const operation of operations.payload||[]) {
+    //     $status.append(`<option value="${operation.href}">${operation.name}</option>`);
+    // }
+    statusSelect.value = `/pipeline-status?code=${code}`;
+    statusSelect.addEventListener('change', (e) => {
+        const href = e.target.value;
         const code = href.match(/(?<=\?code=).+/g)[0];
-        $(`#${tableId}`).bootstrapTable('refreshOptions', {
+        $table.bootstrapTable('refreshOptions', {
             url: `http://localhost:8080/data/pipeline-runs/${code}`,
         });
     });
 });
 
 async function pickup() {
-    $(`#${confirmPickupId}`).modal('hide');
+    $confirmPickup.modal('hide');
     const response = await fetchPOST(`/data/pipeline-runs/pickup/${runId}`);
     const json = await response.json();
     if ('payload' in json) {
-        $(`#${tableId}`).bootstrapTable('refresh');
+        $table.bootstrapTable('refresh');
         showToast('Run Picked Up', json.payload);
     } else {
         showToast('Error During Pickup', json.errors);
@@ -32,11 +33,11 @@ async function pickup() {
 }
 
 async function forward() {
-    $(`#${confirmForwardId}`).modal('hide');
+    $confirmForward.modal('hide');
     const response = await fetchPOST(`/data/pipeline-runs/move-forward/${runId}`);
     const json = await response.json();
     if ('payload' in json) {
-        $(`#${tableId}`).bootstrapTable('refresh');
+        $table.bootstrapTable('refresh');
         showToast('Run Moved Forward', json.payload);
     } else {
         showToast('Error During Move Forward', json.errors);
@@ -44,11 +45,11 @@ async function forward() {
 }
 
 async function back() {
-    $(`#${confirmBackId}`).modal('hide');
+    $confirmBack.modal('hide');
     const response = await fetchPOST(`/data/pipeline-runs/move-back/${runId}`);
     const json = await response.json();
     if ('payload' in json) {
-        $(`#${tableId}`).bootstrapTable('refresh');
+        $table.bootstrapTable('refresh');
         showToast('Run Moved Back', json.payload);
     } else {
         showToast('Error During Move Back', json.errors);
@@ -57,17 +58,17 @@ async function back() {
 
 function showPickupModal(value) {
     runId = value;
-    $(`#${confirmPickupId}`).modal('show');
+    $confirmPickup.modal('show');
 }
 
 function showForwardModal(value) {
     runId = value;
-    $(`#${confirmForwardId}`).modal('show');
+    $confirmForward.modal('show');
 }
 
 function showBackModal(value) {
     runId = value;
-    $(`#${confirmBackId}`).modal('show');
+    $confirmBack.modal('show');
 }
 
 function actionsFormatter(value, row) {

@@ -21,7 +21,7 @@ const validatorOptions = {
 const userFormHandler = new FormHandler(userForm, validatorOptions);
 
 document.addEventListener('DOMContentLoaded', async () => {
-    const response = await fetchApiGET('/data/roles');
+    const response = await fetchApi('/data/roles', FetchMethods.GET);
     if (response.success) {
         for (const select of document.getElementsByName('roles')) {
             for (const role of response.payload) {

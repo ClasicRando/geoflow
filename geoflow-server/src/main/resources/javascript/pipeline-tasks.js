@@ -1,58 +1,34 @@
+/** @type {TableSubscriber} */
 let tasksSubscriber;
+/** @type {number} */
 let runId = -1;
+/** @type {boolean} */
 let waitingForUpdate = false;
+/** @type {string} */
 let timeUnit = 'mins';
+/** @type {number} */
 let deletePlottingFieldsStOid = null;
-$(document).ready(() => {
+/** @type {HTMLOListElement} */
+let plottingMethodsList = null;
+const plottingMethodTypesJson = JSON.parse(plottingMethodTypes);
+const methodTypeOptions = plottingMethodTypesJson.payload.map(method => {
+    return {
+        id: method.method_id,
+        text: method.name,
+    }
+});
+let options = null;
+/** @type {{id: number, text: string}[]} */
+let tableNameOptions = null;
+
+document.addEventListener('DOMContentLoaded', () => {
     tasksSubscriber = subscriberTables[taskTableId];
     tasksSubscriber.socket.addEventListener('message', (e) => { waitingForUpdate = false; })
     runId = window.location.href.match(/(?<=\/)[^/]+$/g)[0];
-    $('button[name="btnConnected"]').click(async (e) => {
-        if (tasksSubscriber.isActive) {
-            tasksSubscriber.handleEvent('open');
-        } else {
-            const isActive = await tasksSubscriber.attemptRestart();
-            if (isActive) {
-                showToast('Reconnected', 'Connected to subscriber!');
-            } else {
-                showToast('Error', 'Attempted restart of subscriber failed');
-            }
-        }
-    });
+    plottingMethodsList = plottingMethodsModal.querySelector('ol');
 });
 
-async function clickRunTask() {
-    if (waitingForUpdate) {
-        return;
-    }
-    if (!tasksSubscriber.isActive) {
-        showToast('Error', 'Task change listener is not currently running. Refresh page to reconnect');
-        waitingForUpdate = false;
-        return;
-    }
-    waitingForUpdate = true;
-    let data = tasksSubscriber.$table.bootstrapTable('getData');
-    if (data.filter(row => row.task_status === 'Running' || row.task_status === 'Scheduled').length > 1) {
-        showToast('Error', 'Task already running');
-        waitingForUpdate = false;
-        return;
-    }
-    if (data.filter(row => row.task_status === 'Waiting').length === 0) {
-        showToast('Error', 'No task to run');
-        waitingForUpdate = false;
-        return;
-    }
-    const response = await fetchPOST(`/data/pipeline-run-tasks/run-next/${runId}`);
-    const json = await response.json();
-    if ('errors' in json) {
-        showToast('Error', json.errors);
-        waitingForUpdate = false;
-    } else {
-        showToast('Next Task Scheduled', `Successfully scheduled ${json.payload.pipeline_run_task_id} to run`);
-    }
-}
-
-async function clickRunAllTasks() {
+async function clickRunTask(isAll=false) {
     if (waitingForUpdate) {
         return;
     }
@@ -62,25 +38,29 @@ async function clickRunAllTasks() {
         waitingForUpdate = false;
         return;
     }
-    let data = tasksSubscriber.$table.bootstrapTable('getData');
-    if (data.find(row => row.task_status === 'Running' || row.task_status === 'Scheduled') !== undefined) {
-        showToast('Error', 'Task already running');
+    const data = tasksSubscriber.tableData;
+    const runningTasks = data.filter(row => row.task_status === 'Running' || row.task_status === 'Scheduled');
+    if (runningTasks.length > 1) {
+        showToast('Warning', 'Task already running');
         waitingForUpdate = false;
         return;
     }
-    let row = data.find(row => row.task_status === 'Waiting');
-    if (row == undefined) {
-        showToast('Error', 'No task to run');
+    const taskQueue = data.filter(row => row.task_status === 'Waiting');
+    if (taskQueue.length === 0) {
+        showToast('Warning', 'No task to run');
         waitingForUpdate = false;
         return;
     }
-    const response = await fetchPOST(`/data/pipeline-run-tasks/run-all/${runId}`);
+    const response = isAll ? await fetchPOST(`/data/pipeline-run-tasks/run-all/${runId}`) : await fetchPOST(`/data/pipeline-run-tasks/run-next/${runId}`);
     const json = await response.json();
     if ('errors' in json) {
         showToast('Error', json.errors);
         waitingForUpdate = false;
     } else {
-        showToast('Run All Scheduled', `Successfully scheduled to run all tasks`);
+        showToast(
+            isAll ? 'Run All Scheduled' : 'Next Task Scheduled',
+            isAll ? `Successfully scheduled to run all tasks` : `Successfully scheduled ${json.payload.pipeline_run_task_id} to run`
+        );
     }
 }
 
@@ -121,8 +101,9 @@ async function reworkTask(prTaskId) {
         waitingForUpdate = false;
         return;
     }
-    let data = tasksSubscriber.$table.bootstrapTable('getData');
-    if (data.filter(row => row.task_status === 'Running' || row.task_status === 'Scheduled').length > 1) {
+    const data = tasksSubscriber.tableData;
+    const runningTasks = data.filter(row => row.task_status === 'Running' || row.task_status === 'Scheduled');
+    if (runningTasks.length > 1) {
         showToast('Error', 'Cannot perform rework while task is active');
         return;
     }
@@ -153,156 +134,135 @@ function taskActionFormatter(value, row) {
 
 function changeTimeUnit() {
     timeUnit = timeUnit === 'mins' ? 'secs' : 'mins';
-    const data = tasksSubscriber.$table.bootstrapTable('getData');
-    tasksSubscriber.$table.bootstrapTable('load', data);
-    $('th[data-field=time]').find('.th-inner').text(`Time (${timeUnit})`);
+    tasksSubscriber.reloadData();
+    document.querySelector('th[data-field=time]').querySelector('.th-inner').textContent = `Time (${timeUnit})`;
 }
 
 function showOutputModal(prTaskId) {
-    const $modal = $(`#${taskOutputId}`);
-    const $modalBody = $(`#${taskOutputId}Body`);
-    const modalHtml = tasksSubscriber.$table.bootstrapTable('getData').find(row => row.pipeline_run_task_id === prTaskId).modal_html;
-    $modalBody.empty();
-    $modalBody.append(modalHtml);
-    $modalBody.find('table').bootstrapTable();
-    $modal.modal('show');
+    const modalBody = taskOutput.querySelector('.modal-body');
+    const modalHtml = tasksSubscriber.tableData.find(row => row.pipeline_run_task_id === prTaskId).modal_html;
+    modalBody.innerHTML = modalHtml;
+    for (const modalTable of modalBody.querySelectorAll('table')) {
+        $(modalTable).bootstrapTable();
+    }
+    $taskOutput.modal('show');
 }
 
-let methodTypeOptions = null;
-let tableNameOptions = null;
-let $list = null;
-let methodsCount = 0;
+/**
+ * @param {number} i
+ * @returns {HTMLLIElement}
+ */
+function plottingMethodListItem(i, order, methodType, stOid) {
+    const index = i + 1;
+    const liElement = document.createElement('li');
+    liElement.classList.add('list-group-item');
+    liElement.id = index.toString();
+    const row = document.createElement('div');
+    row.classList.add('row');
+    const orderCol = document.createElement('div');
+    orderCol.classList.add('col-2');
+    const orderLabel = document.createElement('label');
+    orderLabel.htmlFor = `order${index}`;
+    orderLabel.textContent = 'Order';
+    const orderSelect = document.createElement('select');
+    orderSelect.id = `order${index}`;
+    orderSelect.name = 'order';
+    orderSelect.classList.add('custom-select');
+    addOptions(orderSelect, options, 'id', 'text');
+    orderSelect.value = order;
+    orderCol.appendChild(orderLabel);
+    orderCol.appendChild(orderSelect);
+    row.appendChild(orderCol);
+
+    const sourceTableCol = document.createElement('div');
+    sourceTableCol.classList.add('col');
+    const sourceTableLabel = document.createElement('label');
+    sourceTableLabel.htmlFor = `sourceTable${index}`;
+    sourceTableLabel.textContent = 'Source Table';
+    const sourceTableSelect = document.createElement('select');
+    sourceTableSelect.id = `sourceTable${index}`;
+    sourceTableSelect.name = 'sourceTable';
+    sourceTableSelect.classList.add('custom-select');
+    addOptions(sourceTableSelect, tableNameOptions, 'id', 'text');
+    sourceTableSelect.value = stOid;
+    sourceTableCol.appendChild(sourceTableLabel);
+    sourceTableCol.appendChild(sourceTableSelect);
+    row.appendChild(sourceTableCol);
+
+    const methodCol = document.createElement('div');
+    methodCol.classList.add('col');
+    const methodLabel = document.createElement('label');
+    methodLabel.htmlFor = `method${index}`;
+    methodLabel.textContent = 'Method';
+    const methodSelect = document.createElement('select');
+    methodSelect.id = `method${index}`;
+    methodSelect.name = 'method';
+    methodSelect.classList.add('custom-select');
+    addOptions(methodSelect, methodTypeOptions, 'id', 'text');
+    methodSelect.value = methodType;
+    methodCol.appendChild(methodLabel);
+    methodCol.appendChild(methodSelect);
+    row.appendChild(methodCol);
+
+    liElement.appendChild(row);
+    return liElement;
+}
+
 async function editPlottingMethods() {
-    const response = await fetchApiGET(`/plotting-methods/${runId}`);
+    const response = await fetchApi(`/plotting-methods/${runId}`, FetchMethods.GET);
     if (!response.success) {
-        showToast('Error', response.response);
+        showToast('Error', response.errors);
         return;
     }
-    const plottingMethodTypesResponse = await fetchApiGET('/plotting-method-types');
-    if (!plottingMethodTypesResponse.success) {
-        showToast('Error', plottingMethodTypesResponse.errors);
-        return;
-    }
-    methodTypeOptions = plottingMethodTypesResponse.payload.map(method => `<option value="${method.method_id}">${method.name}</option>`).join('');
-    const sourceTablesResponse = await fetchApiGET(`/source-tables/${runId}`);
+    const methods = response.payload;
+    const methodsCount = methods.length;
+    const sourceTablesResponse = await fetchApi(`/source-tables/${runId}`, FetchMethods.GET);
     if (!sourceTablesResponse.success) {
         showToast('Error', sourceTablesResponse.errors);
         return;
     }
-    tableNameOptions = sourceTablesResponse.payload.map(sourceTable => `<option value="${sourceTable.st_oid}">${sourceTable.table_name}</option>`).join('');
-    const $modal = $(`#${plottingMethodsModalId}`);
-    $list = $modal.find('ol');
-    $list.empty();
-    methodsCount = response.response.payload.length;
-    const options = (new Array(methodsCount)).fill(undefined).map((_, i) => `<option value="${i + 1}">${i + 1}</option>`).join('');
-    for(const [i, method] of response.response.payload.entries()) {
-        const index = i + 1;
-        $list.append(`
-            <li id="${index}" class="list-group-item">
-                <div class="row">
-                    <div class="col-2">
-                        <label for="order${index}">Order</label>
-                        <select id="order${index}" name="order" class="custom-select">
-                            ${options}
-                        </select>
-                    </div>
-                    <div class="col">
-                        <label for="sourceTable${index}">Source Table</label>
-                        <select id="sourceTable${index}" name="sourceTable" class="custom-select">
-                            ${tableNameOptions}
-                        </select>
-                    </div>
-                    <div class="col">
-                        <label for="method${index}">Method</label>
-                        <select id="method${index}" name="method" class="custom-select">
-                            ${methodTypeOptions}
-                        </select>
-                    </div>
-                </div>
-            </li>
-        `);
-        $(`#sourceTable${index}`).val(method.st_oid);
-        $(`#method${index}`).val(method.method_type);
-        $(`#order${index}`).val(method.order);
+    options = (new Array(methodsCount)).fill(undefined).map((_, i) => {
+        return {
+            id: i + 1,
+            text: i + 1,
+        }
+    });
+    tableNameOptions = sourceTablesResponse.payload.map(sourceTable => {
+        return {
+            id: sourceTable.st_oid,
+            text: sourceTable.table_name,
+        }
+    });
+    removeAllChildren(plottingMethodsList);
+    for(let i = 0; i < methodsCount; i++) {
+        const method = methods[i];
+        const methodElement = plottingMethodListItem(i, method.order, method.method_type, method.st_oid);
+        plottingMethodsList.appendChild(methodElement);
     }
-    $modal.modal('show');
+    $plottingMethodsModal.modal('show');
 }
 
 function addPlottingMethod() {
-    const lastIndex = $list.find('li').length + 1;
-    $list.append(`
-        <li id="${lastIndex}" class="list-group-item">
-            <div class="row">
-                <div class="col-2">
-                    <label for="order${lastIndex}">Order</label>
-                    <select id="order${lastIndex}" name="order" class="custom-select">
-                    </select>
-                </div>
-                <div class="col">
-                    <label for="sourceTable${lastIndex}">Source Table</label>
-                    <select id="sourceTable${lastIndex}" name="sourceTable" class="custom-select">
-                        ${tableNameOptions}
-                    </select>
-                </div>
-                <div class="col">
-                    <label for="method${lastIndex}">Method</label>
-                    <select id="method${lastIndex}" name="method" class="custom-select">
-                        ${methodTypeOptions}
-                    </select>
-                </div>
-            </div>
-        </li>
-    `);
+    const lastIndex = plottingMethodsList.querySelectorAll('li').length;
+    const methodElement = plottingMethodListItem(lastIndex, '', '', '');
+    plottingMethodsList.appendChild(methodElement);
     setOrderNumberOptions();
 }
 
 function setOrderNumberOptions() {
-    let options = '';
-    const optionCount = $list.find('li').length;
-    $list.find('select[name=order]').each((_, el) => {
-        const $select = $(el);
-        if (optionCount !== $select.find('option').length) {
-            const value = $select.val();
-            if (options === '') {
-                options = (new Array(optionCount)).fill(undefined).map((_, i) => `<option value="${i + 1}">${i + 1}</option>`).join('');
-            }
-            $select.empty().append(options).val(value);
+    const optionCount = plottingMethodsList.querySelectorAll('li').length;
+    options = (new Array(optionCount)).fill(undefined).map((_, i) => {
+        return {
+            id: i,
+            text: i,
         }
     });
-}
-
-async function setPlottingFields($modal) {
-    return '';
-}
-
-function plottingFieldsActions(value, row) {
-    const editButton = `
-        <a class="p-2" href="javascript:void(0)" onClick="plottingFields(${row.st_oid})">
-            <i class="fas fa-edit"></i>
-        </a>
-    `;
-    const deleteButton = `
-        <a class="p-2" href="javascript:void(0)" onClick="confirmDeletePlottingFields(${row.st_oid})">
-            <i class="fas fa-trash"></i>
-        </a>
-    `;
-    return `${editButton}${deleteButton}`;
-}
-
-function confirmDeletePlottingFields(stOid) {
-    deletePlottingFieldsStOid = stOid;
-    $(`#${confirmDeletePlottingFieldsId}`).modal('show');
-}
-
-async function deletePlottingFields() {
-    const response = await fetchDELETE(`/data/plotting-fields/${deletePlottingFieldsStOid}`);
-    const json = await response.json();
-    if ('errors' in json) {
-        showToast('Error', json.errors);
-    } else {
-        $(`#${plottingFieldsTableId}`).bootstrapTable('refresh');
-        showToast('Deleted Plotting Fields', `Deleted plotting fields for st_oid = ${deletePlottingFieldsStOid}`);
-        deletePlottingFieldsStOid = null;
+    for (const element of plottingMethodsList.querySelectorAll('select[name=order]')) {
+        if (optionCount !== element.querySelectorAll('option').length) {
+            const tempValue = element.value;
+            removeAllChildren(element);
+            addOptions(element, options, 'id', 'text');
+            element.vaue = tempValue;
+        }
     }
-    $(`#${confirmDeletePlottingFieldsId}`).modal('hide');
 }
