@@ -3,6 +3,7 @@ package me.geoflow.web.pages
 import io.ktor.html.Placeholder
 import io.ktor.html.Template
 import io.ktor.html.insert
+import kotlinx.coroutines.runBlocking
 import kotlinx.html.FlowContent
 import kotlinx.html.HTML
 import kotlinx.html.STYLE
@@ -41,14 +42,18 @@ abstract class BasePage : Template<HTML> {
     /** Function used to populate the [contentPlaceholder]. Can be an empty function */
     abstract val content: FlowContent.() -> Unit
     /** Function used to populate the [scriptPlaceholder]. Can be an empty function */
-    abstract val script: FlowContent.() -> Unit
+    abstract val script: suspend FlowContent.() -> Unit
 
     /** Method from [Template] to create HTML document. Contains most of the layout with some placeholders */
     @Suppress("LongMethod")
     override fun HTML.apply() {
         stylesPlaceholder { styles() }
         contentPlaceholder { content() }
-        scriptPlaceholder { this.script() }
+        scriptPlaceholder {
+            runBlocking {
+                this@BasePage.script(this@scriptPlaceholder)
+            }
+        }
         lang = "en-US"
         head {
             title(content = "GeoFlow")
@@ -89,10 +94,10 @@ abstract class BasePage : Template<HTML> {
                 src = "https://cdn.jsdelivr.net/npm/jquery-validation@1.19.3/dist/jquery.validate.min.js"
             }
             script {
-                src = "/assets/utils.js"
+                src = "/assets/form-handler.js"
             }
             script {
-                src = "/assets/form-handler.js"
+                src = "/assets/utils.js"
             }
             style {
                 unsafe {
@@ -160,6 +165,9 @@ abstract class BasePage : Template<HTML> {
                 @Suppress("MaxLineLength")
                 script {
                     src = "https://unpkg.com/bootstrap-table@1.19.1/dist/extensions/fixed-columns/bootstrap-table-fixed-columns.min.js"
+                }
+                script {
+                    src = "/assets/fixed-right-columns.js"
                 }
                 insert(scriptPlaceholder)
                 div {

@@ -1,5 +1,6 @@
 package me.geoflow.web.pages
 
+import io.ktor.application.ApplicationCall
 import kotlinx.html.ButtonType
 import me.geoflow.core.database.enums.FileCollectType
 import me.geoflow.core.database.tables.PipelineRunTasks
@@ -28,6 +29,13 @@ import me.geoflow.core.web.html.basicTable
 import me.geoflow.core.web.html.confirmModal
 import me.geoflow.core.web.html.emptyModal
 import me.geoflow.core.web.html.formModal
+import me.geoflow.core.web.html.tabLayout
+import me.geoflow.core.web.html.tabNav
+import me.geoflow.core.web.html.tableButton
+import me.geoflow.web.api.NoBody
+import me.geoflow.web.api.makeApiCall
+import me.geoflow.web.html.sourceTables
+import me.geoflow.web.session
 
 /**
  * Page for pipeline task operations
@@ -42,6 +50,8 @@ import me.geoflow.core.web.html.formModal
  * - a specific script for this page loaded from assets
  */
 class PipelineTasks(
+    /** Call context used to extract the session */
+    private val call: ApplicationCall,
     /** ID for the pipeline run to be displayed in this page */
     private val runId: Long,
 ) : BasePage() {
@@ -233,7 +243,13 @@ class PipelineTasks(
         )
     }
 
-    override val script: FlowContent.() -> Unit = {
+    override val script: suspend FlowContent.() -> Unit = {
+        val session = call.session
+        requireNotNull(session)
+        val operationsJson = makeApiCall<NoBody, String>(
+            endPoint = "/api/plotting-method-types",
+            apiToken = session.apiToken,
+        )
         script {
             addParamsAsJsGlobalVariables(
                 "taskTableId" to TASKS_TABLE_ID,

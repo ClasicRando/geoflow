@@ -28,7 +28,6 @@ import me.geoflow.core.web.html.confirmModal
 import me.geoflow.core.web.html.formModal
 import me.geoflow.core.web.html.tableButton
 import me.geoflow.web.session
-import me.geoflow.web.utils.Quad
 import me.geoflow.core.database.tables.DataSources as DataSourcesTable
 
 /** */
@@ -329,28 +328,25 @@ class DataSources(call: ApplicationCall) : BasePage() {
         )
     }
 
-    override val script: FlowContent.() -> Unit = {
-        val (collectionUsers, provs, warehouseTypes, pipelines) = runBlocking {
-            val session = call.session
-            requireNotNull(session)
-            val collectionUsers = makeApiCall<NoBody, String>(
-                endPoint = "/api/users/collection",
-                apiToken = session.apiToken,
-            ).takeIf { it.contains("payload") } ?: DEFAULT_RESPONSE
-            val provs = makeApiCall<NoBody, String>(
-                endPoint = "/api/provs",
-                apiToken = session.apiToken,
-            ).takeIf { it.contains("payload") } ?: DEFAULT_RESPONSE
-            val warehouseTypes = makeApiCall<NoBody, String>(
-                endPoint = "/api/rec-warehouse-types",
-                apiToken = session.apiToken,
-            ).takeIf { it.contains("payload") } ?: DEFAULT_RESPONSE
-            val pipelines = makeApiCall<NoBody, String>(
-                endPoint = "/api/pipelines",
-                apiToken = session.apiToken,
-            ).takeIf { it.contains("payload") } ?: DEFAULT_RESPONSE
-            Quad(collectionUsers, provs, warehouseTypes, pipelines)
-        }
+    override val script: suspend FlowContent.() -> Unit = {
+        val session = call.session
+        requireNotNull(session)
+        val collectionUsers = makeApiCall<NoBody, String>(
+            endPoint = "/api/users/collection",
+            apiToken = session.apiToken,
+        ).takeIf { it.contains("payload") } ?: DEFAULT_RESPONSE
+        val provs = makeApiCall<NoBody, String>(
+            endPoint = "/api/provs",
+            apiToken = session.apiToken,
+        ).takeIf { it.contains("payload") } ?: DEFAULT_RESPONSE
+        val warehouseTypes = makeApiCall<NoBody, String>(
+            endPoint = "/api/rec-warehouse-types",
+            apiToken = session.apiToken,
+        ).takeIf { it.contains("payload") } ?: DEFAULT_RESPONSE
+        val pipelines = makeApiCall<NoBody, String>(
+            endPoint = "/api/pipelines",
+            apiToken = session.apiToken,
+        ).takeIf { it.contains("payload") } ?: DEFAULT_RESPONSE
         script {
             addParamsAsJsGlobalVariables(
                 "dataSourceTable" to JSElement(query = "#$TABLE_ID", makeSelector = false),

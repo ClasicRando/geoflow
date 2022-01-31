@@ -15,5 +15,5 @@ class ErrorPage(
         +message
     }
 
-    override val script: FlowContent.() -> Unit = {}
+    override val script: suspend FlowContent.() -> Unit = {}
 }

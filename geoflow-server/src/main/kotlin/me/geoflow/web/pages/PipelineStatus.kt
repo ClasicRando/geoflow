@@ -1,7 +1,6 @@
 package me.geoflow.web.pages
 
 import io.ktor.application.ApplicationCall
-import kotlinx.coroutines.runBlocking
 import me.geoflow.core.database.tables.PipelineRuns
 import me.geoflow.core.web.html.addParamsAsJsGlobalVariables
 import kotlinx.html.FlowContent
@@ -64,15 +63,13 @@ class PipelineStatus(
         )
     }
 
-    override val script: FlowContent.() -> Unit = {
-        val operationsJson = runBlocking {
-            val session = call.session
-            requireNotNull(session)
-            makeApiCall<NoBody, String>(
-                endPoint = "/api/operations/data",
-                apiToken = session.apiToken,
-            )
-        }
+    override val script: suspend FlowContent.() -> Unit = {
+        val session = call.session
+        requireNotNull(session)
+        val operationsJson = makeApiCall<NoBody, String>(
+            endPoint = "/api/operations/data",
+            apiToken = session.apiToken,
+        )
         script {
             addParamsAsJsGlobalVariables(
                 "confirmPickupId" to CONFIRM_PICKUP,

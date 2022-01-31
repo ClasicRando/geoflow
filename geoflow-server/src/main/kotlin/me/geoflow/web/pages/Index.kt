@@ -36,7 +36,7 @@ object Index : BasePage() {
         }
     }
 
-    override val script: FlowContent.() -> Unit = {
+    override val script: suspend FlowContent.() -> Unit = {
         script {
             addParamsAsJsGlobalVariables(
                 "operationsTableId" to OPERATIONS_TABLE_ID,
