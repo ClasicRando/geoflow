@@ -1,6 +1,5 @@
 package me.geoflow.core.web.html
 
-import kotlinx.html.DIV
 import kotlinx.html.FlowContent
 import kotlinx.html.TABLE
 import kotlinx.html.THEAD
@@ -133,19 +132,6 @@ fun TABLE.addTableButtons(tableId: String, tableButtons: List<String>) {
     }
 }
 
-/** Registers a javascript callback function to add the number of ending columns that should be frozen */
-fun DIV.addEndColumnFreeze(tableId: String, freezeCount: Int) {
-    script {
-        unsafe {
-            raw("""
-                document.addEventListener('DOMContentLoaded', () => {
-                    ${'$'}('#$tableId').bootstrapTable('refreshOptions', {fixedRightNumber: $freezeCount});
-                });
-            """.trimIndent())
-        }
-    }
-}
-
 /** */
 val emptyToolbar: UL.() -> Unit = {}
 
@@ -202,6 +188,9 @@ inline fun <reified T: ApiExposed> FlowContent.basicTable(
                 attributes["data-fixed-columns"] = "true"
                 attributes["data-fixed-number"] = it.toString()
             }
+            freezeColumnsEnd?.let {
+                attributes["data-fixed-right-number"] = it.toString()
+            }
             subTableDetails?.let { applySubTabDetails(it) }
             attributes["data-classes"] = "table table-bordered${if (clickableRows) " table-hover" else ""}"
             attributes["data-thead-classes"] = "thead-dark"
@@ -219,7 +208,6 @@ inline fun <reified T: ApiExposed> FlowContent.basicTable(
                 addTableButtons(tableId, tableButtons)
             }
         }
-        freezeColumnsEnd?.let { addEndColumnFreeze(tableId, it) }
     }
 }
 
