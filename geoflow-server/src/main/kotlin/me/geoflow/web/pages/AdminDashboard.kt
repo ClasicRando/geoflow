@@ -35,7 +35,7 @@ object AdminDashboard : BasePage() {
             name = "btnCreate",
             text = "Create New User",
             icon = "fa-plus",
-            event = "openUserEditModal()",
+            event = "openUserModal()",
             title = "Create new user for the application in a modal window",
         ),
     )
