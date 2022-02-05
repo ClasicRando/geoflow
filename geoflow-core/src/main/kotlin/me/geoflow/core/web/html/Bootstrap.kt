@@ -211,8 +211,8 @@ data class TabNav(
 ) {
     /** Name of the tab as used in html properties. Normalizes whitespace and case of the text */
     val name: String = label
-        .replace(Regex("\\s+"), "_")
-        .trim('_')
+        .replace(Regex("\\s+"), "-")
+        .trim('-')
         .lowercase()
 }
 
