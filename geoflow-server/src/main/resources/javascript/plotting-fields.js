@@ -1,7 +1,13 @@
 const plottingFieldsFormHandler = typeof plottingFieldsForm !== 'undefined' && plottingFieldsForm !== null ? new FormHandler(plottingFieldsForm) : null;
 var plottingFieldsStOid = null;
+/** @type {number} */
+let deletePlottingFieldsStOid = null;
 
 async function plottingFields(stOid) {
+    const tabs = document.querySelector('#tabs');
+    if (tabs !== null) {
+        $(tabs).find('#plotting-fields-tab').tab('show');
+    }
     const fieldsResponse = await fetchApi(`/data/plotting-fields/source-table/${stOid}`, FetchMethods.GET);
     const columnsResponse = await fetchApi(`/data/source-table-columns/${stOid}`, FetchMethods.GET);
     if (!columnsResponse.success) {
@@ -16,10 +22,12 @@ async function plottingFields(stOid) {
     })
     plottingFieldsStOid = stOid;
     forEach(plottingFieldsFormHandler.form.querySelectorAll('select:not([multiple=multiple])'), (element) => {
+        removeAllChildren(element);
         addOption(element, '', '');
         addOptions(element, columnsOptions, 'value', 'text');
     });
     forEach(plottingFieldsFormHandler.form.querySelectorAll('select[multiple=multiple]'), (element) => {
+        removeAllChildren(element);
         addOptions(element, columnsOptions, 'value', 'text');
     });
     if (fieldsResponse.success && (fieldsResponse.payload||[]).length === 1) {
