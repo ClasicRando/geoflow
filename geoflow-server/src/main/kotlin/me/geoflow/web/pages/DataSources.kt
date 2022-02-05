@@ -349,17 +349,17 @@ class DataSources(call: ApplicationCall) : BasePage() {
         ).takeIf { it.contains("payload") } ?: DEFAULT_RESPONSE
         script {
             addParamsAsJsGlobalVariables(
-                "dataSourceTable" to JSElement(query = "#$TABLE_ID", makeSelector = false),
-                "contactModal" to JSElement(query = "#$CONTACT_MODAL_ID"),
-                "contactForm" to JSElement(query = "#$CONTACT_FORM_ID", makeJQuery = false),
-                "sourceModal" to JSElement(query = "#$SOURCE_MODAL_ID"),
-                "sourceForm" to JSElement(query = "#$SOURCE_FORM_ID", makeJQuery = false),
+                "dataSourceTable" to JSElement(id = TABLE_ID, makeElement = false),
+                "contactModal" to JSElement(id = CONTACT_MODAL_ID),
+                "contactForm" to JSElement(id = CONTACT_FORM_ID, makeJQuery = false),
+                "sourceModal" to JSElement(id = SOURCE_MODAL_ID),
+                "sourceForm" to JSElement(id = SOURCE_FORM_ID, makeJQuery = false),
                 "collectionUsersJson" to collectionUsers,
                 "provsJson" to provs,
                 "warehouseTypesJson" to warehouseTypes,
                 "pipelinesJson" to pipelines,
-                "confirmDeleteContact" to JSElement(query = "#$CONFIRM_DELETE_CONTACT_MODAL_ID", makeSelector = false),
-                "contactTable" to JSElement(query = "#$CONTACT_TABLE_ID", makeSelector = false),
+                "confirmDeleteContact" to JSElement(id = CONFIRM_DELETE_CONTACT_MODAL_ID, makeElement = false),
+                "contactTable" to JSElement(id = CONTACT_TABLE_ID, makeElement = false),
             )
         }
         script {

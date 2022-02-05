@@ -73,12 +73,12 @@ class PipelineStatus(
         )
         script {
             addParamsAsJsGlobalVariables(
-                "confirmPickup" to JSElement(query = "#$CONFIRM_PICKUP", makeJQuery = false),
-                "table" to JSElement(query = "#$TABLE_ID"),
-                "confirmForward" to JSElement(query = "#$CONFIRM_FORWARD"),
-                "confirmBack" to JSElement(query = "#$CONFIRM_BACK"),
+                "confirmPickup" to JSElement(id = CONFIRM_PICKUP, makeJQuery = false),
+                "table" to JSElement(id = TABLE_ID),
+                "confirmForward" to JSElement(id = CONFIRM_FORWARD),
+                "confirmBack" to JSElement(id = CONFIRM_BACK),
                 "operationsJson" to operationsJson,
-                "statusSelect" to JSElement(query = "#$STATUS_SELECT", makeJQuery = false),
+                "statusSelect" to JSElement(id = STATUS_SELECT, makeJQuery = false),
             )
         }
         script {

@@ -88,7 +88,7 @@ class PipelineTasks(
             addParamsAsJsGlobalVariables(
                 "taskTableId" to TASKS_TABLE_ID,
                 "types" to FileCollectType.values(),
-                "taskOutput" to JSElement(query = "#$TASK_OUTPUT_MODAL", makeSelector = false),
+                "taskOutput" to JSElement(id = TASK_OUTPUT_MODAL, makeElement = false),
             )
         }
         script {

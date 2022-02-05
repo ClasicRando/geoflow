@@ -151,9 +151,9 @@ object AdminDashboard : BasePage() {
     override val script: suspend FlowContent.() -> Unit = {
         script {
             addParamsAsJsGlobalVariables(
-                "userTable" to JSElement(query = "#$USER_TABLE_ID", makeSelector = false),
-                "userModal" to JSElement(query = "#$USER_EDIT_MODAL"),
-                "userForm" to JSElement(query = "#$EDIT_USER_FORM_ID", makeJQuery = false),
+                "userTable" to JSElement(id = USER_TABLE_ID, makeElement = false),
+                "userModal" to JSElement(id = USER_EDIT_MODAL),
+                "userForm" to JSElement(id = EDIT_USER_FORM_ID, makeJQuery = false),
             )
         }
         script {

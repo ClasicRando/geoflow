@@ -195,9 +195,9 @@ fun FlowContent.sourceTables(runId: Long) {
     )
     script {
         addParamsAsJsGlobalVariables(
-            "sourceTablesTable" to JSElement(query = "#$SOURCE_TABLES_TABLE_ID", makeSelector = false),
-            "sourceTableModal" to JSElement(query = "#$SOURCE_TABLES_MODAL_ID"),
-            "deleteSourceTableConfirm" to JSElement(query = "#${DELETE_SOURCE_TABLE_CONFIRM_ID}", makeSelector = false),
+            "sourceTablesTable" to JSElement(id = SOURCE_TABLES_TABLE_ID, makeElement = false),
+            "sourceTableModal" to JSElement(id = SOURCE_TABLES_MODAL_ID),
+            "deleteSourceTableConfirm" to JSElement(id = DELETE_SOURCE_TABLE_CONFIRM_ID, makeElement = false),
         )
     }
     script {
@@ -336,10 +336,10 @@ fun FlowContent.plottingFields(runId: Long) {
     script {
         addParamsAsJsGlobalVariables(
             "types" to FileCollectType.values(),
-            "plottingFieldsTable" to JSElement(query = "#$PLOTTING_FIELDS_TABLE", makeSelector = false),
-            "confirmDeletePlottingFields" to JSElement(query = "#$CONFIRM_DELETE_PLOTTING_FIELDS"),
-            "plottingFieldsModal" to JSElement(query = "#$PLOTTING_FIELDS_MODAL", makeSelector = false),
-            "plottingFieldsForm" to JSElement(query = "#$PLOTTING_FIELDS_FORM", makeJQuery = false),
+            "plottingFieldsTable" to JSElement(id = PLOTTING_FIELDS_TABLE, makeElement = false),
+            "confirmDeletePlottingFields" to JSElement(id = CONFIRM_DELETE_PLOTTING_FIELDS),
+            "plottingFieldsModal" to JSElement(id = PLOTTING_FIELDS_MODAL, makeElement = false),
+            "plottingFieldsForm" to JSElement(id = PLOTTING_FIELDS_FORM, makeJQuery = false),
         )
     }
     script {
@@ -386,8 +386,8 @@ fun FlowContent.plottingMethods(runId: Long) {
     }
     script {
         addParamsAsJsGlobalVariables(
-                "plottingMethodsModal" to JSElement(query = "#$PLOTTING_METHODS_MODAL"),
-                "plottingMethodsTable" to JSElement(query = "#$PLOTTING_METHODS_TABLE", makeSelector = false),
+                "plottingMethodsModal" to JSElement(id = PLOTTING_METHODS_MODAL),
+                "plottingMethodsTable" to JSElement(id = PLOTTING_METHODS_TABLE, makeElement = false),
         )
     }
     script {

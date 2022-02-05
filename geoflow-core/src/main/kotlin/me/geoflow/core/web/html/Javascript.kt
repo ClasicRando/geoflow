@@ -8,7 +8,7 @@ import kotlinx.html.unsafe
 @Suppress("MatchingDeclarationName")
 value class JQuery(
     /** query used to initialize the variable */
-    val query: String,
+    val id: String,
 )
 
 /** Inline class for creating an Element variable */
@@ -16,7 +16,7 @@ value class JQuery(
 @Suppress("MatchingDeclarationName")
 value class QuerySelector(
     /** query used to initialize the variable */
-    val query: String,
+    val id: String,
 )
 
 /**
@@ -35,18 +35,18 @@ value class QuerySelector(
  */
 data class JSElement(
     /** query used to initialize the variable */
-    val query: String,
+    val id: String,
     /** flag indicating a jquery object should be made */
     val makeJQuery: Boolean = true,
     /** flag indicating an element object should be made */
-    val makeSelector: Boolean = true,
+    val makeElement: Boolean = true,
 )
 
 /** Converts a Kotlin object to it's javascript value that is assigned to a global variable. */
 private fun convertToJsValue(value: Any): String {
     return when (value) {
-        is JQuery -> "$('${value.query}')"
-        is QuerySelector -> "document.querySelector('${value.query}')"
+        is JQuery -> "$('#${value.id}')"
+        is QuerySelector -> "document.getElementById('${value.id}')"
         is String -> "'${value.replace("'", "\\'")}'"
         is Number -> value.toString()
         is Map<*, *> -> value.entries.joinToString(prefix = "{", postfix = "}") {
@@ -69,8 +69,8 @@ private fun convertToJsValue(value: Any): String {
 fun SCRIPT.addParamsAsJsGlobalVariables(vararg params: Pair<String, Any>) {
     val jsVariables = params.joinToString(separator = ";", postfix = ";") { (name, value) ->
         if (value is JSElement) {
-            val jquery = if (value.makeJQuery) "var \$$name = ${convertToJsValue(JQuery(value.query))}" else ""
-            val selector = if (value.makeSelector) "var $name = ${convertToJsValue(QuerySelector(value.query))}" else ""
+            val jquery = if (value.makeJQuery) "var \$$name = ${convertToJsValue(JQuery(value.id))}" else ""
+            val selector = if (value.makeElement) "var $name = ${convertToJsValue(QuerySelector(value.id))}" else ""
             "$selector;$jquery".trim(';')
         } else {
             "var $name = ${convertToJsValue(value)}"
