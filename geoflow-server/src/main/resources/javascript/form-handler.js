@@ -268,14 +268,11 @@ class FormHandler {
                 element.checked = value;
             } else if (element.nodeName === 'SELECT') {
                 element.value = value;
-                if (element.value !== '') {
-                    continue;
-                }
-                const option = Array.from(element.options).find(option => option.textContent === value);
-                if (typeof option !== 'undefined') {
-                    element.value = option.value;
-                } else {
-                    throw `Cannot find value of "${value}" for field name of "${key}"`;
+                if (element.value === '') {
+                    const option = Array.from(element.options).find(option => option.value === '');
+                    if (typeof option === 'undefined') {
+                        throw `Cannot find value ("${value}") for field name of "${key}" or no empty value option available`;
+                    }
                 }
             } else {
                 element.value = value;
