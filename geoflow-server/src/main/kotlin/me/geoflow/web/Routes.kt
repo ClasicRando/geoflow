@@ -150,7 +150,7 @@ fun Route.pipelineStatus() {
 fun Route.pipelineTasks() {
     get(path = "/tasks/{runId}") {
         call.respondHtml {
-            pipelineTasks(call, call.parameters.getOrFail("runId").toLong())
+            pipelineTasks(call.parameters.getOrFail("runId").toLong())
         }
     }
 }
