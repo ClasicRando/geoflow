@@ -20,13 +20,13 @@ import me.geoflow.core.database.tables.PlottingFields
 import me.geoflow.core.database.tables.PlottingMethods
 import me.geoflow.core.database.tables.SourceTableColumns
 import me.geoflow.core.web.html.JSElement
-import me.geoflow.core.web.html.SubTableDetails
 import me.geoflow.core.web.html.basicTable
 import me.geoflow.core.web.html.tableButton
 import me.geoflow.core.web.html.addParamsAsJsGlobalVariables
 import me.geoflow.core.web.html.basicModal
 import me.geoflow.core.web.html.confirmModal
 import me.geoflow.core.web.html.formModal
+import me.geoflow.core.web.html.subTableDetails
 
 private const val SOURCE_TABLES_TABLE_ID = "sourceTables"
 private const val SOURCE_TABLES_MODAL_ID = "sourceTableDataEditRow"
@@ -50,10 +50,9 @@ fun FlowContent.sourceTables(runId: Long) {
         ),
         customSortFunction = "sourceTableRecordSorting",
         clickableRows = false,
-        subTableDetails = SubTableDetails(
+        subTableDetails = subTableDetails<SourceTableColumns>(
             url = "source-table-columns/{id}",
             idField = "st_oid",
-            fields = SourceTableColumns.tableDisplayFields,
         ),
     )
     formModal(
