@@ -38,11 +38,11 @@ abstract class BasePage : Template<HTML> {
     private val scriptPlaceholder: Placeholder<FlowContent> = Placeholder()
 
     /** Function used to populate the [stylesPlaceholder]. Can be an empty function */
-    abstract val styles: STYLE.() -> Unit
+    open val styles: STYLE.() -> Unit = {}
     /** Function used to populate the [contentPlaceholder]. Can be an empty function */
     abstract val content: FlowContent.() -> Unit
     /** Function used to populate the [scriptPlaceholder]. Can be an empty function */
-    abstract val script: suspend FlowContent.() -> Unit
+    open val script: suspend FlowContent.() -> Unit = {}
 
     /** Method from [Template] to create HTML document. Contains most of the layout with some placeholders */
     @Suppress("LongMethod")

@@ -4,7 +4,6 @@ import io.ktor.application.ApplicationCall
 import me.geoflow.core.database.tables.PipelineRuns
 import me.geoflow.core.web.html.addParamsAsJsGlobalVariables
 import kotlinx.html.FlowContent
-import kotlinx.html.STYLE
 import kotlinx.html.id
 import kotlinx.html.li
 import kotlinx.html.script
@@ -31,8 +30,6 @@ class PipelineStatus(
     /** Call context used to extract the session */
     private val call: ApplicationCall,
 ) : BasePage() {
-
-    override val styles: STYLE.() -> Unit = {}
 
     override val content: FlowContent.() -> Unit = {
         basicTable<PipelineRuns>(

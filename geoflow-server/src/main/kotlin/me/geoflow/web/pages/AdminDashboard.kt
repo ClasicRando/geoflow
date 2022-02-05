@@ -6,7 +6,6 @@ import me.geoflow.core.web.html.addParamsAsJsGlobalVariables
 import me.geoflow.core.web.html.formModal
 import me.geoflow.core.web.html.tableButton
 import kotlinx.html.FlowContent
-import kotlinx.html.STYLE
 import kotlinx.html.button
 import kotlinx.html.checkBoxInput
 import kotlinx.html.div
@@ -39,8 +38,6 @@ object AdminDashboard : BasePage() {
             title = "Create new user for the application in a modal window",
         ),
     )
-
-    override val styles: STYLE.() -> Unit = {}
 
     override val content: FlowContent.() -> Unit = {
         div(classes = "row") {

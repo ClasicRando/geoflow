@@ -1,7 +1,6 @@
 package me.geoflow.web.pages
 
 import kotlinx.html.FlowContent
-import kotlinx.html.STYLE
 
 /** Generic class for rendering pages with error messages */
 class ErrorPage(
@@ -9,11 +8,8 @@ class ErrorPage(
     private val message: String
 ) : BasePage() {
 
-    override val styles: STYLE.() -> Unit = {}
-
     override val content: FlowContent.() -> Unit = {
         +message
     }
 
-    override val script: suspend FlowContent.() -> Unit = {}
 }

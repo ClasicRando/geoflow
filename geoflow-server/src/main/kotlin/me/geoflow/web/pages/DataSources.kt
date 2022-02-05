@@ -3,7 +3,6 @@ package me.geoflow.web.pages
 import io.ktor.application.ApplicationCall
 import kotlinx.coroutines.runBlocking
 import kotlinx.html.FlowContent
-import kotlinx.html.STYLE
 import kotlinx.html.button
 import kotlinx.html.div
 import kotlinx.html.form
@@ -32,8 +31,6 @@ import me.geoflow.core.database.tables.DataSources as DataSourcesTable
 
 /** */
 class DataSources(call: ApplicationCall) : BasePage() {
-
-    override val styles: STYLE.() -> Unit = {}
 
     override val content: FlowContent.() -> Unit = {
         val hasCreate = runBlocking {

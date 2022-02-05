@@ -4,7 +4,6 @@ import me.geoflow.core.database.tables.Actions
 import me.geoflow.core.database.tables.WorkflowOperations
 import me.geoflow.core.web.html.addParamsAsJsGlobalVariables
 import kotlinx.html.FlowContent
-import kotlinx.html.STYLE
 import kotlinx.html.div
 import kotlinx.html.script
 import me.geoflow.core.web.html.basicTable
@@ -14,8 +13,6 @@ object Index : BasePage() {
 
     private const val OPERATIONS_TABLE_ID = "operations"
     private const val ACTIONS_TABLE_ID = "actions"
-
-    override val styles: STYLE.() -> Unit = {}
 
     override val content: FlowContent.() -> Unit = {
         div(classes = "row") {
