@@ -151,10 +151,10 @@ function actionFormatter(value, row) {
             <i class="fas fa-trash"></i>
         </a>
     `;
-    const plottingButton = `
+    const plottingButton = typeof $plottingFieldsTable !== 'undefined' ? `
         <a class="p-2" href="javascript:void(0)" onclick="plottingFields(${row.st_oid})">
             <i class="fas fa-map-marker-alt"></i>
         </a>
-    `;
+    ` : '';
     return `${editButton}${deleteButton}${plottingButton}`;
 }
