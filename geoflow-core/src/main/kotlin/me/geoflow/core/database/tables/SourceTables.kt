@@ -5,6 +5,7 @@ import me.geoflow.core.database.errors.NoRecordFound
 import me.geoflow.core.database.extensions.queryFirstOrNull
 import me.geoflow.core.loading.AnalyzeResult
 import me.geoflow.core.database.extensions.runReturningFirstOrNull
+import me.geoflow.core.database.extensions.runUpdate
 import me.geoflow.core.database.extensions.useMultipleStatements
 import java.sql.Connection
 import me.geoflow.core.database.extensions.submitQuery
@@ -207,7 +208,7 @@ object SourceTables : DbTable("source_tables"), ApiExposed {
      * Finalizes the analysis process by inserting or updating [SourceTableColumns] records for all the source tables
      * as well as updating all source tables to *analyze = false*
      */
-    @Suppress("MagicNumber")
+    @Suppress("MagicNumber", "LongMethod")
     fun finishAnalyze(connection: Connection, data: Map<Long, AnalyzeResult>) {
         val columnSql = """
             INSERT INTO ${SourceTableColumns.tableName}(st_oid,name,type,max_length,min_length,label,column_index)
@@ -261,6 +262,20 @@ object SourceTables : DbTable("source_tables"), ApiExposed {
             columnStatement.executeBatch()
             tableStatement.executeBatch()
         }
+        connection.runUpdate(
+            sql = """
+                WITH report_grouping AS (
+                	SELECT st_oid, ROW_NUMBER() OVER (ORDER BY st_oid) report_group
+                	FROM   $tableName
+                	WHERE  st_oid in (${"?,".repeat(data.size).trim(',')})
+                )
+                UPDATE ${SourceTableColumns.tableName} stc
+                SET    report_group = rg.report_group
+                FROM   report_grouping rg
+                WHERE  stc.st_oid = rg.st_oid;
+            """.trimIndent(),
+            data.keys,
+        )
     }
 
     /** Returns a list of files to load using the [runId] provided */
