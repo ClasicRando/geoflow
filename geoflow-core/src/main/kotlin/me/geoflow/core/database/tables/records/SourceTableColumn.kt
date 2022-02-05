@@ -27,4 +27,7 @@ data class SourceTableColumn(
     /** index of column within file */
     @SerialName("column_index")
     val columnIndex: Int,
+    /** report grouping index, groups report sub tables */
+    @SerialName("report_group")
+    val reportGroup: Int
 )

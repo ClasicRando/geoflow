@@ -27,6 +27,7 @@ object SourceTableColumns : DbTable("source_table_columns"), ApiExposed {
             min_length integer NOT NULL,
             label text COLLATE pg_catalog."default" NOT NULL CHECK (check_not_blank_or_empty(label)),
             column_index integer NOT NULL,
+            report_group integer CHECK(report_group <> 0),
             CONSTRAINT column_name_table UNIQUE (st_oid, name)
         )
         WITH (
@@ -40,6 +41,7 @@ object SourceTableColumns : DbTable("source_table_columns"), ApiExposed {
         "max_length" to mapOf(),
         "min_length" to mapOf(),
         "label" to mapOf(),
+        "report_group" to mapOf(),
     )
 
     /** Returns a list of [SourceTableColumn] records for the specified [stOid] */
