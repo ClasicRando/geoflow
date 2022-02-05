@@ -1,38 +1,23 @@
 package me.geoflow.web.pages
 
-import io.ktor.application.ApplicationCall
-import kotlinx.html.ButtonType
 import kotlinx.html.FlowContent
 import kotlinx.html.STYLE
-import kotlinx.html.button
-import kotlinx.html.div
-import kotlinx.html.i
-import kotlinx.html.id
-import kotlinx.html.label
-import kotlinx.html.ol
-import kotlinx.html.onClick
 import kotlinx.html.script
-import kotlinx.html.select
 import kotlinx.html.unsafe
 import me.geoflow.core.database.enums.FileCollectType
 import me.geoflow.core.database.tables.PipelineRunTasks
-import me.geoflow.core.database.tables.PlottingFields
-import me.geoflow.core.database.tables.PlottingMethods
 import me.geoflow.core.web.html.JSElement
 import me.geoflow.core.web.html.SubTableDetails
 import me.geoflow.core.web.html.addParamsAsJsGlobalVariables
-import me.geoflow.core.web.html.basicModal
 import me.geoflow.core.web.html.basicTable
-import me.geoflow.core.web.html.confirmModal
 import me.geoflow.core.web.html.emptyModal
-import me.geoflow.core.web.html.formModal
 import me.geoflow.core.web.html.tabLayout
 import me.geoflow.core.web.html.tabNav
 import me.geoflow.core.web.html.tableButton
-import me.geoflow.web.api.NoBody
-import me.geoflow.web.api.makeApiCall
+import me.geoflow.web.html.plottingFields
+import me.geoflow.web.html.plottingMethods
 import me.geoflow.web.html.sourceTables
-import me.geoflow.web.session
+import me.geoflow.web.pages.PipelineTasks.Companion.tableButtons
 
 /**
  * Page for pipeline task operations
@@ -47,8 +32,6 @@ import me.geoflow.web.session
  * - a specific script for this page loaded from assets
  */
 class PipelineTasks(
-    /** Call context used to extract the session */
-    private val call: ApplicationCall,
     /** ID for the pipeline run to be displayed in this page */
     private val runId: Long,
 ) : BasePage() {
@@ -87,153 +70,12 @@ class PipelineTasks(
                 sourceTables(runId)
             },
             tabNav(label = "Plotting Fields") {
-                basicTable<PlottingFields>(
-                    tableId = PLOTTING_FIELDS_TABLE,
-                    dataUrl = "plotting-fields/${runId}",
-                    dataField = "payload",
-                    clickableRows = false,
-                )
-                confirmModal(
-                    confirmModalId = CONFIRM_DELETE_PLOTTING_FIELDS,
-                    confirmMessage = "Are you sure you want to delete a plotting fields record?",
-                    resultFunction = "deletePlottingFields()",
-                )
+                plottingFields(runId)
             },
             tabNav(label = "Plotting Methods") {
-                basicTable<PlottingMethods>(
-                    tableId =  PLOTTING_METHODS_TABLE,
-                    dataUrl = "plotting-methods/${runId}",
-                    dataField = "payload",
-                    tableButtons = plottingMethodButtons,
-                    clickableRows = false,
-                )
-                basicModal(
-                    modalId = PLOTTING_METHODS_MODAL,
-                    headerText = "Plotting Methods",
-                    okClickFunction = "setPlottingFields()",
-                    size = "modal-xl",
-                ) {
-                    button(classes = "btn btn-secondary") {
-                        type = ButtonType.button
-                        onClick = "addPlottingMethod()"
-                        +"Add Method"
-                        i(classes = "fas fa-plus p-1")
-                    }
-                    ol(classes = "list-group") {
-
-                    }
-                }
+                plottingMethods(runId)
             }
         )
-        formModal(
-            modalId = PLOTTING_FIELDS_MODAL,
-            headerText = "Plotting Fields",
-            okClickFunction = "submitPlottingFields()",
-            resetFormButton = true,
-        ) {
-            id = PLOTTING_FIELDS_FORM
-            div(classes = "form-group") {
-                label {
-                    htmlFor = "mergeKey"
-                    +"Merge Key"
-                }
-                select(classes = "custom-select") {
-                    id = "mergeKey"
-                    name = "mergeKey"
-                }
-            }
-            div(classes = "form-group") {
-                label {
-                    htmlFor = "companyName"
-                    +"Company Name"
-                }
-                select(classes = "custom-select") {
-                    id = "companyName"
-                    name = "companyName"
-                }
-            }
-            div(classes = "form-group") {
-                label {
-                    htmlFor = "addressLine1"
-                    +"Address Line 1"
-                }
-                select(classes = "custom-select") {
-                    id = "addressLine1"
-                    name = "addressLine1"
-                }
-            }
-            div(classes = "form-group") {
-                label {
-                    htmlFor = "addressLine2"
-                    +"Address Line 2"
-                }
-                select(classes = "custom-select") {
-                    id = "addressLine2"
-                    name = "addressLine2"
-                }
-            }
-            div(classes = "form-group") {
-                label {
-                    htmlFor = "city"
-                    +"City"
-                }
-                select(classes = "custom-select") {
-                    id = "city"
-                    name = "city"
-                }
-            }
-            div(classes = "form-group") {
-                label {
-                    htmlFor = "alternateCities"
-                    +"Alternate Cities"
-                }
-                select(classes = "custom-select") {
-                    id = "alternateCities"
-                    name = "alternateCities"
-                    multiple = true
-                }
-            }
-            div(classes = "form-group") {
-                label {
-                    htmlFor = "mailCode"
-                    +"Mail Code"
-                }
-                select(classes = "custom-select") {
-                    id = "mailCode"
-                    name = "mailCode"
-                }
-            }
-            div(classes = "form-group") {
-                label {
-                    htmlFor = "prov"
-                    +"Prov/State"
-                }
-                select(classes = "custom-select") {
-                    id = "prov"
-                    name = "prov"
-                }
-            }
-            div(classes = "form-group") {
-                label {
-                    htmlFor = "latitude"
-                    +"Latitude"
-                }
-                select(classes = "custom-select") {
-                    id = "latitude"
-                    name = "latitude"
-                }
-            }
-            div(classes = "form-group") {
-                label {
-                    htmlFor = "longitude"
-                    +"Longitude"
-                }
-                select(classes = "custom-select") {
-                    id = "longitude"
-                    name = "longitude"
-                }
-            }
-        }
         emptyModal(
             modalId = TASK_OUTPUT_MODAL,
             headerText = "Task Output",
@@ -242,31 +84,15 @@ class PipelineTasks(
     }
 
     override val script: suspend FlowContent.() -> Unit = {
-        val session = call.session
-        requireNotNull(session)
-        val operationsJson = makeApiCall<NoBody, String>(
-            endPoint = "/api/plotting-method-types",
-            apiToken = session.apiToken,
-        )
         script {
             addParamsAsJsGlobalVariables(
                 "taskTableId" to TASKS_TABLE_ID,
                 "types" to FileCollectType.values(),
                 "taskOutput" to JSElement(query = "#$TASK_OUTPUT_MODAL", makeSelector = false),
-                "plottingMethodsModal" to JSElement(query = "#${PLOTTING_METHODS_MODAL}"),
-                "plottingMethodTypes" to operationsJson,
-                "plottingFieldsTable" to JSElement(query = "#$PLOTTING_FIELDS_TABLE", makeSelector = false),
-                "confirmDeletePlottingFields" to JSElement(query = "#$CONFIRM_DELETE_PLOTTING_FIELDS"),
-                "plottingFieldsModal" to JSElement(query = "#${PLOTTING_FIELDS_MODAL}", makeSelector = false),
-                "plottingFieldsForm" to JSElement(query = "#${PLOTTING_FIELDS_FORM}", makeJQuery = false),
-                "plottingMethodsTable" to JSElement(query = "#$PLOTTING_METHODS_TABLE", makeSelector = false),
             )
         }
         script {
             src = "/assets/pipeline-tasks.js"
-        }
-        script {
-            src = "/assets/plotting-fields.js"
         }
     }
 
@@ -274,21 +100,6 @@ class PipelineTasks(
 
         private const val TASKS_TABLE_ID = "tasksTable"
         private const val TASK_OUTPUT_MODAL = "taskOutput"
-        private const val PLOTTING_METHODS_TABLE = "plottingMethodsTable"
-        private const val PLOTTING_METHODS_MODAL = "plottingMethodsModal"
-        private const val PLOTTING_FIELDS_MODAL = "plottingFieldsModal"
-        private const val PLOTTING_FIELDS_FORM = "plottingFieldsForm"
-        private const val PLOTTING_FIELDS_TABLE = "plottingFieldsTable"
-        private const val CONFIRM_DELETE_PLOTTING_FIELDS = "confirmDeletePlottingFields"
-        private val plottingMethodButtons = listOf(
-            tableButton(
-                name = "btnEditPlottingMethods",
-                text = "Edit Plotting Methods",
-                icon = "edit",
-                event = "editPlottingMethods()",
-                title = "Edit the current plotting methods for the run",
-            )
-        )
         private val tableButtons = listOf(
             tableButton(
                 name = "btnTimeUnit",
