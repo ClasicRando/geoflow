@@ -14,6 +14,7 @@ import me.geoflow.core.web.html.emptyModal
 import me.geoflow.core.web.html.tabLayout
 import me.geoflow.core.web.html.tabNav
 import me.geoflow.core.web.html.tableButton
+import me.geoflow.web.html.loadingLogic
 import me.geoflow.web.html.plottingFields
 import me.geoflow.web.html.plottingMethods
 import me.geoflow.web.html.sourceTables
@@ -74,7 +75,10 @@ class PipelineTasks(
             },
             tabNav(label = "Plotting Methods") {
                 plottingMethods(runId)
-            }
+            },
+            tabNav(label = "Loading Logic") {
+                loadingLogic()
+            },
         )
         emptyModal(
             modalId = TASK_OUTPUT_MODAL,
