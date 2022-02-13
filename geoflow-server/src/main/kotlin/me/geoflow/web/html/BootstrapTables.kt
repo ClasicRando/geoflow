@@ -111,7 +111,7 @@ fun FlowContent.sourceTables(runId: Long) {
                         htmlFor = "collect_type"
                         +"Collect Type"
                     }
-                    select(classes = "form-control") {
+                    select(classes = "custom-select") {
                         id = "collect_type"
                         name = "collect_type"
                         for (type in FileCollectType.values()) {
