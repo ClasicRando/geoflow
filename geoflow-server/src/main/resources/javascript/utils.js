@@ -344,7 +344,7 @@ function addOption(selectElement, value, text) {
     const optionElement = document.createElement('option');
     optionElement.value = value;
     optionElement.textContent = text;
-    selectElement.appendChild(optionElement);
+    selectElement.add(optionElement);
 }
 
 /**
@@ -359,7 +359,7 @@ function addOptions(selectElement, objects, valueField, textField) {
         const optionElement = document.createElement('option');
         optionElement.value = item[valueField];
         optionElement.textContent = item[textField];
-        element.appendChild(optionElement);
+        element.add(optionElement);
     });
 }
 
