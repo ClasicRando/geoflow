@@ -41,7 +41,6 @@ object SourceTableColumns : DbTable("source_table_columns"), ApiExposed {
         "max_length" to mapOf(),
         "min_length" to mapOf(),
         "label" to mapOf(),
-        "report_group" to mapOf(),
     )
 
     /** Returns a list of [SourceTableColumn] records for the specified [stOid] */
