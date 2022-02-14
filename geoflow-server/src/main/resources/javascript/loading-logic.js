@@ -1,4 +1,16 @@
 let sourceTables = [];
+let commitStcOid = null;
+const editSourceOptions = {
+    'label': ValidatorTypes.notEmpty,
+    'reportGroup': ValidatorTypes.number,
+};
+const editSourceFieldForm = new FormHandler(editSourceField.querySelector('form'), editSourceOptions);
+const editGeneratedOptions = {
+    'label': ValidatorTypes.notEmpty,
+    'reportGroup': ValidatorTypes.number,
+    'expression': ValidatorTypes.notEmpty,
+};
+const editGeneratedFieldForm = new FormHandler(editGeneratedField.querySelector('form'), editGeneratedOptions);
 
 document.addEventListener('DOMContentLoaded', async () => {
     const loadingLogicTab = document.querySelector('#loading-logic-tab');
@@ -54,5 +66,49 @@ async function parentTableChange() {
         addOptions(parentLinkingKey, response.payload, 'stc_oid', 'name');
     } else {
         showToast('Error', response.errors);
+    }
+}
+
+function sourceFieldListEdit(value, row) {
+    return `
+        <a class="p-2" href="javascript:void(0)" onclick="editSourceFieldLogic(${row.stc_oid})">
+            <i class="fas fa-edit" ></i>
+        </a>
+    `;
+}
+
+function editSourceFieldLogic(stcOid) {
+    commitStcOid = stcOid;
+    const data = $sourceFieldsList.bootstrapTable('getData').find(row => row.stc_oid === stcOid);
+    if (typeof data !== 'undefined') {
+        editSourceFieldForm.populateForm({
+            name: data.name,
+            label: data.label,
+            reportGroup: data.report_group,
+        });
+        $editSourceField.modal('show');
+    } else {
+        showToast('Error', `Could not find a row for stc_oid = '${stcOid}'`);
+    }
+}
+
+async function commitSourceField() {
+    if (!editSourceFieldForm.validate()) {
+        return;
+    }
+    const formData = editSourceFieldForm.formData;
+    const body = {
+        stc_oid: commitStcOid,
+        label: formData.get('label'),
+        report_group: formData.get('reportGroup'),
+    }
+    const response = await fetchApi('/data/source-table-columns', FetchMethods.POST, body);
+    if (response.success) {
+        $editSourceField.modal('hide');
+        showToast('Updated Source Field', `Updated source field for stc_oid = '${commitStcOid}'`);
+        $sourceFieldsList.bootstrapTable('refresh');
+        commitStcOid = null;
+    } else {
+        editSourceFieldForm.form.querySelector('p.invalidInput').textContent(formatErrors(json.errors));
     }
 }
