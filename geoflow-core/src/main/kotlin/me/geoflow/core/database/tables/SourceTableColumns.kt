@@ -1,9 +1,14 @@
 package me.geoflow.core.database.tables
 
+import me.geoflow.core.database.errors.NoRecordAffected
+import me.geoflow.core.database.errors.NoRecordFound
 import me.geoflow.core.database.extensions.queryFirstOrNull
+import me.geoflow.core.database.extensions.runReturningFirstOrNull
 import me.geoflow.core.database.extensions.submitQuery
+import me.geoflow.core.database.functions.UserHasRun
 import me.geoflow.core.database.tables.records.ColumnComparison
 import me.geoflow.core.database.tables.records.SourceTableColumn
+import me.geoflow.core.database.tables.records.SourceTableColumnUpdate
 import java.sql.Connection
 
 /**
@@ -96,6 +101,33 @@ object SourceTableColumns : DbTable("source_table_columns"), ApiExposed {
             stOid,
             lastStOid,
         )
+    }
+
+    /** Updates the label and report_group of a source table column */
+    fun updateRecord(connection: Connection, userId: Long, columnUpdate: SourceTableColumnUpdate): SourceTableColumn {
+        val runId = connection.queryFirstOrNull<Long>(
+            sql = """
+                SELECT DISTINCT st.run_id
+                FROM   $tableName stc
+                JOIN   ${SourceTables.tableName} st
+                ON     stc.st_oid = st.st_oid
+                WHERE  stc.stc_oid = ?
+            """.trimIndent(),
+            columnUpdate.stcOid,
+        ) ?: throw NoRecordFound(tableName, "Could not find a run_id for stc_oid = '${columnUpdate.stcOid}'")
+        UserHasRun.requireUserRun(connection, userId, runId)
+        return connection.runReturningFirstOrNull(
+            sql = """
+                UPDATE $tableName
+                SET    label = ?,
+                       report_group = ?
+                WHERE  stc_oid = ?
+                RETURNING *
+            """.trimIndent(),
+            columnUpdate.label,
+            columnUpdate.reportGroup,
+            columnUpdate.stcOid,
+        ) ?: throw NoRecordAffected(tableName, "Did not update record for stc_oid = '${columnUpdate.stcOid}'")
     }
 
 }
