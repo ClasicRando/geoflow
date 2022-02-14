@@ -12,6 +12,7 @@ import me.geoflow.core.database.tables.records.PlottingFieldsRequest
 import me.geoflow.core.database.tables.records.PlottingMethod
 import me.geoflow.core.database.tables.records.RequestUser
 import me.geoflow.core.database.tables.records.SourceTable
+import me.geoflow.core.database.tables.records.SourceTableColumnUpdate
 import me.geoflow.core.mongo.MongoDb
 
 /** Base API route */
@@ -239,6 +240,10 @@ private fun Route.sourceTableColumns() {
             path = "/comparisons/{stOid}",
             apiEndPoint = "source-table-columns/comparisons/{stOid}",
             httpMethod = HttpMethod.Get,
+        )
+        apiCall<SourceTableColumnUpdate>(
+            apiEndPoint = "source-table-columns",
+            httpMethod = HttpMethod.Post,
         )
     }
 }
