@@ -97,6 +97,15 @@ sealed interface ApiResponse {
         override val responseObject: String = "source_table_column"
     }
 
+    /** API response for a single record from [source_table_columns][SourceTableColumns] */
+    @Serializable
+    class SourceTableColumnResponse(
+        override val payload: SourceTableColumn,
+    ): Success<SourceTableColumn> {
+        @SerialName("object")
+        override val responseObject: String = "source_table_column"
+    }
+
     /** API response for a list of records from [source_tables][SourceTables] */
     @Serializable
     class SourceTableResponse(
