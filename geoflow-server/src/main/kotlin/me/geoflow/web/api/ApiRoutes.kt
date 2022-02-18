@@ -7,6 +7,7 @@ import io.ktor.routing.Route
 import io.ktor.routing.route
 import me.geoflow.core.database.tables.records.DataSourceContact
 import me.geoflow.core.database.tables.records.DataSourceRequest
+import me.geoflow.core.database.tables.records.GeneratedTableColumn
 import me.geoflow.core.database.tables.records.Pipeline
 import me.geoflow.core.database.tables.records.PlottingFieldsRequest
 import me.geoflow.core.database.tables.records.PlottingMethod
@@ -35,6 +36,7 @@ fun Route.data() {
         plottingFields()
         plottingMethods()
         plottingMethodTypes()
+        generatedTableColumns()
     }
 }
 
@@ -243,7 +245,31 @@ private fun Route.sourceTableColumns() {
         )
         apiCall<SourceTableColumnUpdate>(
             apiEndPoint = "source-table-columns",
+            httpMethod = HttpMethod.Put,
+        )
+    }
+}
+
+/** Generated table columns API route */
+private fun Route.generatedTableColumns() {
+    route(path = "/generated-table-columns") {
+        apiCall<NoBody>(
+            path = "/{stOid}",
+            apiEndPoint = "generated-table-columns/{stOid}",
+            httpMethod = HttpMethod.Get,
+        )
+        apiCall<GeneratedTableColumn>(
+            apiEndPoint = "generated-table-columns",
             httpMethod = HttpMethod.Post,
+        )
+        apiCall<GeneratedTableColumn>(
+            apiEndPoint = "generated-table-columns",
+            httpMethod = HttpMethod.Patch,
+        )
+        apiCall<NoBody>(
+            path = "/{gtcOid}",
+            apiEndPoint = "generated-table-columns/{gtcOid}",
+            httpMethod = HttpMethod.Delete,
         )
     }
 }

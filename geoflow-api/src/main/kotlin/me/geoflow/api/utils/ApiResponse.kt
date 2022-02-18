@@ -4,6 +4,7 @@ import me.geoflow.core.database.tables.Actions
 import me.geoflow.core.database.tables.DataSourceContacts
 import me.geoflow.core.database.tables.DataSources
 import me.geoflow.core.database.tables.InternalUsers
+import me.geoflow.core.database.tables.GeneratedTableColumns
 import me.geoflow.core.database.tables.Pipelines
 import me.geoflow.core.database.tables.PipelineRuns
 import me.geoflow.core.database.tables.PipelineTasks
@@ -23,6 +24,7 @@ import me.geoflow.core.database.tables.records.CollectionUser
 import me.geoflow.core.database.tables.records.ColumnComparison
 import me.geoflow.core.database.tables.records.DataSource
 import me.geoflow.core.database.tables.records.DataSourceContact
+import me.geoflow.core.database.tables.records.GeneratedTableColumn
 import me.geoflow.core.database.tables.records.NextTask
 import me.geoflow.core.database.tables.records.Pipeline
 import me.geoflow.core.database.tables.records.PipelineRun
@@ -86,6 +88,24 @@ sealed interface ApiResponse {
     ): Success<List<SourceTable>> {
         @SerialName("object")
         override val responseObject: String = "source_table"
+    }
+
+    /** API response for a list of records from [generated_table_columns][GeneratedTableColumns] */
+    @Serializable
+    class GeneratedTableColumnsResponse(
+        override val payload: List<GeneratedTableColumn>,
+    ): Success<List<GeneratedTableColumn>> {
+        @SerialName("object")
+        override val responseObject: String = "generated_table_column"
+    }
+
+    /** API response for a single record from [generated_table_columns][GeneratedTableColumns] */
+    @Serializable
+    class GeneratedTableColumnResponse(
+        override val payload: GeneratedTableColumn,
+    ): Success<GeneratedTableColumn> {
+        @SerialName("object")
+        override val responseObject: String = "generated_table_column"
     }
 
     /** API response for a list of records from [source_table_columns][SourceTableColumns] */
