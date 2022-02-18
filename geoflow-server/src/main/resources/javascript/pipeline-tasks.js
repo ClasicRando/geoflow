@@ -11,6 +11,15 @@ document.addEventListener('DOMContentLoaded', () => {
     tasksSubscriber = subscriberTables[taskTableId];
     tasksSubscriber.socket.addEventListener('message', (e) => { waitingForUpdate = false; })
     runId = window.location.href.match(/(?<=\/)[^/]+$/g)[0];
+    $('#source-tables-tab').on('show.bs.tab', () => {
+        $sourceTablesTable.bootstrapTable('refresh');
+    });
+    $('#plotting-fields-tab').on('show.bs.tab', () => {
+        $plottingFieldsTable.bootstrapTable('refresh');
+    });
+    $('#plotting-methods-tab').on('show.bs.tab', () => {
+        $plottingMethodsTable.bootstrapTable('refresh');
+    });
 });
 
 async function clickRunTask(isAll=false) {

@@ -11,9 +11,11 @@ import kotlinx.html.onClick
 import kotlinx.html.script
 import kotlinx.html.select
 import kotlinx.html.textInput
+import me.geoflow.core.database.tables.GeneratedTableColumns
 import me.geoflow.core.web.html.JSElement
 import me.geoflow.core.web.html.addParamsAsJsGlobalVariables
 import me.geoflow.core.web.html.basicTable
+import me.geoflow.core.web.html.confirmModal
 import me.geoflow.core.web.html.formModal
 import me.geoflow.core.web.html.tableButton
 
@@ -34,11 +36,12 @@ private const val GENERATED_FIELD_NAME = "generatedFieldName"
 private const val GENERATED_FIELD_LABEL = "generatedFieldLabel"
 private const val GENERATED_FIELD_EXPRESSION = "generatedFieldExpression"
 private const val GENERATED_FIELD_REPORT_GROUP = "generatedFieldReportGroup"
+private const val GENERATED_FIELD_DELETE_MODAL = "generatedFieldDeleteModal"
 
 /** */
 @Suppress("LongMethod")
 fun FlowContent.loadingLogic() {
-    div(classes = "row") {
+    div(classes = "row py-1") {
         div(classes = "col") {
             label {
                 htmlFor = SOURCE_TABLE_SELECTOR
@@ -49,7 +52,7 @@ fun FlowContent.loadingLogic() {
             }
         }
     }
-    div(classes = "row") {
+    div(classes = "row py-1") {
         div(classes = "col") {
             label {
                 htmlFor = PARENT_TABLE_SELECTOR
@@ -60,7 +63,7 @@ fun FlowContent.loadingLogic() {
             }
         }
     }
-    div(classes = "row hidden") {
+    div(classes = "row py-1 hidden") {
         id = PARENT_LINKING_KEY_ROW
         div(classes = "col") {
             label {
@@ -93,7 +96,7 @@ fun FlowContent.loadingLogic() {
             }
         }
     }
-    div(classes = "row") {
+    div(classes = "row py-1") {
         div(classes = "col") {
             label {
                 htmlFor = SOURCE_FIELDS_LIST
@@ -107,7 +110,7 @@ fun FlowContent.loadingLogic() {
             }
         }
     }
-    div(classes = "row") {
+    div(classes = "row pb-1") {
         div(classes = "col") {
             basicTable(
                 tableId = SOURCE_FIELDS_LIST,
@@ -122,19 +125,14 @@ fun FlowContent.loadingLogic() {
             )
         }
         div(classes = "col") {
-            basicTable(
+            basicTable<GeneratedTableColumns>(
                 tableId = GENERATED_FIELDS_LIST,
-                fields = mapOf(
-                    "name" to mapOf("title" to "Name"),
-                    "label" to mapOf("title" to "Label"),
-                    "expression" to mapOf("title" to "Expression"),
-                ),
                 dataField = "payload",
                 tableButtons = listOf(
                     tableButton(
                         name = "btnAddGeneratedField",
                         icon = "fa-plus",
-                        event = "addGeneratedField",
+                        event = "addGeneratedField()",
                         text = "Add Generated Field",
                         title = "Add an expression to be created while loading the data into the pipeline",
                     )
@@ -183,11 +181,12 @@ fun FlowContent.loadingLogic() {
     formModal(
         modalId = EDIT_GENERATED_FIELD,
         headerText = "Edit Generated Field",
-        okClickFunction = "",
+        okClickFunction = "commitGeneratedField()",
     ) {
         div(classes = "form-group") {
             label {
                 htmlFor = GENERATED_FIELD_NAME
+                +"Field Name"
             }
             textInput(classes = "form-control") {
                 id = GENERATED_FIELD_NAME
@@ -197,6 +196,7 @@ fun FlowContent.loadingLogic() {
         div(classes = "form-group") {
             label {
                 htmlFor = GENERATED_FIELD_LABEL
+                +"Label"
             }
             textInput(classes = "form-control") {
                 id = GENERATED_FIELD_LABEL
@@ -206,6 +206,7 @@ fun FlowContent.loadingLogic() {
         div(classes = "form-group") {
             label {
                 htmlFor = GENERATED_FIELD_REPORT_GROUP
+                +"Report Group"
             }
             textInput(classes = "form-control") {
                 id = GENERATED_FIELD_REPORT_GROUP
@@ -215,6 +216,7 @@ fun FlowContent.loadingLogic() {
         div(classes = "form-group") {
             label {
                 htmlFor = GENERATED_FIELD_EXPRESSION
+                +"Expression"
             }
             textInput(classes = "form-control") {
                 id = GENERATED_FIELD_EXPRESSION
@@ -222,18 +224,24 @@ fun FlowContent.loadingLogic() {
             }
         }
     }
+    confirmModal(
+        confirmModalId = GENERATED_FIELD_DELETE_MODAL,
+        confirmMessage = "Are you sure you want to delete this generated Field?",
+        resultFunction = "commitGeneratedFieldDelete()",
+    )
     script {
         addParamsAsJsGlobalVariables(
             "sourceTableSelector" to JSElement(id = SOURCE_TABLE_SELECTOR, makeJQuery = false),
             "logicForm" to JSElement(id = LOGIC_FORM, makeJQuery = false),
             "parentTableSelector" to JSElement(id = PARENT_TABLE_SELECTOR, makeJQuery = false),
             "sourceFieldsList" to JSElement(id = SOURCE_FIELDS_LIST),
-            "generatedFieldsList" to JSElement(id = GENERATED_FIELDS_LIST, makeJQuery = false),
+            "generatedFieldsList" to JSElement(id = GENERATED_FIELDS_LIST),
             "parentLinkingKey" to JSElement(id = PARENT_LINKING_KEY, makeJQuery = false),
             "parentLinkingKeyRow" to JSElement(id = PARENT_LINKING_KEY_ROW, makeJQuery = false),
             "linkingKey" to JSElement(id = LINKING_KEY, makeJQuery = false),
             "editSourceField" to JSElement(id = EDIT_SOURCE_FIELD),
             "editGeneratedField" to JSElement(id = EDIT_GENERATED_FIELD),
+            "generatedFieldDeleteModal" to JSElement(id = GENERATED_FIELD_DELETE_MODAL, makeElement = false),
         )
     }
     script {

@@ -197,8 +197,10 @@ async function fetchApi(url, method, body={}) {
             errors: [{error: response.statusText}],
         };
     }
+    let text = '';
     try {
-        const json = await response.json();
+        text = await response.text();
+        const json = JSON.parse(text);
         return {
             success: 'payload' in json,
             status: response.status,
@@ -214,7 +216,7 @@ async function fetchApi(url, method, body={}) {
             payload: null,
             object: null,
             errorCode: response.status,
-            errors: [{error: await response.text()}],
+            errors: [{error: text}],
         };
     }
 }
@@ -315,8 +317,22 @@ function showToast(title, message) {
     });
 }
 
+/**
+ * 
+ * @param {any[]} errors 
+ * @returns 
+ */
 function formatErrors(errors) {
-    return errors.map(error => `${error.error_name} -> ${error.message}`).join('\n');
+    if (errors.length === 0) {
+        return '';
+    } else if ('error' in errors[0]) {
+        return errors.map(error => `error -> ${error.error}`).join('\n');
+    } else if (!('error_name' in errors[0])) {
+        console.log(errors);
+        return errors.join('\n');
+    } else {
+        return errors.map(error => `${error.error_name} -> ${error.message}`).join('\n');
+    }
 }
 
 function titleCase(title) {
