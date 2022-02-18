@@ -38,7 +38,7 @@ object ApiSourceTableColumns : ApiPath(path = "/source-table-columns") {
 
     /** Updates a single source table column for a provided stcOid. Returns the new state of the record */
     private fun updateColumns(parent: Route) {
-        parent.apiCallPostgres(httpMethod = HttpMethod.Post) { userId, connection ->
+        parent.apiCallPostgres(httpMethod = HttpMethod.Put) { userId, connection ->
             val columnUpdate = call.receive<SourceTableColumnUpdate>()
             val payload = SourceTableColumns.updateRecord(connection, userId, columnUpdate)
             ApiResponse.SourceTableColumnResponse(payload)
