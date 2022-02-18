@@ -385,8 +385,8 @@ fun FlowContent.plottingMethods(runId: Long) {
     }
     script {
         addParamsAsJsGlobalVariables(
-                "plottingMethodsModal" to JSElement(id = PLOTTING_METHODS_MODAL),
-                "plottingMethodsTable" to JSElement(id = PLOTTING_METHODS_TABLE, makeElement = false),
+            "plottingMethodsModal" to JSElement(id = PLOTTING_METHODS_MODAL),
+            "plottingMethodsTable" to JSElement(id = PLOTTING_METHODS_TABLE, makeElement = false),
         )
     }
     script {
