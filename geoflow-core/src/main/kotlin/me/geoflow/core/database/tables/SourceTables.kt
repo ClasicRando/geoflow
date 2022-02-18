@@ -2,11 +2,11 @@ package me.geoflow.core.database.tables
 
 import me.geoflow.core.database.errors.NoRecordAffected
 import me.geoflow.core.database.errors.NoRecordFound
+import me.geoflow.core.database.extensions.call
+import me.geoflow.core.database.extensions.getCompositeArray
 import me.geoflow.core.database.extensions.queryFirstOrNull
 import me.geoflow.core.loading.AnalyzeResult
 import me.geoflow.core.database.extensions.runReturningFirstOrNull
-import me.geoflow.core.database.extensions.runUpdate
-import me.geoflow.core.database.extensions.useMultipleStatements
 import java.sql.Connection
 import me.geoflow.core.database.extensions.submitQuery
 import me.geoflow.core.database.functions.UserHasRun
@@ -209,73 +209,8 @@ object SourceTables : DbTable("source_tables"), ApiExposed {
      * as well as updating all source tables to *analyze = false*
      */
     @Suppress("MagicNumber", "LongMethod")
-    fun finishAnalyze(connection: Connection, data: Map<Long, AnalyzeResult>) {
-        val columnSql = """
-            INSERT INTO ${SourceTableColumns.tableName}(st_oid,name,type,max_length,min_length,label,column_index)
-            VALUES(?,?,?,?,?,?,?)
-            ON CONFLICT (st_oid, name) DO UPDATE SET type = ?,
-                                                     max_length = ?,
-                                                     min_length = ?,
-                                                     column_index = ?,
-                                                     label = ?
-        """.trimIndent()
-        val tableSql = """
-            UPDATE $tableName
-            SET    analyze_table = false,
-                   record_count = ?
-            WHERE  st_oid = ?
-        """.trimIndent()
-        connection.useMultipleStatements(listOf(columnSql, tableSql)) { statements ->
-            val columnStatement = statements.getOrNull(0)
-                ?: throw IllegalStateException("Column statement must exist")
-            val tableStatement = statements.getOrNull(1)
-                ?: throw IllegalStateException("Table statement must exist")
-            for ((stOid, analyzeResult) in data) {
-                val repeats = analyzeResult.columns
-                    .groupingBy { it.name }
-                    .eachCount()
-                    .filter { it.value > 1 }
-                    .toMutableMap()
-                for (column in analyzeResult.columns) {
-                    val columnName = repeats[column.name]?.let { repeatCount ->
-                        repeats[column.name] = repeatCount - 1
-                        "${column.name}_$repeatCount"
-                    } ?: column.name
-                    columnStatement.setLong(1, stOid)
-                    columnStatement.setString(2, columnName)
-                    columnStatement.setString(3, column.type)
-                    columnStatement.setInt(4, column.maxLength)
-                    columnStatement.setInt(5, column.minLength)
-                    columnStatement.setString(6, columnName)
-                    columnStatement.setInt(7, column.index)
-                    columnStatement.setString(8, column.type)
-                    columnStatement.setInt(9, column.maxLength)
-                    columnStatement.setInt(10, column.minLength)
-                    columnStatement.setInt(11, column.index)
-                    columnStatement.setString(12, columnName)
-                    columnStatement.addBatch()
-                }
-                tableStatement.setInt(1, analyzeResult.recordCount)
-                tableStatement.setLong(2, stOid)
-                tableStatement.addBatch()
-            }
-            columnStatement.executeBatch()
-            tableStatement.executeBatch()
-        }
-        connection.runUpdate(
-            sql = """
-                WITH report_grouping AS (
-                	SELECT st_oid, ROW_NUMBER() OVER (ORDER BY st_oid) report_group
-                	FROM   $tableName
-                	WHERE  st_oid in (${"?,".repeat(data.size).trim(',')})
-                )
-                UPDATE ${SourceTableColumns.tableName} stc
-                SET    report_group = rg.report_group
-                FROM   report_grouping rg
-                WHERE  stc.st_oid = rg.st_oid;
-            """.trimIndent(),
-            data.keys,
-        )
+    fun finishAnalyze(connection: Connection, data: List<AnalyzeResult>) {
+        connection.call("finish_analyze", data.getCompositeArray(connection))
     }
 
     /** Returns a list of files to load using the [runId] provided */

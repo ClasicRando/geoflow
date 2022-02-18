@@ -55,7 +55,7 @@ suspend fun analyzeFlatFile(
             .chunked(DEFAULT_CHUNK_SIZE)
             .asFlow()
             .flowOn(Dispatchers.IO)
-            .map { recordChunk -> analyzeNonTypedRecords(analyzer.tableName, header, recordChunk) }
+            .map { recordChunk -> analyzeNonTypedRecords(analyzer.stOid, analyzer.tableName, header, recordChunk) }
             .reduce { acc, analyzeResult -> acc.merge(analyzeResult) }
     }
 }

@@ -53,7 +53,7 @@ suspend fun analyzeDbfFile(
         .chunked(DEFAULT_CHUNK_SIZE)
         .asFlow()
         .flowOn(Dispatchers.IO)
-        .map { records -> analyzeRecords(analyzer.tableName, header, records) }
+        .map { records -> analyzeRecords(analyzer.stOid, analyzer.tableName, header, records) }
         .reduce { acc, analyzeResult -> acc.merge(analyzeResult) }
 }
 

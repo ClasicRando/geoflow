@@ -1,5 +1,7 @@
 package me.geoflow.core.database.extensions
 
+import me.geoflow.core.database.composites.Composite
+import me.geoflow.core.utils.requireNotEmpty
 import java.sql.Connection
 import kotlin.reflect.typeOf
 
@@ -30,6 +32,12 @@ inline fun <reified T> java.sql.Array.getListWithNulls(): List<T?> {
     return arrayTyped.map {
         if (it is T?) it else throw IllegalStateException("SQL array must be of type ${typeOf<T>()}")
     }
+}
+
+/** */
+inline fun <reified T: Composite> List<T>.getCompositeArray(connection: Connection): java.sql.Array {
+    requireNotEmpty(this) { "Cannot get a composite array of an empty list" }
+    return connection.createArrayOf(first().typeName, map { it.compositeValue }.toTypedArray())
 }
 
 /**

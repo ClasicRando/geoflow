@@ -92,7 +92,7 @@ suspend fun FlowCollector<AnalyzeResult>.analyzeExcelFile(
                     .chunked(DEFAULT_CHUNK_SIZE)
                     .asFlow()
                     .flowOn(Dispatchers.IO)
-                    .map { recordChunk -> analyzeNonTypedRecords(info.tableName, header, recordChunk) }
+                    .map { recordChunk -> analyzeNonTypedRecords(info.stOid, info.tableName, header, recordChunk) }
                     .reduce { acc, analyzeResult -> acc.merge(analyzeResult) }
                 emit(analyzeResult)
             }

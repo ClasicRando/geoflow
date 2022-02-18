@@ -103,11 +103,13 @@ fun formatColumnName(name: String): String {
 
 /** Analyzes records for files without defined column types. Calls [analyzeRecords] with the default type of VARCHAR */
 fun analyzeNonTypedRecords(
+    stOid: Long,
     tableName: String,
     header: List<String>,
     records: List<Array<String>>,
 ): AnalyzeResult {
     return analyzeRecords(
+        stOid,
         tableName,
         header.map { it to "VARCHAR" },
         records,
@@ -120,6 +122,7 @@ fun analyzeNonTypedRecords(
  * The result is obtained by using passed data and looking into each column and finding the max and min string lengths.
  */
 fun analyzeRecords(
+    stOid: Long,
     tableName: String,
     header: List<Pair<String, String>>,
     records: List<Array<String>>,
@@ -139,7 +142,7 @@ fun analyzeRecords(
             index = index,
         )
     }
-    return AnalyzeResult(tableName, recordCount, stats)
+    return AnalyzeResult(stOid, tableName, recordCount, stats)
 }
 
 /** Running SQL query to find out if the [tableName] can be found in the given [schema] */

@@ -74,7 +74,7 @@ suspend fun FlowCollector<AnalyzeResult>.analyzeMdbFile(
                     .chunked(DEFAULT_CHUNK_SIZE)
                     .asFlow()
                     .flowOn(Dispatchers.IO)
-                    .map { records -> analyzeRecords(info.tableName, headerData, records) }
+                    .map { records -> analyzeRecords(info.stOid, info.tableName, headerData, records) }
                     .reduce { acc, analyzeResult -> acc.merge(analyzeResult) }
                 emit(analyzeResult)
             }

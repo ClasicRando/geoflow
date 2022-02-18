@@ -66,18 +66,19 @@ const val MANUALLY_SET_PLOTTING_METHODS: Long = 24L
 @SystemTask(taskId = 12, taskName = "Analyze Files")
 suspend fun analyzeFiles(connection: Connection, prTask: PipelineRunTask) {
     val pipelineRun = PipelineRuns.getRun(connection, prTask.runId)
-    val results = mutableMapOf<Long, AnalyzeResult>()
+    val results = mutableListOf<AnalyzeResult>()
     for (fileInfo in SourceTables.filesToAnalyze(connection, pipelineRun.runId)) {
         val file = File(pipelineRun.runFilesLocation, fileInfo.fileName)
         analyzeFile(
             file = file,
             analyzers = fileInfo.analyzeInfo,
         ).buffer().flowOn(Dispatchers.IO).collect { analyzeResult ->
-            val stOid = fileInfo.analyzeInfo.first { it.tableName == analyzeResult.tableName }.stOid
-            results[stOid] = analyzeResult
+            results += analyzeResult
         }
     }
-    SourceTables.finishAnalyze(connection, results)
+    if (results.isNotEmpty()) {
+        SourceTables.finishAnalyze(connection, results)
+    }
 }
 
 /**
