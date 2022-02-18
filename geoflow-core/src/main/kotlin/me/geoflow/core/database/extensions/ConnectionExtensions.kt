@@ -2,7 +2,6 @@
 package me.geoflow.core.database.extensions
 
 import java.sql.Connection
-import java.sql.PreparedStatement
 
 /**
  * Returns a list of type [T] as a result of the [sql] query with statement [parameters] applied. Parameters are
@@ -69,38 +68,6 @@ inline fun <reified T> Connection.queryFirstOrNull(
             statement.setObject(parameter.index + 1, parameter.value)
         }
         statement.executeQuery().useFirstOrNull { it.rowToClass() }
-    }
-}
-
-/**
- * Provide multiple [sql] queries to generate and handle the closing of subsequent statements. Statements are available
- * as the provided parameters of the lambda. Any exception thrown in the [block] or statement creation is rethrown
- * outside the function while still maintaining safe closing of the generated statements.
- */
-@Suppress("TooGenericExceptionCaught", "NestedBlockDepth")
-inline fun Connection.useMultipleStatements(sql: List<String>, block: (List<PreparedStatement>) -> Unit) {
-    var exception: Throwable? = null
-    var statements: List<PreparedStatement>? = null
-    try {
-        statements = sql.map { prepareStatement(it) }
-        return block(statements)
-    } catch (e: Throwable) {
-        exception = e
-        throw e
-    } finally {
-        if (statements != null) {
-            for (statement in statements) {
-                if (exception == null) {
-                    statement.close()
-                } else {
-                    try {
-                        statement.close()
-                    } catch (e: Throwable) {
-                        exception.addSuppressed(e)
-                    }
-                }
-            }
-        }
     }
 }
 
