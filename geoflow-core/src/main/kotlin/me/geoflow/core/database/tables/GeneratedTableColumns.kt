@@ -11,7 +11,7 @@ import me.geoflow.core.database.tables.records.GeneratedTableColumn
 import java.sql.Connection
 
 /** */
-object GeneratedTableColumns : DbTable("generated_table_columns"), ApiExposed {
+object GeneratedTableColumns : DbTable("generated_table_columns"), ApiExposed, Triggers {
 
     @Suppress("MaxLineLength")
     override val createStatement: String = """
@@ -31,6 +31,93 @@ object GeneratedTableColumns : DbTable("generated_table_columns"), ApiExposed {
             OIDS = FALSE
         );
     """.trimIndent()
+
+    @Suppress("MaxLineLength")
+    override val triggers: List<Trigger> = listOf(
+        Trigger(
+            trigger = """
+                CREATE TRIGGER trg_check_generation_expression
+                    BEFORE INSERT OR UPDATE OF generation_expression
+                    ON public.generated_table_columns
+                    FOR EACH ROW
+                    EXECUTE FUNCTION public.check_generation_expression();
+            """.trimIndent(),
+            triggerFunction = """
+                CREATE OR REPLACE FUNCTION public.check_generation_expression()
+                    RETURNS trigger
+                    LANGUAGE 'plpgsql'
+                    COST 100
+                    VOLATILE NOT LEAKPROOF
+                AS ${'$'}BODY${'$'}
+                DECLARE
+                    check_cursor refcursor;
+                    source_table_name text;
+                    check_buffer text;
+                    check_return_values int;
+                    expression_check_query text;
+                    msg text;
+                    error_hint text;
+                BEGIN
+                    ASSERT NEW.generation_expression != '*', 'generation_expression cannot be "*"';
+                    SELECT table_name
+                    INTO   source_table_name
+                    FROM   source_tables
+                    WHERE  st_oid = NEW.st_oid;
+                    expression_check_query := 'SELECT '||NEW.generation_expression||' FROM '||source_table_name;
+                    BEGIN
+                        OPEN check_cursor FOR EXECUTE expression_check_query;
+                        FETCH check_cursor INTO check_buffer;
+                        CLOSE check_cursor;
+                    EXCEPTION
+                        WHEN others THEN
+                            GET STACKED DIAGNOSTICS
+                                msg = message_text,
+                                error_hint = pg_exception_hint;
+                            RAISE EXCEPTION 'Error while validating generation_expresion "%s". %s', expression_check_query, msg;
+                    END;
+                    OPEN check_cursor FOR EXECUTE 'SELECT array_length(ARRAY['||COALESCE(NULLIF(NEW.generation_expression,''),'0')||'],1) FROM '||source_table_name;
+                    FETCH check_cursor INTO check_return_values;
+                    CLOSE check_cursor;
+                    ASSERT check_return_values = 1, format('generation_expression cannot return multiple values. Expected 1 got %s', check_return_values);
+                    RETURN NEW;
+                END;
+                ${'$'}BODY${'$'};
+            """.trimIndent()
+        ),
+        Trigger(
+            trigger = """
+                CREATE TRIGGER trg_check_generation_report_group
+                    BEFORE INSERT OR UPDATE OF report_group
+                    ON public.generated_table_columns
+                    FOR EACH ROW
+                    EXECUTE FUNCTION public.check_generation_group();
+            """.trimIndent(),
+            triggerFunction = """
+                CREATE OR REPLACE FUNCTION public.check_generation_group()
+                    RETURNS trigger
+                    LANGUAGE 'plpgsql'
+                    COST 100
+                    VOLATILE NOT LEAKPROOF
+                AS ${'$'}BODY${'$'}
+                DECLARE
+                    check_report_group int;
+                BEGIN
+                    SELECT COUNT(0)
+                    INTO   check_report_group
+                    FROM  (SELECT report_group, st_oid
+                           FROM   source_table_columns
+                           UNION
+                           SELECT report_group, st_oid
+                           FROM   generated_table_columns) t
+                    WHERE  report_group = NEW.report_group
+                    AND    st_oid != NEW.st_oid;
+                    ASSERT check_report_group = 0, 'report_group value belongs to another source_table';
+                    RETURN NEW;
+                END;
+                ${'$'}BODY${'$'};
+            """.trimIndent()
+        ),
+    )
 
     override val tableDisplayFields: Map<String, Map<String, String>> = mapOf(
         "name" to mapOf(),

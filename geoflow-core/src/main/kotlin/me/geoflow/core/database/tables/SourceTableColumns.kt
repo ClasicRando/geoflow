@@ -17,7 +17,7 @@ import java.sql.Connection
  * When a source file is analyzed the column metadata is inserted into this table to alert a user if the file has
  * changed in the columns provided or the character length of data.
  */
-object SourceTableColumns : DbTable("source_table_columns"), ApiExposed {
+object SourceTableColumns : DbTable("source_table_columns"), ApiExposed, Triggers {
 
     override val createStatement: String = """
         CREATE TABLE IF NOT EXISTS public.source_table_columns
@@ -39,6 +39,42 @@ object SourceTableColumns : DbTable("source_table_columns"), ApiExposed {
             OIDS = FALSE
         );
     """.trimIndent()
+
+    override val triggers: List<Trigger> = listOf(
+        Trigger(
+            trigger = """
+                CREATE TRIGGER check_stc_update
+                    BEFORE UPDATE OF report_group
+                    ON public.source_table_columns
+                    FOR EACH ROW
+                    EXECUTE FUNCTION public.check_source_column();
+            """.trimIndent(),
+            triggerFunction = """
+                CREATE OR REPLACE FUNCTION public.check_source_column()
+                    RETURNS trigger
+                    LANGUAGE 'plpgsql'
+                    COST 100
+                    VOLATILE NOT LEAKPROOF
+                AS ${'$'}BODY${'$'}
+                DECLARE
+                    check_report_group int;
+                BEGIN
+                    SELECT COUNT(0)
+                    INTO   check_report_group
+                    FROM  (SELECT report_group, st_oid
+                           FROM   source_table_columns
+                           UNION
+                           SELECT report_group, st_oid
+                           FROM   generated_table_columns) t
+                    WHERE  report_group = NEW.report_group
+                    AND    st_oid != NEW.st_oid;
+                    ASSERT check_report_group = 0, 'report_group value belongs to another source_table';
+                    RETURN NEW;
+                END;
+                ${'$'}BODY${'$'};
+            """.trimIndent()
+        ),
+    )
 
     override val tableDisplayFields: Map<String, Map<String, String>> = mapOf(
         "name" to mapOf(),
