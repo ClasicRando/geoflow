@@ -17,7 +17,9 @@ import io.ktor.features.ContentNegotiation
 import io.ktor.features.StatusPages
 import io.ktor.features.MissingRequestParameterException
 import io.ktor.html.respondHtml
+import io.ktor.request.uri
 import io.ktor.response.respondRedirect
+import io.ktor.response.respondText
 import io.ktor.routing.routing
 import io.ktor.serialization.json
 import io.ktor.sessions.Sessions
@@ -37,12 +39,21 @@ private fun SessionAuthenticationProvider.Configuration<UserSession>.configure(l
         }
     }
     challenge { session ->
-        val redirect = when {
-            session == null -> "/login"
-            session.isExpired -> "/login?message=expired"
-            else -> "/login?message=error"
+        if (call.request.uri.contains("/data/")) {
+            val message = when {
+                session == null -> "No session found"
+                session.isExpired -> "Session for ${session.username} has expired"
+                else -> "Error while trying to acquire session"
+            }
+            call.respondText("$message. Please Login to continue")
+        } else {
+            val redirect = when {
+                session == null -> "/login"
+                session.isExpired -> "/login?message=expired"
+                else -> "/login?message=error"
+            }
+            call.respondRedirect(redirect)
         }
-        call.respondRedirect(redirect)
     }
 }
 
