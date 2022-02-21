@@ -184,7 +184,7 @@ async function commitGeneratedField() {
         name: formData.get('name'),
         label: formData.get('label'),
         report_group: formData.get('reportGroup'),
-        expression: formData.get('expression'),
+        generation_expression: formData.get('expression'),
     };
     const response = await fetchApi('/data/generated-table-columns', commitGtcOid === null ? FetchMethods.POST : FetchMethods.PUT, body);
     if (response.success) {
