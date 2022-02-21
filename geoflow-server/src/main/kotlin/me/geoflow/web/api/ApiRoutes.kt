@@ -37,6 +37,7 @@ fun Route.data() {
         plottingMethods()
         plottingMethodTypes()
         generatedTableColumns()
+        allFields()
     }
 }
 
@@ -270,6 +271,17 @@ private fun Route.generatedTableColumns() {
             path = "/{gtcOid}",
             apiEndPoint = "generated-table-columns/{gtcOid}",
             httpMethod = HttpMethod.Delete,
+        )
+    }
+}
+
+/** Generated table columns API route */
+private fun Route.allFields() {
+    route(path = "/all-fields") {
+        apiCall<NoBody>(
+            path = "/{stOid}",
+            apiEndPoint = "/all-fields/{stOid}",
+            httpMethod = HttpMethod.Get,
         )
     }
 }

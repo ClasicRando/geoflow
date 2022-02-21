@@ -25,6 +25,7 @@ import me.geoflow.core.database.tables.records.ColumnComparison
 import me.geoflow.core.database.tables.records.DataSource
 import me.geoflow.core.database.tables.records.DataSourceContact
 import me.geoflow.core.database.tables.records.GeneratedTableColumn
+import me.geoflow.core.database.tables.records.LogicField
 import me.geoflow.core.database.tables.records.NextTask
 import me.geoflow.core.database.tables.records.Pipeline
 import me.geoflow.core.database.tables.records.PipelineRun
@@ -124,6 +125,15 @@ sealed interface ApiResponse {
     ): Success<SourceTableColumn> {
         @SerialName("object")
         override val responseObject: String = "source_table_column"
+    }
+
+    /** API response for a list of fields used to generate loading logic (Union of source and generated columns */
+    @Serializable
+    class LogicFieldsResponse(
+        override val payload: List<LogicField>,
+    ): Success<List<LogicField>> {
+        @SerialName("object")
+        override val responseObject: String = "logic_field"
     }
 
     /** API response for a list of records from [source_tables][SourceTables] */
