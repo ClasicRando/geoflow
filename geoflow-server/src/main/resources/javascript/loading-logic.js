@@ -77,9 +77,11 @@ async function parentTableChange() {
     const stOid = parentTableSelector.value;
     if (stOid === 'null') {
         parentLinkingKeyRow.classList.add('hidden');
+        linkingKeyButtonRow.classList.add('hidden');
         return;
     }
     parentLinkingKeyRow.classList.remove('hidden');
+    linkingKeyButtonRow.classList.remove('hidden');
     const response = await fetchApi(`/data/source-table-columns/${stOid}`, FetchMethods.GET);
     if (response.success) {
         addOptions(parentLinkingKey, response.payload, 'stc_oid', 'name');

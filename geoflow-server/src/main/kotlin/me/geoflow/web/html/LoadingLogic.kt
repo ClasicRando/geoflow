@@ -27,6 +27,7 @@ private const val GENERATED_FIELDS_LIST = "generatedFieldsList"
 private const val PARENT_LINKING_KEY = "parentLinkingKey"
 private const val PARENT_LINKING_KEY_ROW = "parentLinkingKeyRow"
 private const val LINKING_KEY = "linkingKey"
+private const val LINKING_KEY_BUTTON_ROW = "linkingKeyButtonRow"
 private const val EDIT_SOURCE_FIELD = "editSourceField"
 private const val EDIT_GENERATED_FIELD = "editGeneratedField"
 private const val SOURCE_FIELD_NAME = "sourceFieldName"
@@ -73,12 +74,12 @@ fun FlowContent.loadingLogic() {
             select(classes = "custom-select") {
                 id = PARENT_LINKING_KEY
             }
-            button(classes = "btn btn-secondary") {
-                type = ButtonType.button
-                onClick = "addParentKeyField()"
-                +"Add Parent Key Field"
-                i(classes = "fas fa-plus p-1")
-            }
+//            button(classes = "btn btn-secondary") {
+//                type = ButtonType.button
+//                onClick = "addParentKeyField()"
+//                +"Add Parent Key Field"
+//                i(classes = "fas fa-plus p-1")
+//            }
         }
         div(classes = "col") {
             label {
@@ -88,6 +89,17 @@ fun FlowContent.loadingLogic() {
             select(classes = "custom-select") {
                 id = LINKING_KEY
             }
+//            button(classes = "btn btn-secondary") {
+//                type = ButtonType.button
+//                onClick = "addLinkingKeyField()"
+//                +"Add Linking Key Field"
+//                i(classes = "fas fa-plus p-1")
+//            }
+        }
+    }
+    div(classes = "row py-1 hidden") {
+        id = LINKING_KEY_BUTTON_ROW
+        div(classes = "col") {
             button(classes = "btn btn-secondary") {
                 type = ButtonType.button
                 onClick = "addLinkingKeyField()"
@@ -239,6 +251,7 @@ fun FlowContent.loadingLogic() {
             "parentLinkingKey" to JSElement(id = PARENT_LINKING_KEY, makeJQuery = false),
             "parentLinkingKeyRow" to JSElement(id = PARENT_LINKING_KEY_ROW, makeJQuery = false),
             "linkingKey" to JSElement(id = LINKING_KEY, makeJQuery = false),
+            "linkingKeyButtonRow" to JSElement(id = LINKING_KEY_BUTTON_ROW, makeJQuery = false),
             "editSourceField" to JSElement(id = EDIT_SOURCE_FIELD),
             "editGeneratedField" to JSElement(id = EDIT_GENERATED_FIELD),
             "generatedFieldDeleteModal" to JSElement(id = GENERATED_FIELD_DELETE_MODAL, makeElement = false),
