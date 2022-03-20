@@ -545,6 +545,7 @@ private const val RELATIONSHIPS_MODAL = "relationshipsModal"
 private const val SOURCE_TABLE_SELECTOR = "logicSourceTableSelector"
 private const val PARENT_TABLE_SELECTOR = "parentTableSelector"
 private const val LINKING_KEY_BUTTON_ROW = "linkingKeyButtonRow"
+private const val RELATIONSHIP_DELETE_MODAL = "relationshipDeleteModal"
 
 /** */
 @Suppress("LongMethod")
@@ -622,6 +623,11 @@ fun FlowContent.relationships(runId: Long) {
             }
         }
     }
+    confirmModal(
+        confirmModalId = RELATIONSHIP_DELETE_MODAL,
+        confirmMessage = "Are you sure you want to delete this relationship?",
+        resultFunction = "commitDeleteRelationship()",
+    )
     script {
         addParamsAsJsGlobalVariables(
             "relationshipsTable" to JSElement(id = RELATIONSHIPS_TABLE),
@@ -629,6 +635,7 @@ fun FlowContent.relationships(runId: Long) {
             "sourceTableSelector" to JSElement(id = SOURCE_TABLE_SELECTOR, makeJQuery = false),
             "parentTableSelector" to JSElement(id = PARENT_TABLE_SELECTOR, makeJQuery = false),
             "linkingKeyButtonRow" to JSElement(id = LINKING_KEY_BUTTON_ROW, makeJQuery = false),
+            "relationshipDeleteModal" to JSElement(id = RELATIONSHIP_DELETE_MODAL, makeElement = false),
         )
     }
     script {

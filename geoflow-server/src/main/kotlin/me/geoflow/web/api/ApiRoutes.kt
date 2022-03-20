@@ -357,6 +357,11 @@ private fun Route.pipelineRelationships() {
             apiEndPoint = "pipeline-relationships",
             httpMethod = HttpMethod.Post,
         )
+        apiCall<NoBody>(
+            path = "/{stOid}",
+            apiEndPoint = "pipeline-relationships/{stOid}",
+            httpMethod = HttpMethod.Delete,
+        )
     }
 }
 

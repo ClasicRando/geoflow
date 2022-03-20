@@ -31,6 +31,7 @@ object PipelineRelationships : DbTable("pipeline_relationships"), ApiExposed {
     override val tableDisplayFields: Map<String, Map<String, String>> = mapOf(
         "table_name" to mapOf(),
         "parent_table_name" to mapOf(),
+        "action" to mapOf("formatter" to "relationshipActions")
     )
 
     /** */
@@ -106,6 +107,20 @@ object PipelineRelationships : DbTable("pipeline_relationships"), ApiExposed {
                     it.parentFieldIsGenerated,
                 )
             },
+        )
+    }
+
+    /** */
+    fun deleteRecord(connection: Connection, userOid: Long, stOid: Long) {
+        val runId = SourceTables.getRunId(connection, stOid)
+        UserHasRun.requireUserRun(connection, userOid, runId)
+        connection.executeNoReturn(
+            sql = "DELETE FROM $tableName WHERE st_oid = ?",
+            stOid,
+        )
+        connection.executeNoReturn(
+            sql = "DELETE FROM ${PipelineRelationshipFields.tableName} WHERE st_oid = ?",
+            stOid,
         )
     }
 

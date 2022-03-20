@@ -17,6 +17,7 @@ object ApiPipelineRelationships : ApiPath("/pipeline-relationships") {
     override fun Route.registerEndpoints() {
         getRunRelationships(this)
         setRelationship(this)
+        deleteRelationship(this)
     }
 
     /** */
@@ -33,6 +34,15 @@ object ApiPipelineRelationships : ApiPath("/pipeline-relationships") {
             val body = call.receive<PipelineRelationshipRequest>()
             PipelineRelationships.setRecord(connection, userOid, body)
             ApiResponse.MessageResponse("Set Relationship for st_oid = ${body.stOid}")
+        }
+    }
+
+    /** */
+    private fun deleteRelationship(parent: Route) {
+        parent.apiCallPostgres(httpMethod = HttpMethod.Delete, path = "/{stOid}") { userOid, connection ->
+            val stOid = call.parameters.getOrFail<Long>("stOid")
+            PipelineRelationships.deleteRecord(connection, userOid, stOid)
+            ApiResponse.MessageResponse("Deleted Relationship for st_oid = $stOid")
         }
     }
 
