@@ -26,7 +26,6 @@ document.addEventListener('DOMContentLoaded', async () => {
                 addOptions(sourceTableSelector, sourceTables, 'st_oid', 'table_name');
                 const event = new Event('change');
                 sourceTableSelector.dispatchEvent(event);
-                addOptions(parentTableSelector, [{st_oid: null, table_name: ''}, ...sourceTables], 'st_oid', 'table_name');
             } else {
                 showToast('Error', response.errors);
             }
@@ -70,6 +69,9 @@ async function sourceTableChange() {
         ).bootstrapTable('refresh');
         showToast('Error', response.errors);
     }
+    removeAllChildren(parentTableSelector);
+    const parentTables = [{st_oid: null, table_name: ''}, ...sourceTables.filter(st=>st.st_oid != sourceTableSelector.value)];
+    addOptions(parentTableSelector, parentTables, 'st_oid', 'table_name');
 }
 
 async function parentTableChange() {
@@ -140,10 +142,6 @@ function addGeneratedField() {
     editGeneratedFieldForm.resetForm();
     editGeneratedField.querySelector('.modal-title').textContent = 'Create Generated Field';
     $editGeneratedField.modal('show');
-}
-
-async function commitGeneratedField() {
-
 }
 
 function generatedFieldAction(value, row) {
@@ -218,4 +216,8 @@ async function commitGeneratedFieldDelete() {
     } else {
         showToast('Error', response.errors);
     }
+}
+
+function addLinkingKeyField() {
+
 }

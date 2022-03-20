@@ -74,12 +74,6 @@ fun FlowContent.loadingLogic() {
             select(classes = "custom-select") {
                 id = PARENT_LINKING_KEY
             }
-//            button(classes = "btn btn-secondary") {
-//                type = ButtonType.button
-//                onClick = "addParentKeyField()"
-//                +"Add Parent Key Field"
-//                i(classes = "fas fa-plus p-1")
-//            }
         }
         div(classes = "col") {
             label {
@@ -89,12 +83,6 @@ fun FlowContent.loadingLogic() {
             select(classes = "custom-select") {
                 id = LINKING_KEY
             }
-//            button(classes = "btn btn-secondary") {
-//                type = ButtonType.button
-//                onClick = "addLinkingKeyField()"
-//                +"Add Linking Key Field"
-//                i(classes = "fas fa-plus p-1")
-//            }
         }
     }
     div(classes = "row py-1 hidden") {

@@ -16,6 +16,9 @@ import kotlinx.html.script
 import kotlinx.html.select
 import kotlinx.html.textInput
 import me.geoflow.core.database.enums.FileCollectType
+import me.geoflow.core.database.tables.GeneratedTableColumns
+import me.geoflow.core.database.tables.PipelineRelationshipFields
+import me.geoflow.core.database.tables.PipelineRelationships
 import me.geoflow.core.database.tables.PlottingFields
 import me.geoflow.core.database.tables.PlottingMethods
 import me.geoflow.core.database.tables.SourceTableColumns
@@ -31,6 +34,10 @@ import me.geoflow.core.web.html.subTableDetails
 private const val SOURCE_TABLES_TABLE_ID = "sourceTables"
 private const val SOURCE_TABLES_MODAL_ID = "sourceTableDataEditRow"
 private const val DELETE_SOURCE_TABLE_CONFIRM_ID = "deleteSourceTable"
+private const val EDIT_SOURCE_FIELD = "editSourceField"
+private const val SOURCE_FIELD_NAME = "sourceFieldName"
+private const val SOURCE_FIELD_LABEL = "sourceFieldLabel"
+private const val SOURCE_FIELD_REPORT_GROUP = "sourceFieldReportGroup"
 
 /** Constructs a basic table for source table data */
 @Suppress("LongMethod")
@@ -187,6 +194,43 @@ fun FlowContent.sourceTables(runId: Long) {
             }
         }
     }
+    formModal(
+        modalId = EDIT_SOURCE_FIELD,
+        headerText = "Edit Source Field",
+        okClickFunction = "commitSourceField()",
+    ) {
+        div(classes = "form-group") {
+            label {
+                htmlFor = SOURCE_FIELD_NAME
+                +"Field Name"
+            }
+            textInput(classes = "form-control") {
+                id = SOURCE_FIELD_NAME
+                name = "name"
+                readonly = true
+            }
+        }
+        div(classes = "form-group") {
+            label {
+                htmlFor = SOURCE_FIELD_LABEL
+                +"Report Label"
+            }
+            textInput(classes = "form-control") {
+                id = SOURCE_FIELD_LABEL
+                name = "label"
+            }
+        }
+        div(classes = "form-group") {
+            label {
+                htmlFor = SOURCE_FIELD_REPORT_GROUP
+                +"Report Group"
+            }
+            textInput(classes = "form-control") {
+                id = SOURCE_FIELD_REPORT_GROUP
+                name = "reportGroup"
+            }
+        }
+    }
     confirmModal(
         confirmModalId = DELETE_SOURCE_TABLE_CONFIRM_ID,
         confirmMessage = "Are you sure you want to delete this record?",
@@ -197,6 +241,7 @@ fun FlowContent.sourceTables(runId: Long) {
             "sourceTablesTable" to JSElement(id = SOURCE_TABLES_TABLE_ID, makeElement = false),
             "sourceTableModal" to JSElement(id = SOURCE_TABLES_MODAL_ID),
             "deleteSourceTableConfirm" to JSElement(id = DELETE_SOURCE_TABLE_CONFIRM_ID, makeElement = false),
+            "editSourceField" to JSElement(id = EDIT_SOURCE_FIELD),
         )
     }
     script {
@@ -391,5 +436,202 @@ fun FlowContent.plottingMethods(runId: Long) {
     }
     script {
         src = "/assets/plotting-methods.js"
+    }
+}
+
+private const val GENERATED_FIELDS_LIST = "generatedFieldsList"
+private const val EDIT_GENERATED_FIELD = "editGeneratedField"
+private const val GENERATED_SOURCE_TABLE_SELECT = "generatedSourceTableSelect"
+private const val GENERATED_FIELD_DELETE_MODAL = "generatedFieldDeleteModal"
+private const val GENERATED_FIELD_NAME = "generatedFieldName"
+private const val GENERATED_FIELD_LABEL = "generatedFieldLabel"
+private const val GENERATED_FIELD_EXPRESSION = "generatedFieldExpression"
+private const val GENERATED_FIELD_REPORT_GROUP = "generatedFieldReportGroup"
+
+/** */
+@Suppress("LongMethod")
+fun FlowContent.generatedFields() {
+    div(classes = "row py-1") {
+        div(classes = "col") {
+            label {
+                htmlFor = GENERATED_SOURCE_TABLE_SELECT
+                +"Source Table"
+            }
+            select(classes = "custom-select") {
+                id = GENERATED_SOURCE_TABLE_SELECT
+            }
+        }
+    }
+    basicTable<GeneratedTableColumns>(
+        tableId = GENERATED_FIELDS_LIST,
+        dataField = "payload",
+        tableButtons = listOf(
+            tableButton(
+                name = "btnAddGeneratedField",
+                icon = "fa-plus",
+                event = "addGeneratedField()",
+                text = "Add Generated Field",
+                title = "Add an expression to be created while loading the data into the pipeline",
+            )
+        ),
+        clickableRows = false,
+    )
+    formModal(
+        modalId = EDIT_GENERATED_FIELD,
+        headerText = "Edit Generated Field",
+        okClickFunction = "commitGeneratedField()",
+    ) {
+        div(classes = "form-group") {
+            label {
+                htmlFor = GENERATED_FIELD_NAME
+                +"Field Name"
+            }
+            textInput(classes = "form-control") {
+                id = GENERATED_FIELD_NAME
+                name = "name"
+            }
+        }
+        div(classes = "form-group") {
+            label {
+                htmlFor = GENERATED_FIELD_LABEL
+                +"Label"
+            }
+            textInput(classes = "form-control") {
+                id = GENERATED_FIELD_LABEL
+                name = "label"
+            }
+        }
+        div(classes = "form-group") {
+            label {
+                htmlFor = GENERATED_FIELD_REPORT_GROUP
+                +"Report Group"
+            }
+            textInput(classes = "form-control") {
+                id = GENERATED_FIELD_REPORT_GROUP
+                name = "reportGroup"
+            }
+        }
+        div(classes = "form-group") {
+            label {
+                htmlFor = GENERATED_FIELD_EXPRESSION
+                +"Expression"
+            }
+            textInput(classes = "form-control") {
+                id = GENERATED_FIELD_EXPRESSION
+                name = "expression"
+            }
+        }
+    }
+    confirmModal(
+        confirmModalId = GENERATED_FIELD_DELETE_MODAL,
+        confirmMessage = "Are you sure you want to delete this generated Field?",
+        resultFunction = "commitGeneratedFieldDelete()",
+    )
+    script {
+        addParamsAsJsGlobalVariables(
+            "generatedFieldsList" to JSElement(id = GENERATED_FIELDS_LIST),
+            "generatedSourceTableSelect" to JSElement(id = GENERATED_SOURCE_TABLE_SELECT, makeJQuery = false),
+            "generatedFieldDeleteModal" to JSElement(id = GENERATED_FIELD_DELETE_MODAL, makeElement = false),
+            "editGeneratedField" to JSElement(id = EDIT_GENERATED_FIELD),
+        )
+    }
+    script {
+        src = "/assets/generated-fields.js"
+    }
+}
+
+private const val RELATIONSHIPS_TABLE = "relationshipsTable"
+private const val RELATIONSHIPS_MODAL = "relationshipsModal"
+private const val SOURCE_TABLE_SELECTOR = "logicSourceTableSelector"
+private const val PARENT_TABLE_SELECTOR = "parentTableSelector"
+private const val LINKING_KEY_BUTTON_ROW = "linkingKeyButtonRow"
+
+/** */
+@Suppress("LongMethod")
+fun FlowContent.relationships(runId: Long) {
+    basicTable<PipelineRelationships>(
+        tableId = RELATIONSHIPS_TABLE,
+        dataUrl = "pipeline-relationships/${runId}",
+        dataField = "payload",
+        tableButtons = listOf(
+            tableButton(
+                name = "btnAddRelationship",
+                icon = "fa-plus",
+                event = "addRelationship()",
+                text = "Add Relationship",
+                title = "Add a relationship between a child and parent source table",
+            )
+        ),
+        clickableRows = false,
+        subTableDetails = subTableDetails<PipelineRelationshipFields>(
+            url = "pipeline-relationship-fields/{id}",
+            idField = "st_oid"
+        )
+    )
+    basicModal(
+        modalId = RELATIONSHIPS_MODAL,
+        headerText = "Add Relationship",
+        okClickFunction = "commitRelationship()",
+        size = "modal-xl",
+    ) {
+        div(classes = "row py-1") {
+            div(classes = "col") {
+                label {
+                    htmlFor = SOURCE_TABLE_SELECTOR
+                    +"Source Table"
+                }
+                select(classes = "custom-select") {
+                    id = SOURCE_TABLE_SELECTOR
+                }
+            }
+            div(classes = "col") {
+                label {
+                    htmlFor = PARENT_TABLE_SELECTOR
+                    +"Parent Table"
+                }
+                select(classes = "custom-select") {
+                    id = PARENT_TABLE_SELECTOR
+                }
+            }
+        }
+        div(classes = "row py-1") {
+            div(classes = "col-5") {
+                label {
+                    +"Linking Key"
+                }
+            }
+            div(classes = "col-5") {
+                label {
+                    +"Parent Linking Key"
+                }
+            }
+            div(classes = "col-2")
+        }
+        ol(classes = "list-group") {
+            id = ""
+        }
+        div(classes = "row py-1") {
+            id = LINKING_KEY_BUTTON_ROW
+            div(classes = "col") {
+                button(classes = "btn btn-secondary") {
+                    type = ButtonType.button
+                    onClick = "addLinkingKeyField()"
+                    +"Add Linking Key Field"
+                    i(classes = "fas fa-plus p-1")
+                }
+            }
+        }
+    }
+    script {
+        addParamsAsJsGlobalVariables(
+            "relationshipsTable" to JSElement(id = RELATIONSHIPS_TABLE),
+            "relationshipsModal" to JSElement(id = RELATIONSHIPS_MODAL),
+            "sourceTableSelector" to JSElement(id = SOURCE_TABLE_SELECTOR, makeJQuery = false),
+            "parentTableSelector" to JSElement(id = PARENT_TABLE_SELECTOR, makeJQuery = false),
+            "linkingKeyButtonRow" to JSElement(id = LINKING_KEY_BUTTON_ROW, makeJQuery = false),
+        )
+    }
+    script {
+        src = "/assets/pipeline-relationships.js"
     }
 }

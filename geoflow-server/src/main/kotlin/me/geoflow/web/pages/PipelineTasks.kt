@@ -14,9 +14,10 @@ import me.geoflow.core.web.html.emptyModal
 import me.geoflow.core.web.html.tabLayout
 import me.geoflow.core.web.html.tabNav
 import me.geoflow.core.web.html.tableButton
-import me.geoflow.web.html.loadingLogic
+import me.geoflow.web.html.generatedFields
 import me.geoflow.web.html.plottingFields
 import me.geoflow.web.html.plottingMethods
+import me.geoflow.web.html.relationships
 import me.geoflow.web.html.sourceTables
 import me.geoflow.web.pages.PipelineTasks.Companion.tableButtons
 
@@ -76,8 +77,11 @@ class PipelineTasks(
             tabNav(label = "Plotting Methods") {
                 plottingMethods(runId)
             },
-            tabNav(label = "Loading Logic") {
-                loadingLogic()
+            tabNav(label = "Generated Fields") {
+                generatedFields()
+            },
+            tabNav(label = "Relationships") {
+                relationships(runId)
             },
         )
         emptyModal(

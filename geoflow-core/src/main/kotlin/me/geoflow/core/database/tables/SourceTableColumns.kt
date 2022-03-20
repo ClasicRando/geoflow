@@ -82,6 +82,8 @@ object SourceTableColumns : DbTable("source_table_columns"), ApiExposed, Trigger
         "max_length" to mapOf(),
         "min_length" to mapOf(),
         "label" to mapOf(),
+        "report_group" to mapOf("title" to "Report Group"),
+        "action" to mapOf("formatter" to "sourceFieldListEdit"),
     )
 
     /** Returns a list of [SourceTableColumn] records for the specified [stOid] */
