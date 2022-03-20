@@ -6,6 +6,8 @@ import me.geoflow.core.database.tables.DataSources
 import me.geoflow.core.database.tables.InternalUsers
 import me.geoflow.core.database.tables.GeneratedTableColumns
 import me.geoflow.core.database.tables.Pipelines
+import me.geoflow.core.database.tables.PipelineRelationships
+import me.geoflow.core.database.tables.PipelineRelationshipFields
 import me.geoflow.core.database.tables.PipelineRuns
 import me.geoflow.core.database.tables.PipelineTasks
 import me.geoflow.core.database.tables.PlottingFields
@@ -28,6 +30,8 @@ import me.geoflow.core.database.tables.records.GeneratedTableColumn
 import me.geoflow.core.database.tables.records.LogicField
 import me.geoflow.core.database.tables.records.NextTask
 import me.geoflow.core.database.tables.records.Pipeline
+import me.geoflow.core.database.tables.records.PipelineRelationship
+import me.geoflow.core.database.tables.records.PipelineRelationshipField
 import me.geoflow.core.database.tables.records.PipelineRun
 import me.geoflow.core.database.tables.records.PipelineTask
 import me.geoflow.core.database.tables.records.PlottingFieldBody
@@ -143,6 +147,24 @@ sealed interface ApiResponse {
     ): Success<SourceTable> {
         @SerialName("object")
         override val responseObject: String = "source_table"
+    }
+
+    /** API response for a list of records from [pipeline_relationships][PipelineRelationships] */
+    @Serializable
+    class PipelineRelationshipsResponse(
+        override val payload: List<PipelineRelationship>,
+    ): Success<List<PipelineRelationship>> {
+        @SerialName("object")
+        override val responseObject: String = "pipeline_relationship"
+    }
+
+    /** API response for a list of records from [pipeline_relationship_fields][PipelineRelationshipFields] */
+    @Serializable
+    class PipelineRelationshipFieldsResponse(
+        override val payload: List<PipelineRelationshipField>,
+    ): Success<List<PipelineRelationshipField>> {
+        @SerialName("object")
+        override val responseObject: String = "pipeline_relationship_field"
     }
 
     /** API response for a list of table count comparison records */

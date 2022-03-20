@@ -38,6 +38,8 @@ fun Route.data() {
         plottingMethodTypes()
         generatedTableColumns()
         allFields()
+        pipelineRelationships()
+        pipelineRelationshipFields()
     }
 }
 
@@ -332,6 +334,28 @@ private fun Route.plottingMethodTypes() {
     route(path = "/plotting-method-types") {
         apiCall<NoBody>(
             apiEndPoint = "plotting-method-types",
+            httpMethod = HttpMethod.Get,
+        )
+    }
+}
+
+/** Pipeline relationships API route */
+private fun Route.pipelineRelationships() {
+    route(path = "/pipeline-relationships") {
+        apiCall<NoBody>(
+            path = "/{runId}",
+            apiEndPoint = "pipeline-relationships/{runId}",
+            httpMethod = HttpMethod.Get,
+        )
+    }
+}
+
+/** Pipeline relationship fields API route */
+private fun Route.pipelineRelationshipFields() {
+    route(path = "/pipeline-relationship-fields") {
+        apiCall<NoBody>(
+            path = "/{stOid}",
+            apiEndPoint = "pipeline-relationship-fields/{stOid}",
             httpMethod = HttpMethod.Get,
         )
     }
