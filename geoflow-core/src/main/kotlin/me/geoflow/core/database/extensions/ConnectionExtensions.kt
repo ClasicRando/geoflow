@@ -187,11 +187,11 @@ private fun getParams(param: Any?): Iterable<IndexedValue<Any?>> {
 }
 
 /**
- * Runs a batch update using the [sql] update provided and treating each element of the [parameters] [Iterable] as a
- * batch used for the update. If the item type of [parameters] is not an [Iterable] then each item gets treated as a
- * single item in the batch.
+ * Runs a batch DML using the [sql] DML statement provided, treating each element of the [parameters][parameters]
+ * iterable as a batch used for the statement. If the item type of [parameters] is not an [Iterable] then each item gets
+ * treated as a single item in the batch.
  */
-fun Connection.runBatchUpdate(
+fun Connection.runBatchDML(
     sql: String,
     parameters: Iterable<Any?>,
 ): Int {

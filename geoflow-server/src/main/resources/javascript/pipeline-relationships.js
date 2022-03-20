@@ -1,6 +1,4 @@
 let relationshipsSourceTables = [];
-let commitRelationshipStOid = null;
-let commitRelationshipParentStOid = null;
 let linkingFields = [];
 let parentLinkingFields = [];
 
@@ -8,6 +6,10 @@ document.addEventListener('DOMContentLoaded', async () => {
     sourceTableSelector.addEventListener('change', sourceTableChange);
     parentTableSelector.addEventListener('change', parentTableChange);
 });
+
+function isGenerated(value) {
+    return value ? '<i class="fas fa-check"></i>' : '';
+}
 
 async function addRelationship() {
     const response = await fetchApi(`/data/source-tables/${runId}`, FetchMethods.GET);
@@ -101,6 +103,33 @@ async function addLinkingKeyField() {
     linkingFieldsList.appendChild(listItem);
 }
 
-function commitRelationship() {
-
+async function commitRelationship() {
+    const stOid = sourceTableSelector.value;
+    const parentStOid = parentTableSelector.value;
+    const links = [];
+    forEach(relationshipsModal.querySelectorAll('li'), (item) => {
+        const [linkingField,linkingFieldIsGenerated] = item.querySelector('select[name=childField]').value.split('-');
+        const [parentLinkingField,parentFieldIsGenerated] = item.querySelector('select[name=parentField]').value.split('-');
+        const entry = {
+            field_id: linkingField,
+            field_is_generated: linkingFieldIsGenerated == 'true',
+            parent_field_id: parentLinkingField,
+            parent_field_is_generated: parentFieldIsGenerated == 'true',
+            st_oid: stOid,
+        };
+        links.push(entry);
+    });
+    const body = {
+        st_oid: stOid,
+        parent_st_oid: parentStOid,
+        linking_fields: links,
+    };
+    const response = await fetchApi('/data/pipeline-relationships', FetchMethods.POST, body);
+    if (response.success) {
+        $relationshipsModal.modal('hide');
+        showToast('Success', response.payload);
+        $relationshipsTable.bootstrapTable('refresh');
+    } else {
+        relationshipsModal.querySelector('p.invalidInput').textContent = formatErrors(response.errors);
+    }
 }

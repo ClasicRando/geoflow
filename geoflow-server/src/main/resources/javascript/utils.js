@@ -325,10 +325,11 @@ function showToast(title, message) {
 function formatErrors(errors) {
     if (errors.length === 0) {
         return '';
+    } else if (typeof errors[0] === 'string') {
+        return errors.map(error => `error -> ${error}`).join('\n');
     } else if ('error' in errors[0]) {
         return errors.map(error => `error -> ${error.error}`).join('\n');
     } else if (!('error_name' in errors[0])) {
-        console.log(errors);
         return errors.join('\n');
     } else {
         return errors.map(error => `${error.error_name} -> ${error.message}`).join('\n');

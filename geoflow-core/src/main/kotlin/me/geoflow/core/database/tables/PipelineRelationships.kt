@@ -1,9 +1,13 @@
 package me.geoflow.core.database.tables
 
 import me.geoflow.core.database.errors.NoRecordFound
+import me.geoflow.core.database.extensions.executeNoReturn
 import me.geoflow.core.database.extensions.queryFirstOrNull
+import me.geoflow.core.database.extensions.runBatchDML
 import me.geoflow.core.database.extensions.submitQuery
+import me.geoflow.core.database.functions.UserHasRun
 import me.geoflow.core.database.tables.records.PipelineRelationship
+import me.geoflow.core.database.tables.records.PipelineRelationshipRequest
 import java.sql.Connection
 
 /** */
@@ -61,6 +65,48 @@ object PipelineRelationships : DbTable("pipeline_relationships"), ApiExposed {
             """.trimIndent(),
             stOid,
         ) ?: throw NoRecordFound(tableName, "Could not find a relationship for st_oid = $stOid")
+    }
+
+    /** */
+    fun setRecord(connection: Connection, userOid: Long, request: PipelineRelationshipRequest) {
+        val runId = SourceTables.getRunId(connection, request.stOid)
+        UserHasRun.requireUserRun(connection, userOid, runId)
+        connection.executeNoReturn(
+            sql = """
+                INSERT INTO $tableName(st_oid,parent_st_oid)
+                VALUES (?,?)
+                ON CONFLICT(st_oid)
+                DO UPDATE SET parent_st_oid = ?
+            """.trimIndent(),
+            request.stOid,
+            request.parentStOid,
+            request.parentStOid,
+        )
+        connection.executeNoReturn(
+            sql = "DELETE FROM ${PipelineRelationshipFields.tableName} WHERE st_oid = ?",
+            request.stOid
+        )
+        connection.runBatchDML(
+            sql = """
+                INSERT INTO ${PipelineRelationshipFields.tableName}(field_id,field_is_generated,parent_field_id,
+                                                                    parent_field_is_generated,st_oid)
+                VALUES (?,?,?,?,?)
+                ON CONFLICT(field_id,field_is_generated)
+                DO UPDATE SET parent_field_id = ?,
+                              parent_field_is_generated = ?
+            """.trimIndent(),
+            request.linkingFields.map {
+                listOf(
+                    it.fieldId,
+                    it.fieldIsGenerated,
+                    it.parentFieldId,
+                    it.parentFieldIsGenerated,
+                    it.stOid,
+                    it.parentFieldId,
+                    it.parentFieldIsGenerated,
+                )
+            },
+        )
     }
 
 }

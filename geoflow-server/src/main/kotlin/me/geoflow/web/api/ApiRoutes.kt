@@ -9,6 +9,7 @@ import me.geoflow.core.database.tables.records.DataSourceContact
 import me.geoflow.core.database.tables.records.DataSourceRequest
 import me.geoflow.core.database.tables.records.GeneratedTableColumn
 import me.geoflow.core.database.tables.records.Pipeline
+import me.geoflow.core.database.tables.records.PipelineRelationshipRequest
 import me.geoflow.core.database.tables.records.PlottingFieldsRequest
 import me.geoflow.core.database.tables.records.PlottingMethod
 import me.geoflow.core.database.tables.records.RequestUser
@@ -114,6 +115,11 @@ private fun Route.pipelineRuns() {
         apiCall<NoBody>(
             path = "/{code}",
             apiEndPoint = "/pipeline-runs/{code}",
+            httpMethod = HttpMethod.Get,
+        )
+        apiCall<NoBody>(
+            path = "/info/{runId}",
+            apiEndPoint = "/pipeline-runs/info/{runId}",
             httpMethod = HttpMethod.Get,
         )
         apiCall<NoBody>(
@@ -346,6 +352,10 @@ private fun Route.pipelineRelationships() {
             path = "/{runId}",
             apiEndPoint = "pipeline-relationships/{runId}",
             httpMethod = HttpMethod.Get,
+        )
+        apiCall<PipelineRelationshipRequest>(
+            apiEndPoint = "pipeline-relationships",
+            httpMethod = HttpMethod.Post,
         )
     }
 }

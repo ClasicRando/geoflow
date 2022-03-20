@@ -71,16 +71,16 @@ class PipelineTasks(
             tabNav(label = "Source Tables") {
                 sourceTables(runId)
             },
-            tabNav(label = "Plotting Fields") {
+            tabNav(label = "Plotting Fields", hidden = true) {
                 plottingFields(runId)
             },
-            tabNav(label = "Plotting Methods") {
+            tabNav(label = "Plotting Methods", hidden = true) {
                 plottingMethods(runId)
             },
-            tabNav(label = "Generated Fields") {
+            tabNav(label = "Generated Fields", hidden = true) {
                 generatedFields()
             },
-            tabNav(label = "Relationships") {
+            tabNav(label = "Relationships", hidden = true) {
                 relationships(runId)
             },
         )

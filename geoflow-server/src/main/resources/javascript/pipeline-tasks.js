@@ -7,10 +7,20 @@ let waitingForUpdate = false;
 /** @type {string} */
 let timeUnit = 'mins';
 
-document.addEventListener('DOMContentLoaded', () => {
+document.addEventListener('DOMContentLoaded', async () => {
     tasksSubscriber = subscriberTables[taskTableId];
     tasksSubscriber.socket.addEventListener('message', (e) => { waitingForUpdate = false; })
     runId = window.location.href.match(/(?<=\/)[^/]+$/g)[0];
+    const response = await fetchApi(`/data/pipeline-runs/info/${runId}`, FetchMethods.GET);
+    if (response.success) {
+        const runInfo = response.payload;
+        if (runInfo.workflow_operation !== 'collection') {
+            document.querySelector('#plotting-fields-tab').classList.remove('hidden');
+            document.querySelector('#plotting-methods-tab').classList.remove('hidden');
+            document.querySelector('#generated-fields-tab').classList.remove('hidden');
+            document.querySelector('#relationships-tab').classList.remove('hidden');
+        }
+    }
     $('#source-tables-tab').on('show.bs.tab', () => {
         $sourceTablesTable.bootstrapTable('refresh');
     });

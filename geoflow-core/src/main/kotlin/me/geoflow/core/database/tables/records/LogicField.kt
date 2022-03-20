@@ -13,5 +13,5 @@ data class LogicField(
     @SerialName("is_generated")
     val isGenerated: Boolean,
     /** */
-    val name: String,
+    val name: String = "",
 )

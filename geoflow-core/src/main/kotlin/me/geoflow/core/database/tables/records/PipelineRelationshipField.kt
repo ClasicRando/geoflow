@@ -7,11 +7,17 @@ import kotlinx.serialization.SerialName
 @Serializable
 data class PipelineRelationshipField(
     /** */
-    @SerialName("stc_oid")
-    val stcOid: Long,
+    @SerialName("field_id")
+    val fieldId: Long,
     /** */
-    @SerialName("parent_stc_oid")
-    val parentStcOid: Long,
+    @SerialName("field_is_generated")
+    val fieldIsGenerated: Boolean,
+    /** */
+    @SerialName("parent_field_id")
+    val parentFieldId: Long,
+    /** */
+    @SerialName("parent_field_is_generated")
+    val parentFieldIsGenerated: Boolean,
     /** */
     @SerialName("st_oid")
     val stOid: Long,

@@ -17,6 +17,7 @@ object ApiPipelineRuns : ApiPath(path = "/pipeline-runs")  {
         pickupRun(this)
         moveForwardRun(this)
         moveBackRun(this)
+        getRun(this)
     }
 
     /** Returns list of pipeline runs for the given workflow code based upon the current user. */
@@ -24,6 +25,14 @@ object ApiPipelineRuns : ApiPath(path = "/pipeline-runs")  {
         parent.apiCallPostgres(httpMethod = HttpMethod.Get, path = "/{code}") { userOid, connection ->
             val payload = PipelineRuns.userRuns(connection, userOid, call.parameters.getOrFail("code"))
             ApiResponse.PipelineRunsResponse(payload)
+        }
+    }
+
+    /** Returns list of pipeline runs for the given workflow code based upon the current user. */
+    private fun getRun(parent: Route) {
+        parent.apiCallPostgres(httpMethod = HttpMethod.Get, path = "/info/{runId}") { _, connection ->
+            val payload = PipelineRuns.getRun(connection, call.parameters.getOrFail<Long>("runId"))
+            ApiResponse.PipelineRunResponse(payload)
         }
     }
 

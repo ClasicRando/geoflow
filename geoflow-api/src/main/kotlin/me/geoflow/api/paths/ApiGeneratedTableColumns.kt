@@ -21,7 +21,7 @@ object ApiGeneratedTableColumns : ApiPath("/generated-table-columns") {
         deleteGeneratedTableColumns(this)
     }
 
-    /** Returns a list of all source table columns for a provided stOid */
+    /** Returns a list of all generated columns for a provided stOid */
     private fun getGeneratedTableColumns(parent: Route) {
         parent.apiCallPostgres(httpMethod = HttpMethod.Get, path = "/{stOid}") { _, connection ->
             val payload = GeneratedTableColumns.getRecords(connection, call.parameters.getOrFail<Long>("stOid"))

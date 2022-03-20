@@ -206,6 +206,8 @@ fun FlowContent.confirmModal(confirmModalId: String, confirmMessage: String, res
 data class TabNav(
     /** label in the tab navbar */
     val label: String,
+    /** */
+    val hidden: Boolean = false,
     /** lambda that evaluates to html elements as the content of the tab */
     val content: DIV.() -> Unit
 ) {
@@ -217,8 +219,8 @@ data class TabNav(
 }
 
 /** Returns a [TabNav] with the [label] and [content] */
-fun tabNav(label: String, content: DIV.() -> Unit): TabNav {
-    return TabNav(label, content)
+fun tabNav(label: String, hidden: Boolean = false, content: DIV.() -> Unit): TabNav {
+    return TabNav(label, hidden, content)
 }
 
 /** Generic tab layout with the [tabs] provided */
@@ -234,6 +236,9 @@ fun FlowContent.tabLayout(vararg tabs: TabNav) {
                         add("nav-link")
                         if (i == 0) {
                             add("active")
+                        }
+                        if (tab.hidden) {
+                            add("hidden")
                         }
                     }
                     id = "${tab.name}-tab"
