@@ -11,7 +11,7 @@ import me.geoflow.core.database.tables.records.PipelineRelationshipRequest
 import java.sql.Connection
 
 /** */
-object PipelineRelationships : DbTable("pipeline_relationships"), ApiExposed {
+object PipelineRelationships : DbTable("pipeline_relationships"), ApiExposed, Triggers {
 
     override val createStatement: String = """
         CREATE TABLE IF NOT EXISTS public.pipeline_relationships
@@ -27,6 +27,44 @@ object PipelineRelationships : DbTable("pipeline_relationships"), ApiExposed {
             OIDS = FALSE
         );
     """.trimIndent()
+
+    @Suppress("MaxLineLength")
+    override val triggers: List<Trigger> = listOf(
+        Trigger(
+            trigger = """
+                CREATE TRIGGER trg_check_relationship
+                    BEFORE INSERT OR UPDATE 
+                    ON public.pipeline_relationships
+                    FOR EACH ROW
+                    EXECUTE FUNCTION public.check_relationship();
+            """.trimIndent(),
+            triggerFunction = """
+                CREATE OR REPLACE FUNCTION public.check_relationship()
+                    RETURNS trigger
+                    LANGUAGE 'plpgsql'
+                    COST 100
+                    VOLATILE NOT LEAKPROOF
+                AS ${'$'}BODY${'$'}
+                DECLARE
+                    count_run_id int;
+                BEGIN
+                    ASSERT NEW.st_oid != NEW.parent_st_oid, 'parent_st_oid must be a different value than st_oid';
+                    SELECT COUNT(0)
+                    INTO   count_run_id
+                    FROM  (SELECT run_id
+                           FROM   source_table_columns
+                           WHERE  st_oid = NEW.st_oid
+                           UNION
+                           SELECT run_id
+                           FROM   source_table_columns
+                           WHERE  st_oid = NEW.parent_st_oid) t1;
+                     ASSERT count_run_id = 1, format('Invalid Relationship. Found multiple run_id for the source tables provided.');
+                     RETURN NEW;
+                END;
+                ${'$'}BODY${'$'};
+            """.trimIndent(),
+        ),
+    )
 
     override val tableDisplayFields: Map<String, Map<String, String>> = mapOf(
         "table_name" to mapOf(),
