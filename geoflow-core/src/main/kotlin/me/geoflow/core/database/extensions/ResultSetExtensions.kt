@@ -68,6 +68,7 @@ inline fun <reified T> ResultSet.rowToClass(): T {
     require(!isBeforeFirst) { "ResultSet must be at or after first record" }
     if (T::class.isData) {
         val constructor = T::class.constructors.first()
+        @Suppress("KotlinConstantConditions")
         val row = Array(metaData.columnCount) { i ->
             when (val current = getObject(i + 1)) {
                 null -> current

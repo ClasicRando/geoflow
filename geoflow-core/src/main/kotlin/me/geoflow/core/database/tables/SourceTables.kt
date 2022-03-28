@@ -3,7 +3,7 @@ package me.geoflow.core.database.tables
 import me.geoflow.core.database.errors.NoRecordAffected
 import me.geoflow.core.database.errors.NoRecordFound
 import me.geoflow.core.database.extensions.call
-import me.geoflow.core.database.extensions.getCompositeArray
+import me.geoflow.core.database.extensions.getSqlArray
 import me.geoflow.core.database.extensions.queryFirstOrNull
 import me.geoflow.core.loading.AnalyzeResult
 import me.geoflow.core.database.extensions.runReturningFirstOrNull
@@ -210,7 +210,7 @@ object SourceTables : DbTable("source_tables"), ApiExposed {
      */
     @Suppress("MagicNumber", "LongMethod")
     fun finishAnalyze(connection: Connection, data: List<AnalyzeResult>) {
-        connection.call("finish_analyze", data.getCompositeArray(connection))
+        connection.call("finish_analyze", data.getSqlArray(connection))
     }
 
     /** Returns a list of files to load using the [runId] provided */

@@ -1,8 +1,8 @@
 package me.geoflow.core.database.composites
 
 /** */
-@Target(AnnotationTarget.CLASS)
-annotation class Composite(
+@Target(AnnotationTarget.FIELD)
+annotation class CompositeField(
     /** */
     val name: String,
 )

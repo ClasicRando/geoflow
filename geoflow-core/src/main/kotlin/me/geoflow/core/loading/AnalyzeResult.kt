@@ -1,19 +1,35 @@
 package me.geoflow.core.loading
 
 import me.geoflow.core.database.composites.Composite
+import me.geoflow.core.database.composites.CompositeField
+import org.postgresql.util.PGobject
 import kotlin.math.max
 
 /** Result container for file analysis. Holds table stats and metadata required for schema */
+@Composite("analyze_result")
 data class AnalyzeResult(
     /** */
+    @CompositeField("st_oid")
     val stOid: Long,
     /** table name for the file/sub table */
+    @CompositeField("table_name")
     val tableName: String,
     /** record count for the source table */
+    @CompositeField("record_count")
     val recordCount: Int,
     /** column information for the source table */
     val columns: List<ColumnStats>,
-): Composite("analyze_result") {
+): PGobject() {
+
+    init {
+        val columnInfo = columns.joinToString(
+            separator = "\"\",\"\"",
+            prefix = "\"\"",
+            postfix = "\"\"",
+        ) { it.value ?: "" }
+        setValue("($stOid,$tableName,$recordCount,\"{$columnInfo}\")")
+    }
+
     /**
      * Merge another [result][analyzeResult] into this result. Adds the 2 record counts and for each column, chooses
      * the higher or lower column lengths for [maxLength][ColumnStats.maxLength] and [minLength][ColumnStats.minLength]
@@ -30,29 +46,11 @@ data class AnalyzeResult(
                     name = columnStats.name,
                     maxLength = max(columnStats.maxLength, currentStats.maxLength),
                     minLength = Integer.min(columnStats.minLength, currentStats.minLength),
-                    type = columnStats.type,
+                    columnType = columnStats.type,
                     index = columnStats.index,
                 )
             },
         )
-    }
-
-    override val createStatement: String = """
-        CREATE TYPE public.analyze_result AS
-        (
-        	st_oid bigint,
-        	table_name text,
-        	record_count integer,
-        	columns column_info[]
-        );
-    """.trimIndent()
-    override val compositeValue: String get() {
-        val columnInfo = columns.joinToString(
-            separator = "\"\",\"\"",
-            prefix = "\"\"",
-            postfix = "\"\"",
-        ) { it.compositeValue }
-        return "($stOid,$tableName,$recordCount,\"{$columnInfo}\")"
     }
 
 }

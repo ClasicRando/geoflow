@@ -1,8 +1,9 @@
 package me.geoflow.core.database.extensions
 
-import me.geoflow.core.database.composites.Composite
-import me.geoflow.core.utils.requireNotEmpty
+import me.geoflow.core.database.composites.getCompositeName
+import org.postgresql.util.PGobject
 import java.sql.Connection
+import kotlin.reflect.full.isSubclassOf
 import kotlin.reflect.typeOf
 
 /**
@@ -34,22 +35,27 @@ inline fun <reified T> java.sql.Array.getListWithNulls(): List<T?> {
     }
 }
 
-/** */
-inline fun <reified T: Composite> List<T>.getCompositeArray(connection: Connection): java.sql.Array {
-    requireNotEmpty(this) { "Cannot get a composite array of an empty list" }
-    return connection.createArrayOf(first().typeName, map { it.compositeValue }.toTypedArray())
-}
-
 /**
  * Returns an [Array][java.sql.Array] instance using the contents of this [List] that can be used perform sql operations
  */
+@Suppress("UNCHECKED_CAST")
 inline fun <reified T> List<T>.getSqlArray(connection: Connection): java.sql.Array {
-    val type = when(T::class) {
-        String::class -> "text"
-        Long::class -> "bigint"
-        Int::class -> "int"
-        Boolean::class -> "bool"
+    var isPgObject = false
+    val type = when {
+        String is T -> "text"
+        Long is T -> "bigint"
+        Int is T -> "int"
+        Boolean is T -> "bool"
+        T::class.isSubclassOf(PGobject::class) -> {
+            isPgObject = true
+            getCompositeName<T>()
+        }
         else -> throw IllegalArgumentException("Array type ${T::class.java} is not supported")
     }
-    return connection.createArrayOf(type, toTypedArray())
+    return connection.createArrayOf(
+        type,
+        if (isPgObject) {
+            map { (it as PGobject).value }.toTypedArray()
+        } else toTypedArray()
+    )
 }

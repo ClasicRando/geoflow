@@ -138,7 +138,7 @@ fun analyzeRecords(
             name = name,
             maxLength = lengths.last(),
             minLength = lengths.first(),
-            type = type,
+            columnType = type,
             index = index,
         )
     }
