@@ -8,6 +8,7 @@ import kotlin.reflect.full.hasAnnotation
 import kotlin.reflect.full.isSubclassOf
 import kotlin.reflect.full.memberProperties
 import kotlin.reflect.full.primaryConstructor
+import kotlin.reflect.jvm.javaField
 import kotlin.reflect.jvm.jvmErasure
 import kotlin.reflect.jvm.jvmName
 
@@ -55,7 +56,7 @@ fun getCompositeDefinition(kClass: KClass<*>): String {
             Property: $propertyType
         """.trimIndent()
         }
-        val propertyName = (property.annotations.firstOrNull {
+        val propertyName = (property.javaField?.annotations?.firstOrNull {
             it.annotationClass.isSubclassOf(CompositeField::class)
         } as? CompositeField)?.name ?: property.name
         "$propertyName ${getPostgresTypeFromKClass(paramType)}"
