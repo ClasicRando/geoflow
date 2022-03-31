@@ -82,9 +82,7 @@ val tasks: Map<Long, TaskInfo> by lazy {
  * Returns a taskId for the provided function reference. Provided function must be annotated with [SystemTask]
  */
 fun getTaskIdFromFunction(function: KFunction<*>): Long {
-    require(function.hasAnnotation<SystemTask>()) {
-        "Function passed must annotated with @Task"
-    }
+    require(function.hasAnnotation<SystemTask>()) { "Function passed must annotated with @SystemTask" }
     return tasks.entries.first { (_, info) -> info is TaskInfo.SystemTaskInfo && info.function == function }.key
 }
 
