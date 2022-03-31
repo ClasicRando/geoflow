@@ -8,43 +8,48 @@ import kotlin.reflect.full.hasAnnotation
 import kotlin.reflect.full.isSubclassOf
 import kotlin.reflect.full.memberProperties
 import kotlin.reflect.full.primaryConstructor
+import kotlin.reflect.full.starProjectedType
 import kotlin.reflect.jvm.javaField
 import kotlin.reflect.jvm.jvmErasure
 import kotlin.reflect.jvm.jvmName
 
 /** */
-private fun getPostgresTypeFromKClass(kType: KType): String {
+private fun getPostgresTypeFromKClass(kType: KType): Pair<String, Boolean> {
     val kClass = kType.jvmErasure
     return when {
-        kClass.isSubclassOf(Short::class) -> "smallint"
-        kClass.isSubclassOf(Int::class) -> "integer"
-        kClass.isSubclassOf(Long::class) -> "bigint"
-        kClass.isSubclassOf(String::class) -> "text"
-        kClass.isSubclassOf(Double::class) -> "double precision"
-        kClass.isSubclassOf(Float::class) -> "real"
-        kClass.isSubclassOf(Instant::class) -> "timestamp"
-        kClass.isSubclassOf(PGobject::class) -> getCompositeName(kClass)
+        kClass.isSubclassOf(Short::class) -> "smallint" to false
+        kClass.isSubclassOf(Int::class) -> "integer" to false
+        kClass.isSubclassOf(Long::class) -> "bigint" to false
+        kClass.isSubclassOf(String::class) -> "text" to false
+        kClass.isSubclassOf(Double::class) -> "double precision" to false
+        kClass.isSubclassOf(Float::class) -> "real" to false
+        kClass.isSubclassOf(Instant::class) -> "timestamp" to false
+        kClass.isSubclassOf(PGobject::class) -> getCompositeName(kClass) to true
         kClass.isSubclassOf(List::class) -> {
             val listTypeClass = Regex("(?<=<).+(?=>)").find(kType.toString())?.value
                 ?: error("Could not find a proper generic type for $kType")
             val jClass = Class.forName(listTypeClass)
-            "${getCompositeName(jClass.kotlin)}[]"
+            val (type, isComposite) = getPostgresTypeFromKClass(jClass.kotlin.starProjectedType)
+            "$type[]" to isComposite
         }
         else -> error("Class ${kClass.simpleName} is not registered. Cannot find a postgresql equivalent")
     }
 }
 
 /** */
-fun getCompositeDefinition(kClass: KClass<*>): String {
+fun getCompositeDefinition(kClass: KClass<*>): CompositeDefinition {
     require(kClass.hasAnnotation<Composite>()) {
         "The KClass provided (${kClass.jvmName}) does not have a CompositeAnnotation annotation"
     }
     require(kClass.isData) { "${kClass.simpleName} is not a data class. Only data classes can be composite classes" }
     val params = kClass.primaryConstructor!!.parameters
     val properties = kClass.memberProperties
-    val zip = params.map { param -> param to properties.first { it.name == param.name } }
-    return zip.joinToString(
-        prefix = "CREATE TYPE public.${getCompositeName(kClass)} AS (",
+    val compositeName = getCompositeName(kClass)
+    val subComposites = mutableSetOf<String>()
+    val createStatement = params.map { param ->
+        param to properties.first { it.name == param.name }
+    }.joinToString(
+        prefix = "CREATE TYPE public.${compositeName} AS (",
         postfix = ");",
     ) { (param, property) ->
         val paramType = param.type
@@ -59,8 +64,17 @@ fun getCompositeDefinition(kClass: KClass<*>): String {
         val propertyName = (property.javaField?.annotations?.firstOrNull {
             it.annotationClass.isSubclassOf(CompositeField::class)
         } as? CompositeField)?.name ?: property.name
-        "$propertyName ${getPostgresTypeFromKClass(paramType)}"
+        val (type, isComposite) = getPostgresTypeFromKClass(paramType)
+        if (isComposite) {
+            subComposites += type.trim('[',']')
+        }
+        "$propertyName $type"
     }
+    return CompositeDefinition(
+        name = compositeName,
+        createStatement = createStatement,
+        subComposites = subComposites,
+    )
 }
 
 /** */
