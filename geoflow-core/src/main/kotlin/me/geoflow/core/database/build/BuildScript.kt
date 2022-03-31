@@ -1,5 +1,8 @@
 package me.geoflow.core.database.build
 
+import me.geoflow.core.database.composites.Composite
+import me.geoflow.core.database.composites.CompositeDefinition
+import me.geoflow.core.database.composites.getCompositeDefinition
 import me.geoflow.core.database.domains.Domain
 import me.geoflow.core.database.extensions.executeNoReturn
 import me.geoflow.core.database.functions.Constraints
@@ -16,10 +19,13 @@ import me.geoflow.core.loading.checkTableExists
 import me.geoflow.core.loading.loadDefaultData
 import mu.KotlinLogging
 import org.reflections.Reflections
+import org.reflections.scanners.Scanners
 import org.reflections.scanners.Scanners.SubTypes
+import org.reflections.util.ConfigurationBuilder
 import java.sql.Connection
 
 /** */
+@Suppress("TooManyFunctions")
 object BuildScript {
 
     private val logger = KotlinLogging.logger {}
@@ -99,6 +105,40 @@ object BuildScript {
             .map { procedure -> procedure.getDeclaredField("INSTANCE").get(null)::class }
             .filter { !it.isOpen }
             .map { kClass -> kClass.objectInstance!! as Domain }
+    }
+
+    /** */
+    private val composites by lazy {
+        val config = ConfigurationBuilder()
+            .forPackage("me.geoflow.core")
+            .setScanners(Scanners.TypesAnnotated)
+        Reflections(config)
+            .getTypesAnnotatedWith(Composite::class.java)
+            .map { composite -> getCompositeDefinition(composite.kotlin) }
+    }
+
+    /** */
+    private fun createComposites(
+        connection: Connection,
+        composites: List<CompositeDefinition>,
+        createdComposites: Set<String> = emptySet(),
+    ) {
+        if (composites.isEmpty()) {
+            return
+        }
+        val compositesToCreate = if (createdComposites.isEmpty()) {
+            composites.filter { it.subComposites.isEmpty() }
+        } else {
+            composites.filter { table -> table.subComposites.all { it in createdComposites } }
+        }
+        for (composite in compositesToCreate) {
+            connection.executeNoReturn(composite.createStatement)
+        }
+        createComposites(
+            connection,
+            composites.minus(compositesToCreate.toSet()),
+            createdComposites.union(compositesToCreate.map { it.name }),
+        )
     }
 
     /** */
@@ -261,6 +301,7 @@ object BuildScript {
             createDomains(connection)
             createConstraintFunctions(connection)
             createTables(connection, tables)
+            createComposites(connection, composites)
             createProcedures(connection)
             createFunctions(connection)
             createTableFunctions(connection)
