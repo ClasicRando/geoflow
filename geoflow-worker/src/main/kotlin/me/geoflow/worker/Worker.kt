@@ -86,7 +86,7 @@ suspend fun JobContextWithProps<SystemJob>.executeSystemJob(kJob: KJob) {
                     )
                     if (props[SystemJob.runNext]) {
                         PipelineRunTasks.getNextTask(connection, props[SystemJob.runId])?.let { nextTask ->
-                            if (nextTask.taskRunType == TaskRunType.System) {
+                            if (nextTask.taskRunType is TaskRunType.System) {
                                 kJob.schedule(SystemJob) {
                                     props[it.runId] = runId
                                     props[it.pipelineRunTaskId] = nextTask.taskId

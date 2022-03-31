@@ -41,7 +41,7 @@ class PipelineRunTask private constructor(
     /** [Instant] when the task run completed. Converted from the provided [Timestamp] */
     val taskCompleted: Instant? = taskCompleted?.toInstant()
     /** Current status of the task. Converted from the provided string into the enum value */
-    val taskStatus: TaskStatus = TaskStatus.valueOf(taskStatus)
+    val taskStatus: TaskStatus = TaskStatus.fromString(taskStatus)
     /** Generic task the underlines the pipeline run task */
     val task: Task = Task(
         taskId = taskId,

@@ -4,6 +4,7 @@ import me.geoflow.core.database.composites.Composite
 import me.geoflow.core.database.composites.CompositeDefinition
 import me.geoflow.core.database.composites.getCompositeDefinition
 import me.geoflow.core.database.domains.Domain
+import me.geoflow.core.database.enums.PgEnum
 import me.geoflow.core.database.extensions.executeNoReturn
 import me.geoflow.core.database.functions.Constraints
 import me.geoflow.core.database.functions.PlPgSqlFunction
@@ -37,10 +38,13 @@ object BuildScript {
      */
     private val enums by lazy {
         Reflections("me.geoflow.core.database.enums")
-            .get(SubTypes.of(Enum::class.java).asClass<Enum<*>>())
+            .get(SubTypes.of(PgEnum::class.java).asClass<PgEnum>())
             .asSequence()
+            .filter { it.kotlin.isSealed }
             .map { enum ->
-                PostgresEnumType(enum.simpleName, enum.enumConstants.map { it.toString() })
+                val enumValues = enum.kotlin.sealedSubclasses.map { (it.objectInstance!! as PgEnum).value!! }
+                val enumType = (enum.kotlin.sealedSubclasses.firstOrNull()?.objectInstance as? PgEnum)?.type
+                PostgresEnumType(enumType ?: enum.simpleName, enumValues)
             }
     }
 

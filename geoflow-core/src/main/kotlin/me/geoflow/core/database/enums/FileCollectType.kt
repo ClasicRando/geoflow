@@ -1,29 +1,54 @@
 package me.geoflow.core.database.enums
 
-import org.postgresql.util.PGobject
-
 /**
  * Enum type found in DB denoting the type of collection to obtain the source file
  * CREATE TYPE public.file_collect_type AS ENUM
  * ('Download', 'FOI', 'Email', 'Scrape', 'Collect', 'REST');
  */
-enum class FileCollectType: PostgresEnum {
+sealed class FileCollectType(collectType: String) : PgEnum("file_collect_type", collectType) {
     /** Download collection type */
-    Download,
+    object Download : FileCollectType(download)
     /** FOI response collection type */
-    FOI,
+    object FOI : FileCollectType(foi)
     /** Department Email response collection type */
-    Email,
+    object Email : FileCollectType(email)
     /** Webpage/site scrape collection type */
-    Scrape,
+    object Scrape : FileCollectType(scrape)
     /** General collection type of non-specific collection methods */
-    Collect,
+    object Collect : FileCollectType(collect)
     /** ArcGIS REST service collection type */
-    REST,
-    ;
+    object REST : FileCollectType(rest)
 
-    override val pgObject: PGobject = PGobject().apply {
-        type = "file_collect_type"
-        value = name
+    companion object {
+        /** */
+        val values: List<String> by lazy {
+            listOf(
+                download,
+                foi,
+                email,
+                scrape,
+                collect,
+                rest,
+            )
+        }
+        /** */
+        fun fromString(collectType: String): FileCollectType {
+            return when(collectType) {
+                download -> Download
+                foi -> FOI
+                email -> Email
+                scrape -> Scrape
+                collect -> Collect
+                rest -> REST
+                else -> error("Could not find a file_collect_type for '$collectType'")
+            }
+        }
+        private const val download = "Download"
+        private const val foi = "FOI"
+        private const val email = "Email"
+        private const val scrape = "Scrape"
+        private const val collect = "Collect"
+        private const val rest = "REST"
     }
+
 }

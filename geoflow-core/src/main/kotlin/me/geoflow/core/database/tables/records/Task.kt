@@ -23,10 +23,10 @@ data class Task (
     val taskRunType: String,
 ) {
     /** Enum value of task run type */
-    val taskRunTypeEnum: TaskRunType get() = TaskRunType.valueOf(taskRunType)
+    val taskRunTypeEnum: TaskRunType get() = TaskRunType.fromString(taskRunType)
 
     init {
-        require(runCatching { TaskRunType.valueOf(taskRunType) }.isSuccess) {
+        require(runCatching { TaskRunType.fromString(taskRunType) }.isSuccess) {
             "string value passed for TaskRunType is not valid"
         }
     }

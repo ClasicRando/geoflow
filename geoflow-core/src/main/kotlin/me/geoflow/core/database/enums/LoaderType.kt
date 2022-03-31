@@ -1,33 +1,38 @@
 package me.geoflow.core.database.enums
 
-import org.postgresql.util.PGobject
-
 /**
  * Enum type found in DB denoting the type of loader required for given file. Each enum value has [extensions]
  * associated with the value to easy finding of the appropriate loader per filename
  * CREATE TYPE public.loader_type AS ENUM
  * ('Excel', 'Flat', 'DBF', 'MDB');
  */
-enum class LoaderType(
+sealed class LoaderType(
+    loaderType: String,
     /** File extensions associated with each LoaderType value */
-    val extensions: List<String>,
-) : PostgresEnum {
+    vararg val extensions: String,
+) : PgEnum("loader_type", loaderType) {
     /** Excel file type loader. Covers 'xlsx' and 'xls' files */
-    Excel(listOf("xlsx", "xls")),
+    object Excel : LoaderType(excel, "xlsx", "xls")
     /** Flat file type loader. Covers 'csv', 'tsv' and 'txt' files */
-    Flat(listOf("csv", "tsv", "txt")),
+    object Flat : LoaderType(flat, "csv", "tsv", "txt")
     /** DBF file type loader. Covers 'dbf' files */
-    DBF(listOf("dbf")),
+    object DBF : LoaderType(dbf, "dbf")
     /** Microsoft database file type loader. Covers 'mdb' and 'accdb' files */
-    MDB(listOf("mdb", "accdb")),
-    ;
-
-    override val pgObject: PGobject = PGobject().apply {
-        type = "loader_type"
-        value = name
-    }
+    object MDB : LoaderType(mdb, "mdb", "accdb")
 
     companion object {
+        private val types by lazy {
+            listOf(
+                Excel,
+                Flat,
+                DBF,
+                MDB,
+            )
+        }
+        private const val excel = "Excel"
+        private const val flat = "Flat"
+        private const val dbf = "DBF"
+        private const val mdb = "MDB"
         /**
          * Returns a [LoaderType] from the [fileName]. Extracts an extension and calls [getLoaderTypeFromExtension]
          *
@@ -45,7 +50,7 @@ enum class LoaderType(
          * @throws IllegalArgumentException when the extension is not supported
          */
         fun getLoaderTypeFromExtension(extension: String): LoaderType {
-            return values().firstOrNull { extension in it.extensions }
+            return types.firstOrNull { extension in it.extensions }
                 ?: throw IllegalArgumentException("Extension must does not match a supported file type")
         }
     }

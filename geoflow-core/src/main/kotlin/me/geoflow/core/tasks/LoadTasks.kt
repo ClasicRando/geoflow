@@ -12,12 +12,14 @@ import kotlinx.coroutines.flow.buffer
 import kotlinx.coroutines.flow.collect
 import kotlinx.coroutines.flow.flowOn
 import me.geoflow.core.database.extensions.executeNoReturn
+import me.geoflow.core.database.extensions.queryHasResult
 import me.geoflow.core.database.extensions.runUpdate
 import me.geoflow.core.database.extensions.submitQuery
 import me.geoflow.core.database.tables.PipelineRunTasks
 import me.geoflow.core.database.tables.PlottingFields
 import me.geoflow.core.database.tables.PlottingMethods
 import me.geoflow.core.database.tables.records.PipelineRunTask
+import me.geoflow.core.utils.requireState
 import me.geoflow.core.web.html.SubTableDetails
 import me.geoflow.core.web.html.basicTable
 import java.io.File
@@ -242,4 +244,23 @@ fun setPlottingMethods(connection: Connection, prTask: PipelineRunTask) {
 fun setLoadingLogic(connection: Connection, prTask: PipelineRunTask) {
     PipelineRunTasks.addTask(connection, prTask.pipelineRunTaskId, getTaskIdFromFunction(::setPlottingFields))
     PipelineRunTasks.addTask(connection, prTask.pipelineRunTaskId, getTaskIdFromFunction(::setPlottingMethods))
+}
+
+/** */
+@SystemTask(taskId = 27, taskName = "Validate Loading Logic")
+fun validateLoadingLogic(connection: Connection, prTask: PipelineRunTask) {
+    val stOidReuse = connection.queryHasResult(
+        sql = """
+            SELECT st_oid
+            FROM   pipeline_relationships
+            WHERE  st_oid in (SELECT st_oid FROM source_tables WHERE run_id = ?)
+            INTERSECT
+            SELECT st_oid
+            FROM   plotting_fields
+            WHERE  st_oid in (SELECT st_oid FROM source_tables WHERE run_id = ?);
+        """.trimIndent(),
+        prTask.runId,
+        prTask.runId,
+    )
+    requireState(!stOidReuse) { "A source table cannot " }
 }

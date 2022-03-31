@@ -81,17 +81,17 @@ data class PipelineRun(
     /** Generated zip file name for the current pipeline run */
     val backupZip: String get() = "${dsCode}_${formatLocalDateDefault(recordLocalDate)}"
     /** Current merge state of the run. Gets enum value using name */
-    val mergeTypeEnum: MergeType get() = MergeType.valueOf(mergeType)
+    val mergeTypeEnum: MergeType get() = MergeType.fromString(mergeType)
     /** Current state of the run within the given workflow operation. Gets enum value using name */
-    val operationStateEnum: OperationState get() = OperationState.valueOf(operationState)
+    val operationStateEnum: OperationState get() = OperationState.fromString(operationState)
     /** plotting stats converted to a [Map] of plotting type and number of records with that type */
     val plottingStatsJson: Map<String, Int> get() = Json.decodeFromString(plottingStats)
 
     init {
-        require(runCatching { MergeType.valueOf(mergeType) }.isSuccess) {
+        require(runCatching { MergeType.fromString(mergeType) }.isSuccess) {
             "string value passed for MergeType is not valid"
         }
-        require(runCatching { OperationState.valueOf(operationState) }.isSuccess) {
+        require(runCatching { OperationState.fromString(operationState) }.isSuccess) {
             "string value passed for OperationState is not valid"
         }
         require(runCatching { Json.decodeFromString<Map<String, Int>>(plottingStats) }.isSuccess) {

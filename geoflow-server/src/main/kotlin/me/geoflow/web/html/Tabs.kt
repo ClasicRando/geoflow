@@ -121,10 +121,10 @@ fun FlowContent.sourceTables(runId: Long) {
                     select(classes = "custom-select") {
                         id = "collect_type"
                         name = "collect_type"
-                        for (type in FileCollectType.values()) {
+                        for (type in FileCollectType.values) {
                             option {
-                                value = type.name
-                                +type.name
+                                value = type
+                                +type
                             }
                         }
                     }
@@ -379,7 +379,7 @@ fun FlowContent.plottingFields(runId: Long) {
     }
     script {
         addParamsAsJsGlobalVariables(
-            "types" to FileCollectType.values(),
+            "types" to FileCollectType.values,
             "plottingFieldsTable" to JSElement(id = PLOTTING_FIELDS_TABLE, makeElement = false),
             "confirmDeletePlottingFields" to JSElement(id = CONFIRM_DELETE_PLOTTING_FIELDS),
             "plottingFieldsModal" to JSElement(id = PLOTTING_FIELDS_MODAL, makeElement = false),

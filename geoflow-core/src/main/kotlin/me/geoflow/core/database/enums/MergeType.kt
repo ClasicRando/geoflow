@@ -1,23 +1,31 @@
 package me.geoflow.core.database.enums
 
-import org.postgresql.util.PGobject
-
 /**
  * Enum type found in DB denoting the type of merge of source files
  * CREATE TYPE public.merge_type AS ENUM
  * ('None', 'Exclusive', 'Intersect');
  */
-enum class MergeType : PostgresEnum {
+sealed class MergeType(mergeType: String) : PgEnum("merge_type", mergeType) {
     /** Merge type where no files are merged with each other */
-    None,
+    object None : MergeType(none)
     /** Merge type where 2 or more datasets are loaded as non-overlapping sets */
-    Exclusive,
+    object Exclusive : MergeType(exclusive)
     /** Merge type where 2 or more datasets are loaded as overlapping sets with common records */
-    Intersect
-    ;
+    object Intersect : MergeType(intersect)
 
-    override val pgObject: PGobject = PGobject().apply {
-        type = "merge_type"
-        value = name
+    companion object {
+        /** */
+        fun fromString(mergeType: String): MergeType {
+            return when(mergeType) {
+                none -> None
+                exclusive -> Exclusive
+                intersect -> Intersect
+                else -> error("Could not find a merge_type for '$mergeType'")
+            }
+        }
+        private const val none = "None"
+        private const val exclusive = "Exclusive"
+        private const val intersect = "Intersect"
     }
+
 }

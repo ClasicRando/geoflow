@@ -95,7 +95,7 @@ class PipelineTasks(
         script {
             addParamsAsJsGlobalVariables(
                 "taskTableId" to TASKS_TABLE_ID,
-                "types" to FileCollectType.values(),
+                "types" to FileCollectType.values,
                 "taskOutput" to JSElement(id = TASK_OUTPUT_MODAL, makeElement = false),
             )
         }

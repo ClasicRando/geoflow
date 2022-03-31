@@ -22,8 +22,8 @@ import java.sql.Connection
 import java.util.zip.ZipEntry
 import java.util.zip.ZipOutputStream
 
-private val downloadCollectTypes = arrayOf(FileCollectType.Download.pgObject, FileCollectType.REST.pgObject)
-private val downloadCollectNames = listOf(FileCollectType.Download.name, FileCollectType.REST.name)
+private val downloadCollectTypes = arrayOf(FileCollectType.Download, FileCollectType.REST)
+private val downloadCollectNames = listOf(FileCollectType.Download.value!!, FileCollectType.REST.value!!)
 
 /**
  * User task to validate that the user has confirmed details of run instance
@@ -277,7 +277,6 @@ suspend fun backupFilesToZip(connection: Connection, prTask: PipelineRunTask) {
  * --------------
  * - add more file validation steps
  */
-@Suppress("MagicNumber")
 @SystemTask(taskId = 8, taskName = "Validate Source Tables")
 fun validateSourceTables(connection: Connection, prTask: PipelineRunTask) {
     UpdateFiles.call(connection, prTask.runId)
@@ -290,8 +289,8 @@ fun validateSourceTables(connection: Connection, prTask: PipelineRunTask) {
             AND    TRIM(sub_table) IS NULL
         """.trimIndent(),
         prTask.runId,
-        LoaderType.Excel.pgObject,
-        LoaderType.MDB.pgObject,
+        LoaderType.Excel,
+        LoaderType.MDB,
     )
     if (issues.isNotEmpty()) {
         error(issues.joinToString { "${it.first} file ${it.second} cannot have a null sub table" })

@@ -54,14 +54,14 @@ data class SourceTable(
     /** classification of the loader type for the file. Name of the enum value */
     val loaderType: LoaderType get() = LoaderType.getLoaderType(fileName)
     /** */
-    val fileCollectType: FileCollectType get() = FileCollectType.valueOf(collectType)
+    val fileCollectType: FileCollectType get() = FileCollectType.fromString(collectType)
 
     /** Initialization function to validate serialization results */
     init {
         require(runCatching { LoaderType.getLoaderType(fileName) }.isSuccess) {
             "string value passed for LoaderType is not valid"
         }
-        require(runCatching { FileCollectType.valueOf(collectType) }.isSuccess) {
+        require(runCatching { FileCollectType.fromString(collectType) }.isSuccess) {
             "string value passed for FileCollectType is not valid"
         }
         val validSubTable = if (loaderType in setOf(LoaderType.Excel, LoaderType.MDB)) {

@@ -34,11 +34,11 @@ object Tasks : DbTable("tasks"), DefaultData {
 
     /** Returns a list of [Task]s where the run type is User */
     fun getUserTasks(connection: Connection): List<Task> {
-        return connection.submitQuery(sql = "${Task.sql} WHERE task_run_type = ?", TaskRunType.User.pgObject)
+        return connection.submitQuery(sql = "${Task.sql} WHERE task_run_type = ?", TaskRunType.User)
     }
 
     /** Returns a list of [Task]s where the run type is System */
     fun getSystemTasks(connection: Connection): List<Task> {
-        return connection.submitQuery(sql = "${Task.sql} WHERE task_run_type = ?", TaskRunType.System.pgObject)
+        return connection.submitQuery(sql = "${Task.sql} WHERE task_run_type = ?", TaskRunType.System)
     }
 }

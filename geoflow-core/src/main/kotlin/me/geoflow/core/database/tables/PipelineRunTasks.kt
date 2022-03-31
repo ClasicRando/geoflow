@@ -3,10 +3,11 @@ package me.geoflow.core.database.tables
 import kotlinx.html.DIV
 import kotlinx.html.div
 import kotlinx.html.stream.appendHTML
+import me.geoflow.core.database.enums.TaskRunType
 import me.geoflow.core.database.errors.NoRecordAffected
 import me.geoflow.core.database.errors.NoRecordFound
-import me.geoflow.core.database.enums.TaskRunType
 import me.geoflow.core.database.enums.TaskStatus
+import me.geoflow.core.database.enums.TaskStatus.Companion.isTaskStatus
 import me.geoflow.core.database.errors.TaskFailedError
 import me.geoflow.core.database.functions.GetTasksOrdered
 import me.geoflow.core.database.extensions.queryFirstOrNull
@@ -212,11 +213,11 @@ object PipelineRunTasks: DbTable("pipeline_run_tasks"), ApiExposed, Triggers {
                 AND    task_status in (?,?,?)
             """.trimIndent(),
             runId,
-            TaskStatus.Running.pgObject,
-            TaskStatus.Scheduled.pgObject,
-            TaskStatus.Failed.pgObject,
+            TaskStatus.Running,
+            TaskStatus.Scheduled,
+            TaskStatus.Failed,
         ) ?: return
-        when (TaskStatus.valueOf(taskStatus)) {
+        when (TaskStatus.fromString(taskStatus)) {
             TaskStatus.Scheduled, TaskStatus.Running -> throw TaskRunningException(runningId)
             TaskStatus.Failed -> throw TaskFailedError(runningId)
             else -> return
@@ -380,12 +381,12 @@ object PipelineRunTasks: DbTable("pipeline_run_tasks"), ApiExposed, Triggers {
     fun getNextTask(connection: Connection, runId: Long): NextTask? {
         checkTaskListState(connection, runId)
         return getOrderedTasks(connection, runId).firstOrNull {
-            it.taskStatus == TaskStatus.Waiting.name
+            it.taskStatus.isTaskStatus<TaskStatus.Waiting>()
         }?.let { record ->
             NextTask(
                 record.pipelineRunTaskId,
                 record.taskId,
-                TaskRunType.valueOf(record.taskRunType),
+                TaskRunType.fromString(record.taskRunType),
             )
         }
     }
@@ -396,7 +397,7 @@ object PipelineRunTasks: DbTable("pipeline_run_tasks"), ApiExposed, Triggers {
     fun setStatus(connection: Connection, pipelineRunTaskId: Long, status: TaskStatus) {
         connection.runUpdate(
             sql = "UPDATE $tableName SET task_status = ? WHERE pr_Task_id = ?",
-            status.pgObject,
+            status,
             pipelineRunTaskId,
         )
     }
@@ -420,7 +421,7 @@ object PipelineRunTasks: DbTable("pipeline_run_tasks"), ApiExposed, Triggers {
         val updates = mutableMapOf<String, Any?>()
         if (taskStatus !== NonUpdatedField) {
             updates["task_status"] = if (taskStatus is TaskStatus) {
-                taskStatus.pgObject
+                taskStatus
             } else {
                 error("taskStatus must be a TaskStatus")
             }

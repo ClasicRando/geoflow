@@ -220,7 +220,7 @@ object PipelineRuns : DbTable("pipeline_runs"), ApiExposed, Triggers {
         """.trimIndent()
         connection.runUpdate(
             sql = updateSql,
-            OperationState.Active.pgObject,
+            OperationState.Active,
             userId,
             runId,
         )
@@ -295,11 +295,12 @@ object PipelineRuns : DbTable("pipeline_runs"), ApiExposed, Triggers {
             userOid =  userId,
             runId = runId,
         )
-        val (operationState, workflowOperation) = connection.queryFirstOrNull<Pair<String, String>>(
+        val (operationStateStr, workflowOperation) = connection.queryFirstOrNull<Pair<String, String>>(
             sql = "SELECT operation_state, workflow_operation FROM $tableName WHERE run_id = ? FOR UPDATE",
             runId
         ) ?: throw NoRecordFound(tableName, "RunId provided could does not link to a record")
-        if (operationState == OperationState.Active.name) {
+        val operationState = OperationState.fromString(operationStateStr)
+        if (operationState is OperationState.Active) {
             connection.executeNoReturn(
                 sql = """
                     UPDATE $tableName
