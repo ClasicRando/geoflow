@@ -7,6 +7,7 @@ import me.geoflow.core.database.errors.NoRecordAffected
 import me.geoflow.core.database.errors.NoRecordFound
 import me.geoflow.core.database.enums.TaskRunType
 import me.geoflow.core.database.enums.TaskStatus
+import me.geoflow.core.database.errors.TaskFailedError
 import me.geoflow.core.database.functions.GetTasksOrdered
 import me.geoflow.core.database.extensions.queryFirstOrNull
 import me.geoflow.core.database.extensions.runReturningFirstOrNull
@@ -202,15 +203,23 @@ object PipelineRunTasks: DbTable("pipeline_run_tasks"), ApiExposed, Triggers {
         ),
     )
 
-    private fun requireTaskNotRunning(connection: Connection, runId: Long) {
-        val runningId = connection.queryFirstOrNull<Long>(
-            sql = "SELECT pr_task_id FROM $tableName WHERE run_id = ? AND task_status in (?,?)",
+    private fun checkTaskListState(connection: Connection, runId: Long) {
+        val (runningId, taskStatus) = connection.queryFirstOrNull<Pair<Long, String>>(
+            sql = """
+                SELECT pr_task_id, task_status
+                FROM   $tableName
+                WHERE  run_id = ?
+                AND    task_status in (?,?,?)
+            """.trimIndent(),
             runId,
             TaskStatus.Running.pgObject,
             TaskStatus.Scheduled.pgObject,
-        )
-        if (runningId != null) {
-            throw TaskRunningException(runningId)
+            TaskStatus.Failed.pgObject,
+        ) ?: return
+        when (TaskStatus.valueOf(taskStatus)) {
+            TaskStatus.Scheduled, TaskStatus.Running -> throw TaskRunningException(runningId)
+            TaskStatus.Failed -> throw TaskFailedError(runningId)
+            else -> return
         }
     }
 
@@ -369,7 +378,7 @@ object PipelineRunTasks: DbTable("pipeline_run_tasks"), ApiExposed, Triggers {
      * @throws IllegalArgumentException when a task in the run is currently running or scheduled
      */
     fun getNextTask(connection: Connection, runId: Long): NextTask? {
-        requireTaskNotRunning(connection, runId)
+        checkTaskListState(connection, runId)
         return getOrderedTasks(connection, runId).firstOrNull {
             it.taskStatus == TaskStatus.Waiting.name
         }?.let { record ->
