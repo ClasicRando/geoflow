@@ -190,24 +190,17 @@ fun setPlottingFields(connection: Connection, prTask: PipelineRunTask) {
     } else {
         connection.executeNoReturn(
             sql = """
-                WITH last_run AS (
-                    SELECT *
-                    FROM   ${PlottingFields.tableName}
-                    WHERE  run_id = ?
-                ), current_run AS (
-                    SELECT file_id
-                    FROM   ${SourceTables.tableName}
-                    WHERE  run_id = ?
-                )
                 INSERT INTO ${PlottingFields.tableName}(
                         run_id,file_id,name,address_line1,address_line2,city,alternate_cities,mailing_code,latitude,
                         longitude,prov,clean_address,clean_city
                 )
-                SELECT t2.run_id,t1.file_id,name,address_line1,address_line2,city,alternate_cities,mailing_code,
-                       latitude,longitude,prov,clean_address,clean_city
-                FROM   last_run t1
-                JOIN   current_run t2
-                ON     t1.file_id = t2.file_id;
+                SELECT t2.run_id,t1.file_id,t1.name,t1.address_line1,t1.address_line2,t1.city,t1.alternate_cities,
+                       t1.mailing_code,t1.latitude,t1.longitude,t1.prov,t1.clean_address,t1.clean_city
+                FROM   ${PlottingFields.tableName} t1
+                JOIN   ${SourceTables.tableName} t2
+                ON     t1.file_id = t2.file_id
+                WHERE  t1.run_id = ?
+                AND    t2.run_id = ?;
             """.trimIndent(),
             lastRun,
             prTask.runId,
@@ -228,22 +221,12 @@ fun setPlottingMethods(connection: Connection, prTask: PipelineRunTask) {
     } else {
         connection.executeNoReturn(
             sql = """
-                WITH last_run AS (
-                    SELECT *
-                    FROM   ${PlottingMethods.tableName}
-                    WHERE  run_id = ?
-                ), current_run AS (
-                    SELECT file_id
-                    FROM   ${SourceTables.tableName}
-                    WHERE  run_id = ?
-                )
-                INSERT INTO ${PlottingMethods.tableName}(
-                        run_id,plotting_order,method_type,file_id
-                )
-                SELECT t2.run_id,plotting_order,method_type,t2.file_id
-                FROM   last_run t1
-                JOIN   current_run t2
-                ON     t1.file_id = t2.file_id;
+                SELECT t2.run_id, t1.plotting_order, t1.method_type, t2.file_id
+                FROM   ${PlottingMethods.tableName} t1
+                JOIN   ${SourceTables.tableName} t2
+                ON     t1.file_id = t2.file_id
+                WHERE  t1.run_id = ?
+                AND    t2.run_id = ?;
             """.trimIndent(),
             lastRun,
             prTask.runId,
