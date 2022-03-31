@@ -15,6 +15,7 @@ import me.geoflow.core.utils.requireState
 import java.time.Instant
 import kotlin.reflect.KFunction
 import kotlin.reflect.full.callSuspend
+import kotlin.reflect.full.hasAnnotation
 import kotlin.reflect.full.isSubtypeOf
 import kotlin.reflect.full.withNullability
 import kotlin.reflect.jvm.kotlinFunction
@@ -81,7 +82,7 @@ val tasks: Map<Long, TaskInfo> by lazy {
  * Returns a taskId for the provided function reference. Provided function must be annotated with [SystemTask]
  */
 fun getTaskIdFromFunction(function: KFunction<*>): Long {
-    require(function.annotations.any { it.annotationClass.java == SystemTask::class.java }) {
+    require(function.hasAnnotation<SystemTask>()) {
         "Function passed must annotated with @Task"
     }
     return tasks.entries.first { (_, info) -> info is TaskInfo.SystemTaskInfo && info.function == function }.key
