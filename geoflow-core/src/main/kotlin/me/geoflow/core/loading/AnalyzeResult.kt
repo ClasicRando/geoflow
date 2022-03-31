@@ -27,7 +27,8 @@ data class AnalyzeResult(
             prefix = "\"\"",
             postfix = "\"\"",
         ) { it.value ?: "" }
-        setValue("($stOid,$tableName,$recordCount,\"{$columnInfo}\")")
+        type = "analyze_result"
+        value = "($stOid,$tableName,$recordCount,\"{$columnInfo}\")"
     }
 
     /**

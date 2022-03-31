@@ -23,7 +23,8 @@ data class ColumnStats(
 ): PGobject() {
 
     init {
-        setValue("($name,$minLength,$maxLength,$columnType,$index)")
+        type = "column_info"
+        value = "($name,$minLength,$maxLength,$columnType,$index)"
     }
 
 }
