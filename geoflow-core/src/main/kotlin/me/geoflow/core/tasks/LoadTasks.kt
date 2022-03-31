@@ -221,6 +221,7 @@ fun setPlottingMethods(connection: Connection, prTask: PipelineRunTask) {
     } else {
         connection.executeNoReturn(
             sql = """
+                INSERT INTO ${PlottingMethods.tableName}(run_id,plotting_order,method_type,file_id)
                 SELECT t2.run_id, t1.plotting_order, t1.method_type, t2.file_id
                 FROM   ${PlottingMethods.tableName} t1
                 JOIN   ${SourceTables.tableName} t2
