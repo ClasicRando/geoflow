@@ -1,2 +1,5 @@
 "name","workflow_operation"
 "Default Collection","collection"
+"Default Load","load"
+"Default Check","check"
+"Default QA","qa"

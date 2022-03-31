@@ -14,7 +14,8 @@ DO $$DECLARE
         'Analyze Files',
         'Check Table Stats',
         'Load Files',
-        'Set Loading Logic'
+        'Set Loading Logic',
+        'Validate Loading Logic'
     ];
 	r RECORD;
 BEGIN
