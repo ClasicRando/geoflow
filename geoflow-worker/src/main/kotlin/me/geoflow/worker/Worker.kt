@@ -2,7 +2,6 @@ package me.geoflow.worker
 
 import me.geoflow.core.database.Database
 import me.geoflow.core.database.enums.TaskRunType
-import me.geoflow.core.database.enums.TaskStatus
 import me.geoflow.core.database.tables.PipelineRunTasks
 import it.justwrote.kjob.InMem
 import it.justwrote.kjob.KJob
@@ -16,7 +15,6 @@ import kotlinx.coroutines.withContext
 import mu.KotlinLogging
 import me.geoflow.core.tasks.TaskResult
 import me.geoflow.core.tasks.runTask
-import java.time.Instant
 
 private val logger = KotlinLogging.logger {}
 
@@ -73,40 +71,18 @@ suspend fun JobContextWithProps<SystemJob>.executeSystemJob(kJob: KJob) {
     runCatching {
         val pipelineRunTaskId = props[SystemJob.pipelineRunTaskId]
         val runId = props[SystemJob.runId]
-        when (val result = runTask(pipelineRunTaskId)) {
-            is TaskResult.Success -> {
-                Database.runWithConnectionAsync { connection ->
-                    PipelineRunTasks.update(
-                        connection,
-                        pipelineRunTaskId,
-                        taskMessage = result.message,
-                        taskStatus = TaskStatus.Complete,
-                        taskCompleted = Instant.now(),
-                        taskStackTrace = null
-                    )
-                    if (props[SystemJob.runNext]) {
-                        PipelineRunTasks.getNextTask(connection, props[SystemJob.runId])?.let { nextTask ->
-                            if (nextTask.taskRunType is TaskRunType.System) {
-                                kJob.schedule(SystemJob) {
-                                    props[it.runId] = runId
-                                    props[it.pipelineRunTaskId] = nextTask.taskId
-                                    props[it.runNext] = true
-                                }
-                            }
+        val result = runTask(pipelineRunTaskId)
+        Database.runWithConnectionAsync { connection ->
+            PipelineRunTasks.finalizeTaskRun(connection, pipelineRunTaskId, result)
+            if (result is TaskResult.Success && props[SystemJob.runNext]) {
+                PipelineRunTasks.getNextTask(connection, props[SystemJob.runId])?.let { nextTask ->
+                    if (nextTask.taskRunType is TaskRunType.System) {
+                        kJob.schedule(SystemJob) {
+                            props[it.runId] = runId
+                            props[it.pipelineRunTaskId] = nextTask.taskId
+                            props[it.runNext] = true
                         }
                     }
-                }
-            }
-            is TaskResult.Error -> {
-                Database.runWithConnection {
-                    PipelineRunTasks.update(
-                        it,
-                        pipelineRunTaskId,
-                        taskMessage = result.message,
-                        taskStatus = TaskStatus.Failed,
-                        taskCompleted = null,
-                        taskStackTrace = result.throwable.stackTraceToString()
-                    )
                 }
             }
         }
@@ -114,14 +90,7 @@ suspend fun JobContextWithProps<SystemJob>.executeSystemJob(kJob: KJob) {
         withContext(NonCancellable) {
             val pipelineRunTaskId = props[SystemJob.pipelineRunTaskId]
             Database.runWithConnection {
-                PipelineRunTasks.update(
-                    it,
-                    pipelineRunTaskId,
-                    taskMessage = "ERROR in Job: ${t.message}",
-                    taskStatus = TaskStatus.Failed,
-                    taskCompleted = null,
-                    taskStackTrace = t.stackTraceToString()
-                )
+                PipelineRunTasks.finalizeTaskRun(it, pipelineRunTaskId, t)
             }
         }
     }

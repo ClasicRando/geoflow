@@ -2,7 +2,7 @@ package me.geoflow.core.tasks
 
 import me.geoflow.core.database.Database
 import me.geoflow.core.database.enums.TaskRunType
-import me.geoflow.core.database.enums.TaskStatus
+import me.geoflow.core.database.tables.PipelineRunTaskRules
 import me.geoflow.core.database.tables.PipelineRunTasks
 import me.geoflow.core.database.tables.Tasks
 import mu.KLogger
@@ -100,13 +100,7 @@ fun getTaskIdFromFunction(function: KFunction<*>): Long {
 suspend fun runTask(pipelineRunTaskId: Long): TaskResult {
     return runCatching {
         Database.runWithConnection {
-            PipelineRunTasks.update(
-                it,
-                pipelineRunTaskId,
-                taskStatus = TaskStatus.Running,
-                taskStart = Instant.now(),
-                taskCompleted = null,
-            )
+            PipelineRunTasks.startTaskRun(it, pipelineRunTaskId)
         }
         Database.useTransaction { connection ->
             val prTask = PipelineRunTasks.getWithLock(connection, pipelineRunTaskId)
@@ -124,7 +118,11 @@ suspend fun runTask(pipelineRunTaskId: Long): TaskResult {
                 }
                 TaskRunType.User -> { null }
             }
-            TaskResult.Success(message)
+            if (PipelineRunTaskRules.hasBrokenRule(connection, prTask.pipelineRunTaskId)) {
+                TaskResult.RuleBroken
+            } else {
+                TaskResult.Success(message)
+            }
         }
     }.getOrElse { t ->
         taskLogger.error("Error for $pipelineRunTaskId: ${t.message ?: "No message provided. See record"}")

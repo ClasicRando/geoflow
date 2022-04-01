@@ -19,4 +19,9 @@ sealed interface TaskResult {
         /** Basic message from the throwable */
         val message: String = "ERROR in Task: ${throwable.message ?: throwable.toString()}"
     }
+    /**
+     * Task run had a rule broken while trying to validate some rules. Object since information is stored in the
+     * [PipelineRunTaskRules][me.geoflow.core.database.tables.PipelineRunTaskRules]
+     */
+    object RuleBroken : TaskResult
 }

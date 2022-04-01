@@ -20,8 +20,8 @@ import me.geoflow.core.database.procedures.ResetTask
 import me.geoflow.core.database.tables.records.NextTask
 import me.geoflow.core.database.tables.records.PipelineRunTask
 import me.geoflow.core.database.tables.records.ResponsePrTask
+import me.geoflow.core.tasks.TaskResult
 import java.sql.Connection
-import java.sql.Timestamp
 import java.time.Instant
 
 /**
@@ -402,68 +402,83 @@ object PipelineRunTasks: DbTable("pipeline_run_tasks"), ApiExposed, Triggers {
         )
     }
 
-    private object NonUpdatedField
+    /** */
+    fun startTaskRun(connection: Connection, pipelineRunTaskId: Long) {
+        connection.runUpdate(
+            sql = """
+                UPDATE $tableName
+                SET    task_status = ?,
+                       task_start = ?,
+                       task_completed = null
+                WHERE  pr_task_id = ?
+            """.trimIndent(),
+            TaskStatus.Running,
+            Instant.now(),
+            pipelineRunTaskId
+        )
+    }
 
-    /**
-     * Generic update where some fields can be excluded from the function call and the update will not include them.
-     * Uses empty singleton to do referential checking to see which fields were provided for update.
-     */
-    @Suppress("LongParameterList", "ComplexMethod")
-    fun update(
-        connection: Connection,
-        pipelineRunTaskId: Long,
-        taskStatus: Any = NonUpdatedField,
-        taskStart: Any? = NonUpdatedField,
-        taskCompleted: Any? = NonUpdatedField,
-        taskMessage: Any? = NonUpdatedField,
-        taskStackTrace: Any? = NonUpdatedField,
-    ) {
-        val updates = mutableMapOf<String, Any?>()
-        if (taskStatus !== NonUpdatedField) {
-            updates["task_status"] = if (taskStatus is TaskStatus) {
-                taskStatus
-            } else {
-                error("taskStatus must be a TaskStatus")
-            }
-        }
-        if (taskStart !== NonUpdatedField) {
-            updates["task_start"] = when (taskStart) {
-                is Timestamp? -> taskStart
-                is Instant? -> taskStart?.let { Timestamp(it.toEpochMilli()) }
-                else -> error("taskStart must be an Instant or Timestamp")
-            }
-        }
-        if (taskCompleted !== NonUpdatedField) {
-            updates["task_completed"] = when (taskCompleted) {
-                is Timestamp? -> taskCompleted
-                is Instant? -> taskCompleted?.let { Timestamp(it.toEpochMilli()) }
-                else -> error("taskCompleted must be an Instant or Timestamp")
-            }
-        }
-        if (taskMessage !== NonUpdatedField) {
-            updates["task_message"] = if (taskMessage is String?) {
-                taskMessage
-            } else {
-                error("taskMessage must be a String")
-            }
-        }
-        if (taskStackTrace !== NonUpdatedField) {
-            updates["task_stack_trace"] = if (taskStackTrace is String?) {
-                taskStackTrace
-            } else {
-                error("taskStackTrace must be a String")
-            }
-        }
-        val sortedMap = updates.toSortedMap()
-        val sql = """
+    /** */
+    fun finalizeTaskRun(connection: Connection, pipelineRunTaskId: Long, result: TaskResult) {
+        val updateSql = """
             UPDATE $tableName
-            SET    ${sortedMap.entries.joinToString { "${it.key} = ?" }}
+            SET    task_message = ?,
+                   task_status = ?,
+                   task_completed = ?,
+                   task_stack_trace = ?
             WHERE  pr_task_id = ?
         """.trimIndent()
+        when(result) {
+            is TaskResult.Success -> {
+                connection.runUpdate(
+                    sql = updateSql,
+                    result.message,
+                    TaskStatus.Complete,
+                    Instant.now(),
+                    null,
+                    pipelineRunTaskId,
+                )
+            }
+            is TaskResult.RuleBroken -> {
+                connection.runUpdate(
+                    sql = updateSql,
+                    null,
+                    TaskStatus.RuleBroken,
+                    null,
+                    null,
+                    pipelineRunTaskId,
+                )
+            }
+            is TaskResult.Error -> {
+                connection.runUpdate(
+                    sql = updateSql,
+                    result.message,
+                    TaskStatus.Failed,
+                    null,
+                    result.throwable.stackTraceToString(),
+                    pipelineRunTaskId,
+                )
+            }
+        }
+    }
+
+    /** */
+    fun finalizeTaskRun(connection: Connection, pipelineRunTaskId: Long, throwable: Throwable) {
         connection.runUpdate(
-            sql = sql,
-            sortedMap.values,
+            sql = """
+                UPDATE $tableName
+                SET    task_message = ?,
+                       task_status = ?,
+                       task_completed = ?,
+                       task_stack_trace = ?
+                WHERE  pr_task_id = ?
+            """.trimIndent(),
+            "ERROR in Job: ${throwable.message}",
+            TaskStatus.Failed,
+            null,
+            throwable.stackTraceToString(),
             pipelineRunTaskId,
         )
     }
+
 }
